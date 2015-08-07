@@ -1,0 +1,3 @@
+-check pop operations
+-track block beginnings
+-unit test blocks

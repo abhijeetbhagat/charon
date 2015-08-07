@@ -79,7 +79,7 @@ impl Statement for GotoStatement{
 }
 
 pub struct DoStatement{
-    block : Block
+    pub block : Block
 }
 
 impl DoStatement{
