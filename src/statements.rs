@@ -1,11 +1,18 @@
 use lua_types::*;
 use block::*;
-use traits::*;
-
+use trait_expression::*;
+use trait_statement::*;
+use expressions::*;
 
 pub struct AssignStatement{
-    lhs_sym : String,
-    rhs : LuaType
+    lhs_sym : IdentExpression,
+    rhs_expr : Box<Expression>
+}
+
+impl AssignStatement{
+    pub fn new(lhs_sym : IdentExpression, rhs_expr : Box<Expression>)->Self{
+        AssignStatement {lhs_sym : lhs_sym, rhs_expr : rhs_expr}
+    }
 }
 
 impl Statement for AssignStatement{
@@ -97,3 +104,26 @@ impl Statement for DoStatement{
         instructions
     }
 }
+
+pub struct WhileStatement{
+    expr : Box<Expression>,
+    do_stat : DoStatement
+}
+
+impl WhileStatement{
+    fn new(expr : Box<Expression>)->Self{
+        WhileStatement {expr : expr, do_stat : DoStatement::new()}
+    }
+}
+
+impl Statement for WhileStatement{
+    fn generate_code(&self) -> Vec<String>{
+        let mut instructions : Vec<String> = Vec::new(); 
+        for s in &self.do_stat.block.statements{
+            instructions.extend(s.generate_code().into_iter());
+        }
+        instructions
+    }
+}
+
+pub struct RepeatUntilStatement;

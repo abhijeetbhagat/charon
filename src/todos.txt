@@ -1,3 +1,7 @@
 -check pop operations
--track block beginnings
--unit test blocks
+-track block beginnings - Done
+-unit test blocks - Done
+
+-work on expressions - WIP
+-learn type erasure
+-learn traits from http://huonw.github.io

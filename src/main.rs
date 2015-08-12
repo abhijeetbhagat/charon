@@ -14,7 +14,8 @@ mod lua_types;
 mod statements;
 mod expressions;
 mod block;
-mod traits;
+mod trait_statement;
+mod trait_expression;
 use lua_types::*;
 use lexer::*;
 use tokens::*;
@@ -22,7 +23,8 @@ use statements::*;
 use expressions::*;
 use parser::*;
 use block::*;
-use traits::*;
+use trait_statement::*;
+use trait_expression::*;
 
 trait SourceReader{
     fn get_src()->String;

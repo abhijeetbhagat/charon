@@ -4,9 +4,8 @@ use statements::*;
 use expressions::*;
 use lua_types::*;
 use block::*;
-
-
-struct Expression;
+use trait_statement::*;
+use trait_expression::*;
 
 type BlockStack = Vec<Block>;
 
@@ -15,28 +14,34 @@ pub struct Parser{
     block_stack : BlockStack
 }
 
-impl<'a> Parser{
+impl Parser{
     pub fn new(src : String)->Self{
         Parser {lexer : Lexer::new(src),  block_stack : BlockStack::new()}
     }
     
-    fn run(& mut self)->Block{
+    fn run(& mut self)->Option<Block>{
         self.parse_block()
         //self.block.generate();
     }
     
-    fn parse_block(& mut self)->Block{
+    fn parse_block(& mut self)->Option<Block>{
         let mut b = Block::new();
         self.block_stack.push(b);
         self.lexer.get_char();
-        self.stat();
+        self.stat(); //begin parsing
+        debug_assert!(self.block_stack.len() == 1, "Only parent block should be on the stack when the parsing is finished");
         let mut main_block = self.block_stack.pop().unwrap();
         main_block.generate();
-        main_block
+        if main_block.statements.len() == 0{
+            None
+        }
+        else{
+            Some(main_block)
+        }
     }
     
     fn stat(&mut self){
-      let mut block = self.block_stack.pop().unwrap();
+      //let mut block = self.block_stack.pop().unwrap();
       loop{
         match self.lexer.get_token(){
             Token::SemiColon => continue,
@@ -44,7 +49,12 @@ impl<'a> Parser{
                 //self.varlist();
                 match self.lexer.get_token(){
                     Token::Assign => {
-                       self.exprlist();
+                       //self.exprlist();
+                       let lhs = IdentExpression::new(self.lexer.curr_string.clone());
+                       let expression = self.expr().unwrap();
+                       let mut curr_block = self.block_stack.last_mut().unwrap();
+                       curr_block.statements.push(Box::new(AssignStatement::new(lhs, expression)));
+                       //curr_block.add_sym(self.lexer.curr_string.clone(), )
                     },
                     _ => panic!("Expected '='")
                 }
@@ -54,7 +64,9 @@ impl<'a> Parser{
                     Token::Ident => {
                         match self.lexer.get_token(){
                             Token::ColonColon => {
-                                block.statements.push(Box::new(LabelStatement::new(self.lexer.curr_string.clone())))
+                                //add statement to the current block scope
+                                let mut curr_block = self.block_stack.last_mut().unwrap();
+                                curr_block.statements.push(Box::new(LabelStatement::new(self.lexer.curr_string.clone())))
                             },
                             _ => panic!("Expected '::'")
                         }
@@ -63,35 +75,36 @@ impl<'a> Parser{
                 }
             },
             Token::Break => {
-                block.statements.push(Box::new(BreakStatement::new()))
+                let mut curr_block = self.block_stack.last_mut().unwrap();
+                curr_block.statements.push(Box::new(BreakStatement::new()))
             },
             Token::Goto => {
                 match self.lexer.get_token(){
                     Token::Ident => {
-                        block.statements.push(Box::new(GotoStatement::new(self.lexer.curr_string.clone())))
+                        let mut curr_block = self.block_stack.last_mut().unwrap();
+                        curr_block.statements.push(Box::new(GotoStatement::new(self.lexer.curr_string.clone())))
                     },
                     _ => panic!("Expected a label")
                 }
             },
             Token::Do => {
                 let mut do_stat = DoStatement::new();
+                debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
                 self.stat();
                 if self.lexer.curr_token == Token::End{
                     //TODO make sure we track all block openings
                     do_stat.block = self.block_stack.pop().unwrap();
-                    let mut parent_block = self.block_stack.pop().unwrap();
-                    parent_block.statements.push(Box::new(do_stat));
-                    self.block_stack.push(parent_block);
-                    //self.block.statements.push(do_stat);                    
-                    return
+                    let mut curr_block = self.block_stack.last_mut().unwrap();
+                    curr_block.statements.push(Box::new(do_stat));
                 }
             },
             Token::Return => {},
-            Token::Eof => {self.block_stack.push(block); return},
+            Token::Eof => {return},
             Token::End => {
                 //TODO block stack pop
                 return
+                //continue;
             },
             _ => {panic!("Invalid token");}
         }
@@ -110,16 +123,23 @@ impl<'a> Parser{
             
     }
     
-    fn expr(&mut self){
+    fn expr(&mut self) -> Option<Box<Expression>> {
         match self.lexer.get_token(){
-            Token::Nil => {},
+            /*Token::Nil => {},
             Token::False => {},
-            Token::True => {},
-            Token::Number => {},
-            Token::DotDotDot => {},
+            Token::True => {},*/
+            Token::Number => {
+                Some(Box::new(NumExpression::new(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
+            },
+            Token::Ident => {
+                //check if symbol defined in the sym tab
+                //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
+                Some(Box::new(IdentExpression::new(self.lexer.curr_string.clone()))) 
+            }
+            /*Token::DotDotDot => {},
             Token::Function => {},
-            Token::LeftCurly => {},
-            _ => {}
+            Token::LeftCurly => {},*/
+            _ => {Some(Box::new(IdentExpression::new("fsf".to_string())))}
         }
     }
 }
@@ -127,21 +147,21 @@ impl<'a> Parser{
 #[test]
 fn test_break(){
     let mut p = Parser::new("break".to_string());
-    let b = p.run();
+    let b = p.run().unwrap();
     assert!(&*b.instructions[0] == "jmp");
 }
 
 #[test]
 fn test_label(){
     let mut p = Parser::new("::abhi::".to_string());
-    let b = p.run();
+    let b = p.run().unwrap();
     assert!(&*b.instructions[0] == "abhi:");
 }
 
 #[test]
 fn test_break_and_label(){
     let mut p = Parser::new("break::abhi::".to_string());
-    let b = p.run();
+    let b = p.run().unwrap();
     assert!(&*b.instructions[0] == "jmp");
     assert!(&*b.instructions[1] == "abhi:");
 }
@@ -149,6 +169,37 @@ fn test_break_and_label(){
 #[test]
 fn test_goto(){
     let mut p = Parser::new("goto abhi".to_string());
-    let b = p.run();
+    let b = p.run().unwrap();
     assert!(&*b.instructions[0] == "bra abhi");
+}
+
+#[test]
+fn test_nested_do_stmt(){
+    let mut p = Parser::new("do do do break end break end break end".to_string());
+    let b = p.run().unwrap();
+    assert!(&*b.instructions[0] == "jmp");
+    assert!(&*b.instructions[1] == "jmp");
+    assert!(&*b.instructions[2] == "jmp");
+}
+
+#[test]
+fn test_single_do_stmt(){
+    let mut p = Parser::new("do  break end".to_string());
+    let b = p.run().unwrap();
+    assert!(&*b.instructions[0] == "jmp");
+}
+
+#[test]
+fn test_single_assign_stmt(){
+    let mut p = Parser::new("a=1".to_string());
+    let b = p.run().unwrap();
+    assert!(&*b.instructions[0] == "MOV 1,2");
+}
+
+#[test]
+fn test_assign_break_in_do(){
+    let mut p = Parser::new("do break a=1 end".to_string());
+    let b = p.run().unwrap();
+    assert!(&*b.instructions[0] == "jmp");
+    assert!(&*b.instructions[1] == "MOV 1,2");
 }
