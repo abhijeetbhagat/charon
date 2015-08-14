@@ -1,0 +1,9 @@
+[package]
+name = "syntax"
+version = "0.1.0"
+authors = ["abhijeet bhagat <abhijeet.bhagat@gmx.com>"]
+
+[lib]
+name = "syntax"
+path = "lib.rs"
+test = true

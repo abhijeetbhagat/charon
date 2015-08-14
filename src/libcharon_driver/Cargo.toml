@@ -1,0 +1,14 @@
+[package]
+name = "charon_driver"
+version = "0.1.0"
+authors = ["abhijeet bhagat <abhijeet.bhagat@gmx.com>"]
+
+[lib]
+name = "charon_driver"
+path = "lib.rs"
+test = true
+
+[dependencies.syntax]
+name = "syntax"
+path = "../libsyntax"
+test = true

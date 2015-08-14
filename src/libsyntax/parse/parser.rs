@@ -1,11 +1,6 @@
-use lexer::*;
-use tokens::*;
-use statements::*;
-use expressions::*;
-use lua_types::*;
-use block::*;
-use trait_statement::*;
-use trait_expression::*;
+use parse::lexer::*;
+use parse::tokens::*;
+use ast::*;
 
 type BlockStack = Vec<Block>;
 
@@ -19,7 +14,7 @@ impl Parser{
         Parser {lexer : Lexer::new(src),  block_stack : BlockStack::new()}
     }
     
-    fn run(& mut self)->Option<Block>{
+    pub fn run(& mut self)->Option<Block>{
         self.parse_block()
         //self.block.generate();
     }

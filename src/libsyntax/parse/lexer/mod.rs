@@ -1,4 +1,4 @@
-use tokens::*;
+use parse::tokens::*;
 
 #[derive(Default)]
 pub struct Lexer{
@@ -191,69 +191,74 @@ impl Lexer{
     }
 }
 
-#[test]
-fn test_match_token_binary_exp_nums(){
-    let mut l = Lexer::new("1234+23451".to_string());
-    l.get_char();
-    assert!(l.get_token() == Token::Number);
-    assert!(l.get_token() == Token::Plus);
-    assert!(l.get_token() == Token::Number);
-}
-
-#[test]
-fn test_match_token_binary_exp_vars(){
-    let mut l = Lexer::new("a+a".to_string());
-    l.get_char();
-    assert!(l.get_token() == Token::Ident);
-    assert!(l.get_token() == Token::Plus);
-    assert!(l.get_token() == Token::Ident);
-}
-
-#[test]
-fn test_match_token_binary_exp_mixed(){
-    let mut l = Lexer::new("a+1".to_string());
-    l.get_char();
-    assert!(l.get_token() == Token::Ident);
-    assert!(l.get_token() == Token::Plus);
-    assert!(l.get_token() == Token::Number);
-}
-
-#[test]
-fn test_match_token_binary_exp_mixed_multiple_terms(){
-    let mut l = Lexer::new("a+1+a".to_string());
-    l.get_char();
-    assert!(l.get_token() == Token::Ident);
-    assert!(l.get_token() == Token::Plus);
-    assert!(l.get_token() == Token::Number);
-    assert!(l.get_token() == Token::Plus);
-    assert!(l.get_token() == Token::Ident);
-}
-
-#[test]
-fn test_get_char(){
-    let mut l = Lexer::new("1+1".to_string());
-    l.get_char();
-    assert!(l.curr_char == '1');
-    l.get_char();
-    assert!(l.curr_char == '+');
-}
-
-#[test]
-fn test_match_newline(){
-    let mut l = Lexer::new("\n".to_string());
-    l.get_char();
-    assert!(l.get_token() == Token::NewLine);
-    assert!(l.get_token() == Token::Eof);
-}
-
-#[test]
-fn test_line_pos(){
-    let mut l = Lexer::new("\n\n\n".to_string());
-    l.get_char();
-    l.get_token();
-    assert!(l.line_pos == 2);
-    l.get_token();
-    assert!(l.line_pos == 3);
-    l.get_token();
-    assert!(l.line_pos == 4);
+#[cfg(test)]
+mod tests {
+    use parse::tokens::*;
+    
+    #[test]
+    fn test_match_token_binary_exp_nums(){
+        let mut l = Lexer::new("1234+23451".to_string());
+        l.get_char();
+        assert!(l.get_token() == Token::Number);
+        assert!(l.get_token() == Token::Plus);
+        assert!(l.get_token() == Token::Number);
+    }
+    
+    #[test]
+    fn test_match_token_binary_exp_vars(){
+        let mut l = Lexer::new("a+a".to_string());
+        l.get_char();
+        assert!(l.get_token() == Token::Ident);
+        assert!(l.get_token() == Token::Plus);
+        assert!(l.get_token() == Token::Ident);
+    }
+    
+    #[test]
+    fn test_match_token_binary_exp_mixed(){
+        let mut l = Lexer::new("a+1".to_string());
+        l.get_char();
+        assert!(l.get_token() == Token::Ident);
+        assert!(l.get_token() == Token::Plus);
+        assert!(l.get_token() == Token::Number);
+    }
+    
+    #[test]
+    fn test_match_token_binary_exp_mixed_multiple_terms(){
+        let mut l = Lexer::new("a+1+a".to_string());
+        l.get_char();
+        assert!(l.get_token() == Token::Ident);
+        assert!(l.get_token() == Token::Plus);
+        assert!(l.get_token() == Token::Number);
+        assert!(l.get_token() == Token::Plus);
+        assert!(l.get_token() == Token::Ident);
+    }
+    
+    #[test]
+    fn test_get_char(){
+        let mut l = Lexer::new("1+1".to_string());
+        l.get_char();
+        assert!(l.curr_char == '1');
+        l.get_char();
+        assert!(l.curr_char == '+');
+    }
+    
+    #[test]
+    fn test_match_newline(){
+        let mut l = Lexer::new("\n".to_string());
+        l.get_char();
+        assert!(l.get_token() == Token::NewLine);
+        assert!(l.get_token() == Token::Eof);
+    }
+    
+    #[test]
+    fn test_line_pos(){
+        let mut l = Lexer::new("\n\n\n".to_string());
+        l.get_char();
+        l.get_token();
+        assert!(l.line_pos == 2);
+        l.get_token();
+        assert!(l.line_pos == 3);
+        l.get_token();
+        assert!(l.line_pos == 4);
+    }
 }

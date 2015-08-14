@@ -1,4 +1,18 @@
 [root]
-name = "mars"
+name = "charon"
+version = "0.1.0"
+dependencies = [
+ "charon_driver 0.1.0",
+]
+
+[[package]]
+name = "charon_driver"
+version = "0.1.0"
+dependencies = [
+ "syntax 0.1.0",
+]
+
+[[package]]
+name = "syntax"
 version = "0.1.0"
 
