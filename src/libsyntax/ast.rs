@@ -1,5 +1,5 @@
 use std::collections::{HashMap};
-//use visit::*;
+use visit::{Visitor};
 
 struct ExpressionEvaluator;
 
@@ -27,11 +27,6 @@ pub trait Statement{
     fn generate_code(&self)->Vec<String>;
 }
 
-pub trait Expression{
-    fn semantic(&self, &Block);
-    //fn accept(&self, &SymbolVisitor);
-}
-
 pub struct Block{
     sym_tab : HashMap<String, LuaType>,
     pub statements : Vec<Box<Statement>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
@@ -54,7 +49,6 @@ impl Block{
         }
     }
     
-    
     pub fn generate(&mut self){
         for s in &self.statements{
             /*for i in &s.generate_code(){
@@ -65,6 +59,15 @@ impl Block{
     }
 }
 
+pub trait Expression{
+    fn semantic(&self, &Block);
+    //fn accept<'a>(&'a self, &Visitor<&'a Expression>);
+}
+
+pub trait Accept{
+    type Visitable = Expression;
+    fn accept<'a>(&'a self, &Visitor<&'a Self::Visitable>);
+}
 
 pub struct NumExpression{
 	value : i32
@@ -84,6 +87,13 @@ impl Expression for NumExpression{
 	}
 }
 
+impl Accept for NumExpression{
+    type Visitable = NumExpression;
+    fn accept<'a>(&'a self, v: &Visitor<&'a NumExpression>){
+        v.visit(self);
+    }
+}
+
 pub struct IdentExpression{
 	value : String
 }
@@ -96,10 +106,13 @@ impl IdentExpression{
 
 impl Expression for IdentExpression{
 	fn semantic(&self, block: &Block){}
-	
-	/*fn accept(&self, visitor: &SymbolVisitor){
-		visitor.visit(self);
-	}*/
+}
+
+impl Accept for IdentExpression{
+    type Visitable = IdentExpression;
+    fn accept<'a>(&'a self, v: &Visitor<&'a IdentExpression>){
+        v.visit(self);
+    }
 }
 
 pub struct AddExpression{
@@ -119,7 +132,14 @@ impl Expression for AddExpression{
 	}
 }
 
-pub struct SubExpression{
+impl Accept for AddExpression{
+    type Visitable = AddExpression;
+    fn accept<'a>(&'a self, v: &Visitor<&'a AddExpression>){
+        v.visit(self);
+    }
+}
+
+/*pub struct SubExpression{
 	e1 : Box<Expression>,
 	e2 : Box<Expression>
 }
@@ -186,7 +206,7 @@ impl Expression for ModExpression{
 		
 	}
 }
-
+*/
 pub struct DotDotDotExpression;
 //-----------------------------------------------------------------------------------------------------
 pub struct AssignStatement{
