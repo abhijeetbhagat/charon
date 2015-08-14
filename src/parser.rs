@@ -53,7 +53,7 @@ impl Parser{
                        let lhs = IdentExpression::new(self.lexer.curr_string.clone());
                        let expression = self.expr().unwrap();
                        let mut curr_block = self.block_stack.last_mut().unwrap();
-                       curr_block.statements.push(Box::new(AssignStatement::new(lhs, expression)));
+                       curr_block.statements.push(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
                        //curr_block.add_sym(self.lexer.curr_string.clone(), )
                     },
                     _ => panic!("Expected '='")
@@ -66,7 +66,7 @@ impl Parser{
                             Token::ColonColon => {
                                 //add statement to the current block scope
                                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                                curr_block.statements.push(Box::new(LabelStatement::new(self.lexer.curr_string.clone())))
+                                curr_block.statements.push(Box::new(LabelStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
                             },
                             _ => panic!("Expected '::'")
                         }
@@ -76,19 +76,19 @@ impl Parser{
             },
             Token::Break => {
                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                curr_block.statements.push(Box::new(BreakStatement::new()))
+                curr_block.statements.push(Box::new(BreakStatement::new(self.lexer.line_pos)))
             },
             Token::Goto => {
                 match self.lexer.get_token(){
                     Token::Ident => {
                         let mut curr_block = self.block_stack.last_mut().unwrap();
-                        curr_block.statements.push(Box::new(GotoStatement::new(self.lexer.curr_string.clone())))
+                        curr_block.statements.push(Box::new(GotoStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
                     },
                     _ => panic!("Expected a label")
                 }
             },
             Token::Do => {
-                let mut do_stat = DoStatement::new();
+                let mut do_stat = DoStatement::new(self.lexer.line_pos);
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
                 self.stat();

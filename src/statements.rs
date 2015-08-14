@@ -5,13 +5,14 @@ use trait_statement::*;
 use expressions::*;
 
 pub struct AssignStatement{
+    line_pos : usize,
     lhs_sym : IdentExpression,
     rhs_expr : Box<Expression>
 }
 
 impl AssignStatement{
-    pub fn new(lhs_sym : IdentExpression, rhs_expr : Box<Expression>)->Self{
-        AssignStatement {lhs_sym : lhs_sym, rhs_expr : rhs_expr}
+    pub fn new(line_pos : usize, lhs_sym : IdentExpression, rhs_expr : Box<Expression>)->Self{
+        AssignStatement {line_pos : line_pos, lhs_sym : lhs_sym, rhs_expr : rhs_expr}
     }
 }
 
@@ -22,11 +23,12 @@ impl Statement for AssignStatement{
 }
 
 pub struct FuncCallStatement{
+    line_pos : usize,
     name : String
 }
 impl FuncCallStatement{
-    pub fn new(name : String) -> Self{
-        FuncCallStatement {name : name}
+    pub fn new(line_pos : usize, name : String) -> Self{
+        FuncCallStatement {line_pos : line_pos, name : name}
     }
 }
 
@@ -37,12 +39,13 @@ impl Statement for FuncCallStatement{
 }
 
 pub struct LabelStatement{
+    line_pos : usize,
     name : String
 }
 
 impl LabelStatement{
-    pub fn new(name : String) -> Self{
-        LabelStatement {name : name}
+    pub fn new(line_pos : usize, name : String) -> Self{
+        LabelStatement {line_pos : line_pos, name : name}
     }
 }
 
@@ -54,11 +57,13 @@ impl Statement for LabelStatement{
     }
 }
 
-pub struct BreakStatement;
+pub struct BreakStatement{
+    line_pos : usize
+}
 
 impl BreakStatement{
-    pub fn new() -> Self{
-        BreakStatement
+    pub fn new(line_pos : usize) -> Self{
+        BreakStatement {line_pos : line_pos} 
     }
 }
 
@@ -70,12 +75,13 @@ impl Statement for BreakStatement{
 }
 
 pub struct GotoStatement{
+    line_pos : usize,
     label : String
 }
 
 impl GotoStatement{
-    pub fn new(label : String) -> Self{
-        GotoStatement {label : label}
+    pub fn new(line_pos : usize, label : String) -> Self{
+        GotoStatement {line_pos : line_pos, label : label}
     }
 }
 
@@ -86,12 +92,13 @@ impl Statement for GotoStatement{
 }
 
 pub struct DoStatement{
+    line_pos : usize,
     pub block : Block
 }
 
 impl DoStatement{
-    pub fn new()->Self{
-        DoStatement {block : Block::new()}
+    pub fn new(line_pos : usize)->Self{
+        DoStatement {line_pos : line_pos, block : Block::new()}
     }
 }
 
@@ -106,13 +113,14 @@ impl Statement for DoStatement{
 }
 
 pub struct WhileStatement{
+    line_pos : usize,
     expr : Box<Expression>,
     do_stat : DoStatement
 }
 
 impl WhileStatement{
-    fn new(expr : Box<Expression>)->Self{
-        WhileStatement {expr : expr, do_stat : DoStatement::new()}
+    fn new(line_pos : usize, expr : Box<Expression>)->Self{
+        WhileStatement {line_pos : line_pos, expr : expr, do_stat : DoStatement::new(line_pos)}
     }
 }
 

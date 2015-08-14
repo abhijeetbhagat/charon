@@ -64,6 +64,7 @@ pub enum Token{
     Error,
     NoToken,
     Eof,
+    NewLine,
     
     Ident,
     Number

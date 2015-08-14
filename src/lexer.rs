@@ -7,21 +7,22 @@ pub struct Lexer{
     curr_char : char,
     pub curr_string : String,
     src_code : Vec<u8>,
-    pos : usize
+    char_pos : usize,
+    pub line_pos : usize 
 }
 
 impl Lexer{
     pub fn new(src_code : String)->Self{
-        let mut l = Lexer{ src_code : src_code.as_bytes().to_vec(), ..Default::default()};
+        let mut l = Lexer{ src_code : src_code.as_bytes().to_vec(), line_pos : 1, ..Default::default()};
         //l.get_char();
         l
     }
     
     //FIXME: get_char() shouldn't be exposed
     pub fn get_char(&mut self){
-        if self.pos < self.src_code.len() {
-            self.curr_char = self.src_code[self.pos] as char;
-            self.pos += 1;
+        if self.char_pos < self.src_code.len() {
+            self.curr_char = self.src_code[self.char_pos] as char;
+            self.char_pos += 1;
         }
         else{
             self.curr_char = '\0';
@@ -131,7 +132,9 @@ impl Lexer{
                 return self.curr_token
                 
             },
+            //\n is also whitespace. So put it before whitespace check
             '\0' => {self.curr_token = Token::Eof; return self.curr_token},
+            '\n' => { self.line_pos += 1; self.curr_token = Token::NewLine; self.get_char(); return self.curr_token },
             c if c.is_whitespace() => {
                 loop{
                     self.get_char();
@@ -142,12 +145,13 @@ impl Lexer{
                 self.curr_token = self.get_token();
                 return self.curr_token
             },
+            
             _ => {self.curr_token = Token::Error; return self.curr_token}
         }
     }
     
     fn run(&mut self){
-        while self.pos < self.src_code.len(){
+        while self.char_pos < self.src_code.len(){
             self.get_char();
             if !self.curr_char.is_whitespace(){
                 self.get_char();
@@ -232,4 +236,24 @@ fn test_get_char(){
     assert!(l.curr_char == '1');
     l.get_char();
     assert!(l.curr_char == '+');
+}
+
+#[test]
+fn test_match_newline(){
+    let mut l = Lexer::new("\n".to_string());
+    l.get_char();
+    assert!(l.get_token() == Token::NewLine);
+    assert!(l.get_token() == Token::Eof);
+}
+
+#[test]
+fn test_line_pos(){
+    let mut l = Lexer::new("\n\n\n".to_string());
+    l.get_char();
+    l.get_token();
+    assert!(l.line_pos == 2);
+    l.get_token();
+    assert!(l.line_pos == 3);
+    l.get_token();
+    assert!(l.line_pos == 4);
 }
