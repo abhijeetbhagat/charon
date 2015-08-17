@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::{HashMap};
 use visit::{Visitor};
 
@@ -8,7 +10,7 @@ struct ExpressionEvaluator;
 		
 	}
 	
-	pub fn visit_ident(&self, num_exp : &IdentExpression){
+	pub fn visit_ident(&self, num_exp : &IdentExpr){
 		
 	}
 }*/
@@ -59,149 +61,75 @@ impl Block{
     }
 }
 
-pub trait Expression{
-    fn semantic(&self, &Block);
-    //fn accept<'a>(&'a self, &Visitor<&'a Expression>);
-}
-
-pub trait Accept{
-    type Visitable = Expression;
-    fn accept<'a>(&'a self, &Visitor<&'a Self::Visitable>);
-}
-
-pub struct NumExpression{
-	value : i32
-}
-
-impl NumExpression{
-	pub fn new(value : i32)->Self{
-		NumExpression {value : value}
-	}
-}
-
-impl Expression for NumExpression{
-	fn semantic(&self, block: &Block){
-		let reg = "rsp";
-		let offset = "1";
-		println!("mov dword ptr[{}+{}], {}", reg, offset, format!("{:X}", self.value));
-	}
-}
-
-impl Accept for NumExpression{
-    type Visitable = NumExpression;
-    fn accept<'a>(&'a self, v: &Visitor<&'a NumExpression>){
-        v.visit(self);
-    }
-}
-
-pub struct IdentExpression{
-	value : String
-}
-
-impl IdentExpression{
-	pub fn new(value : String)->Self{
-		IdentExpression {value : value}
-	}
-}
-
-impl Expression for IdentExpression{
-	fn semantic(&self, block: &Block){}
-}
-
-impl Accept for IdentExpression{
-    type Visitable = IdentExpression;
-    fn accept<'a>(&'a self, v: &Visitor<&'a IdentExpression>){
-        v.visit(self);
-    }
-}
-
-pub struct AddExpression{
-	e1 : Box<Expression>,
-	e2 : Box<Expression>
-}
-
-impl AddExpression{
-	pub fn new(e1 : Box<Expression>, e2 : Box<Expression>)->Self{
-		AddExpression {e1 : e1, e2 : e2}
-	}
-}
-
-impl Expression for AddExpression{
-	fn semantic(&self, block: &Block){
-		
-	}
-}
-
-impl Accept for AddExpression{
-    type Visitable = AddExpression;
-    fn accept<'a>(&'a self, v: &Visitor<&'a AddExpression>){
-        v.visit(self);
-    }
+pub enum Expr{
+   NumExpr(i32),
+   IdentExpr(String),
+   AddExpr(Box<Expr>, Box<Expr>)
 }
 
 /*pub struct SubExpression{
-	e1 : Box<Expression>,
-	e2 : Box<Expression>
+	e1 : Box<Expr>,
+	e2 : Box<Expr>
 }
 
 impl SubExpression{
-	pub fn new(e1 : Box<Expression>, e2 : Box<Expression>)->Self{
+	pub fn new(e1 : Box<Expr>, e2 : Box<Expr>)->Self{
 		SubExpression {e1 : e1, e2 : e2}
 	}
 }
 
-impl Expression for SubExpression{
+impl Expr for SubExpression{
 	fn semantic(&self, block: &Block){
 		
 	}
 }
 
 pub struct MulExpression{
-	e1 : Box<Expression>,
-	e2 : Box<Expression>
+	e1 : Box<Expr>,
+	e2 : Box<Expr>
 }
 
 impl MulExpression{
-	pub fn new(e1 : Box<Expression>, e2 : Box<Expression>)->Self{
+	pub fn new(e1 : Box<Expr>, e2 : Box<Expr>)->Self{
 		MulExpression {e1 : e1, e2 : e2}
 	}
 }
 
-impl Expression for MulExpression{
+impl Expr for MulExpression{
 	fn semantic(&self, block: &Block){
 		
 	}
 }
 
 pub struct DivExpression{
-	e1 : Box<Expression>,
-	e2 : Box<Expression>
+	e1 : Box<Expr>,
+	e2 : Box<Expr>
 }
 
 impl DivExpression{
-	pub fn new(e1 : Box<Expression>, e2 : Box<Expression>)->Self{
+	pub fn new(e1 : Box<Expr>, e2 : Box<Expr>)->Self{
 		DivExpression {e1 : e1, e2 : e2}
 	}
 }
 
-impl Expression for DivExpression{
+impl Expr for DivExpression{
 	fn semantic(&self, block: &Block){
 		
 	}
 }
 
 pub struct ModExpression{
-	e1 : Box<Expression>,
-	e2 : Box<Expression>
+	e1 : Box<Expr>,
+	e2 : Box<Expr>
 }
 
 impl ModExpression{
-	pub fn new(e1 : Box<Expression>, e2 : Box<Expression>)->Self{
+	pub fn new(e1 : Box<Expr>, e2 : Box<Expr>)->Self{
 		ModExpression {e1 : e1, e2 : e2}
 	}
 }
 
-impl Expression for ModExpression{
+impl Expr for ModExpression{
 	fn semantic(&self, block: &Block){
 		
 	}
@@ -211,12 +139,12 @@ pub struct DotDotDotExpression;
 //-----------------------------------------------------------------------------------------------------
 pub struct AssignStatement{
     line_pos : usize,
-    lhs_sym : IdentExpression,
-    rhs_expr : Box<Expression>
+    lhs_sym : Box<Expr>,
+    rhs_expr : Box<Expr>
 }
 
 impl AssignStatement{
-    pub fn new(line_pos : usize, lhs_sym : IdentExpression, rhs_expr : Box<Expression>)->Self{
+    pub fn new(line_pos : usize, lhs_sym : Box<Expr>, rhs_expr : Box<Expr>)->Self{
         AssignStatement {line_pos : line_pos, lhs_sym : lhs_sym, rhs_expr : rhs_expr}
     }
 }
@@ -319,12 +247,12 @@ impl Statement for DoStatement{
 
 pub struct WhileStatement{
     line_pos : usize,
-    expr : Box<Expression>,
+    expr : Box<Expr>,
     do_stat : DoStatement
 }
 
 impl WhileStatement{
-    fn new(line_pos : usize, expr : Box<Expression>)->Self{
+    fn new(line_pos : usize, expr : Box<Expr>)->Self{
         WhileStatement {line_pos : line_pos, expr : expr, do_stat : DoStatement::new(line_pos)}
     }
 }

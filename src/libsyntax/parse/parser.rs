@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use parse::lexer::*;
 use parse::tokens::*;
 use ast::*;
@@ -44,12 +46,11 @@ impl Parser{
                 //self.varlist();
                 match self.lexer.get_token(){
                     Token::Assign => {
-                       //self.exprlist();
-                       let lhs = IdentExpression::new(self.lexer.curr_string.clone());
+                       /*let lhs = IdentExpr::new(self.lexer.curr_string.clone());
                        let expression = self.expr().unwrap();
                        let mut curr_block = self.block_stack.last_mut().unwrap();
                        curr_block.statements.push(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
-                       //curr_block.add_sym(self.lexer.curr_string.clone(), )
+                       */
                     },
                     _ => panic!("Expected '='")
                 }
@@ -118,23 +119,23 @@ impl Parser{
             
     }
     
-    fn expr(&mut self) -> Option<Box<Expression>> {
+    fn expr(&mut self) -> Option<Box<Expr>> {
         match self.lexer.get_token(){
             /*Token::Nil => {},
             Token::False => {},
             Token::True => {},*/
             Token::Number => {
-                Some(Box::new(NumExpression::new(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
+                Some(Box::new(Expr::NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
             },
             Token::Ident => {
                 //check if symbol defined in the sym tab
                 //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
-                Some(Box::new(IdentExpression::new(self.lexer.curr_string.clone()))) 
+                Some(Box::new(Expr::IdentExpr(self.lexer.curr_string.clone()))) 
             }
             /*Token::DotDotDot => {},
             Token::Function => {},
             Token::LeftCurly => {},*/
-            _ => {Some(Box::new(IdentExpression::new("fsf".to_string())))}
+            _ => {Some(Box::new(Expr::IdentExpr("fsf".to_string())))}
         }
     }
 }
