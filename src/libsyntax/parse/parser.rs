@@ -3,6 +3,7 @@
 use parse::lexer::*;
 use parse::tokens::*;
 use ast::*;
+//use ast::{Expr, Stmt};
 
 type BlockStack = Vec<Block>;
 
@@ -46,11 +47,12 @@ impl Parser{
                 //self.varlist();
                 match self.lexer.get_token(){
                     Token::Assign => {
-                       /*let lhs = IdentExpr::new(self.lexer.curr_string.clone());
-                       let expression = self.expr().unwrap();
+                       //let lhs = Expr::IdentExpr(self.lexer.curr_string.clone());//IdentExpr::new(self.lexer.curr_string.clone());
+                       let expr = self.expr().unwrap();
                        let mut curr_block = self.block_stack.last_mut().unwrap();
-                       curr_block.statements.push(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
-                       */
+                       let local = Local::new(self.lexer.curr_string.clone(), LuaType::LNil, expr);
+                       curr_block.statements.push(Box::new(Stmt::VarDeclStmt(local)));//(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
+                       
                     },
                     _ => panic!("Expected '='")
                 }
@@ -62,7 +64,7 @@ impl Parser{
                             Token::ColonColon => {
                                 //add statement to the current block scope
                                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                                curr_block.statements.push(Box::new(LabelStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
+                                curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::LabelExpr(self.lexer.curr_string.clone())))));//(Box::new(LabelStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
                             },
                             _ => panic!("Expected '::'")
                         }
@@ -72,13 +74,13 @@ impl Parser{
             },
             Token::Break => {
                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                curr_block.statements.push(Box::new(BreakStatement::new(self.lexer.line_pos)))
+                curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::BreakExpr))));//BreakStatement::new(self.lexer.line_pos)))
             },
             Token::Goto => {
                 match self.lexer.get_token(){
                     Token::Ident => {
                         let mut curr_block = self.block_stack.last_mut().unwrap();
-                        curr_block.statements.push(Box::new(GotoStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
+                        curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::GotoExpr(self.lexer.curr_string.clone())))));//GotoStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
                     },
                     _ => panic!("Expected a label")
                 }
@@ -90,9 +92,10 @@ impl Parser{
                 self.stat();
                 if self.lexer.curr_token == Token::End{
                     //TODO make sure we track all block openings
-                    do_stat.block = self.block_stack.pop().unwrap();
+                    //do_stat.block
+                    let block = self.block_stack.pop().unwrap();
                     let mut curr_block = self.block_stack.last_mut().unwrap();
-                    curr_block.statements.push(Box::new(do_stat));
+                    curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::BlockExpr(Box::new(block))))));//do_stat));
                 }
             },
             Token::Return => {},

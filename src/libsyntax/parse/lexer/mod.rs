@@ -196,6 +196,7 @@ impl Lexer{
 #[cfg(test)]
 mod tests {
     use parse::tokens::*;
+    use super::*; //use stuff thats in the file but outside this module
     
     #[test]
     fn test_match_token_binary_exp_nums(){

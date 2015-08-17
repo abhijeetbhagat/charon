@@ -2,6 +2,7 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 
+
 extern crate syntax;
 
 use syntax::ast;
@@ -17,3 +18,6 @@ fn run_compiler(){
 	p.run();
 }
 
+#[test]
+fn test_mate(){
+}

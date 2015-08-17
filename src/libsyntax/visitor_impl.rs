@@ -91,7 +91,31 @@ impl<'a> Visitor<'a> for PrettyPrintVisitor{
             },
             &Expr::IdentExpr(ref value) => {
                 println!(" Ident({}) ", value);
+            },
+            _ => {}
+        }
+    }
+    
+    fn visit_block(&mut self, block: &'a Block){
+        for s in &block.statements{
+            self.visit_stmt(&*s);
+        }
+    }
+    
+    fn visit_stmt(&mut self, stmt : &'a Stmt){
+        match stmt{
+            &Stmt::VarDeclStmt(ref local) => {
+                println!("(var {} type {} init ", local.ident, local.ty);
+            },
+            &Stmt::ExprStmt(ref expr) => {
+                self.visit_expr(expr);
             }
         }
     }
+}
+
+#[test]
+fn test_visitor(){
+    let mut p = PrettyPrintVisitor;
+    p.visit_expr(&Expr::AddExpr(Box::new(Expr::NumExpr(1)), Box::new(Expr::NumExpr(2))));
 }

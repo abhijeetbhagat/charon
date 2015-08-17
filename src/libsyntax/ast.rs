@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::fmt;
 use std::collections::{HashMap};
 use visit::{Visitor};
 
@@ -25,13 +26,21 @@ pub enum LuaType{
     LNil
 }
 
+impl Display for LuaType{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        match *self{
+            LuaType::LString
+        }
+    }
+}
+
 pub trait Statement{
     fn generate_code(&self)->Vec<String>;
 }
 
 pub struct Block{
     sym_tab : HashMap<String, LuaType>,
-    pub statements : Vec<Box<Statement>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
+    pub statements : Vec<Box<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
     pub instructions : Vec<String>
 }
 
@@ -56,7 +65,7 @@ impl Block{
             /*for i in &s.generate_code(){
                 println!("{}", i);
             }*/
-            self.instructions.extend(s.generate_code().into_iter());
+            //self.instructions.extend(s.generate_code().into_iter());
         }
     }
 }
@@ -64,9 +73,39 @@ impl Block{
 pub enum Expr{
    NumExpr(i32),
    IdentExpr(String),
-   AddExpr(Box<Expr>, Box<Expr>)
+   AddExpr(Box<Expr>, Box<Expr>),
+   SubExpr(Box<Expr>, Box<Expr>),
+   MulExpr(Box<Expr>, Box<Expr>),
+   DivExpr(Box<Expr>, Box<Expr>),
+   ModExpr(Box<Expr>, Box<Expr>),
+   BlockExpr(Box<Block>),
+   IfElseExpr(Box<Expr>, Box<Block>, Box<Expr>),
+   WhileExpr(Box<Expr>, Box<Block>),
+   AssignExpr(String, Box<Expr>),
+   LabelExpr(String),
+   BreakExpr,
+   GotoExpr(String)
+   
 }
 
+pub struct Local{
+    ident : String,
+    ty : LuaType,
+    expr : Box<Expr>
+}
+
+impl Local{
+    pub fn new(ident : String, ty : LuaType, expr : Box<Expr>) -> Local{
+        Local {ident : ident, ty : ty, expr : expr}
+    }
+    
+}
+
+pub enum Stmt{
+     VarDeclStmt(Local),
+     ExprStmt(Box<Expr>)
+     //FnDecl()
+}
 /*pub struct SubExpression{
 	e1 : Box<Expr>,
 	e2 : Box<Expr>
@@ -239,7 +278,7 @@ impl Statement for DoStatement{
     fn generate_code(&self) -> Vec<String>{
         let mut instructions : Vec<String> = Vec::new(); 
         for s in &self.block.statements{
-            instructions.extend(s.generate_code().into_iter());
+            //instructions.extend(s.generate_code().into_iter());
         }
         instructions
     }
@@ -261,7 +300,7 @@ impl Statement for WhileStatement{
     fn generate_code(&self) -> Vec<String>{
         let mut instructions : Vec<String> = Vec::new(); 
         for s in &self.do_stat.block.statements{
-            instructions.extend(s.generate_code().into_iter());
+            //instructions.extend(s.generate_code().into_iter());
         }
         instructions
     }
