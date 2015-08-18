@@ -6,15 +6,17 @@ use visit::{Visitor};
 
 struct ExpressionEvaluator;
 
-/*impl SymbolVisitor for ExpressionEvaluator{
+/*
+impl SymbolVisitor for ExpressionEvaluator{
 	pub fn visit_num(&self, num_exp : &NumExpression){
-		
+
 	}
-	
+
 	pub fn visit_ident(&self, num_exp : &IdentExpr){
-		
+
 	}
-}*/
+}
+*/
 
 pub enum LuaType{
     LString(String),
@@ -26,10 +28,16 @@ pub enum LuaType{
     LNil
 }
 
-impl Display for LuaType{
+impl fmt::Display for LuaType{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
         match *self{
-            LuaType::LString
+            LuaType::LString(_) => f.write_str("String"),
+            LuaType::LNumber(_) => f.write_str("Number"),
+            LuaType::LFunction => f.write_str("Function"),
+            LuaType::LBool => f.write_str("Bool"),
+            LuaType::LThread => f.write_str("Thread"),
+            LuaType::LTable => f.write_str("Table"),
+            LuaType::LNil => f.write_str("Nil")
         }
     }
 }
@@ -48,18 +56,18 @@ impl Block{
     pub fn new()->Self{
         Block {sym_tab : HashMap::new(), statements : Vec::new(), instructions : Vec::new()}
     }
-    
+
     pub fn add_sym(&mut self, sym_id : String, value : LuaType){
         self.sym_tab.insert(sym_id, value);
     }
-    
+
     pub fn contains(&self, sym_id : &String)->bool{
         match self.sym_tab.get(sym_id){
             Some(s) => true,
             _ => false
         }
     }
-    
+
     pub fn generate(&mut self){
         for s in &self.statements{
             /*for i in &s.generate_code(){
@@ -85,20 +93,19 @@ pub enum Expr{
    LabelExpr(String),
    BreakExpr,
    GotoExpr(String)
-   
+
 }
 
 pub struct Local{
-    ident : String,
-    ty : LuaType,
-    expr : Box<Expr>
+    pub ident : String,
+    pub ty : LuaType,
+    pub expr : Box<Expr>
 }
 
 impl Local{
     pub fn new(ident : String, ty : LuaType, expr : Box<Expr>) -> Local{
         Local {ident : ident, ty : ty, expr : expr}
     }
-    
 }
 
 pub enum Stmt{
@@ -106,7 +113,9 @@ pub enum Stmt{
      ExprStmt(Box<Expr>)
      //FnDecl()
 }
-/*pub struct SubExpression{
+
+/*
+pub struct SubExpression{
 	e1 : Box<Expr>,
 	e2 : Box<Expr>
 }
@@ -119,7 +128,7 @@ impl SubExpression{
 
 impl Expr for SubExpression{
 	fn semantic(&self, block: &Block){
-		
+
 	}
 }
 
@@ -136,7 +145,7 @@ impl MulExpression{
 
 impl Expr for MulExpression{
 	fn semantic(&self, block: &Block){
-		
+
 	}
 }
 
@@ -153,7 +162,7 @@ impl DivExpression{
 
 impl Expr for DivExpression{
 	fn semantic(&self, block: &Block){
-		
+
 	}
 }
 
@@ -170,10 +179,11 @@ impl ModExpression{
 
 impl Expr for ModExpression{
 	fn semantic(&self, block: &Block){
-		
+
 	}
 }
 */
+
 pub struct DotDotDotExpression;
 //-----------------------------------------------------------------------------------------------------
 pub struct AssignStatement{
@@ -235,7 +245,7 @@ pub struct BreakStatement{
 
 impl BreakStatement{
     pub fn new(line_pos : usize) -> Self{
-        BreakStatement {line_pos : line_pos} 
+        BreakStatement {line_pos : line_pos}
     }
 }
 
@@ -276,7 +286,7 @@ impl DoStatement{
 
 impl Statement for DoStatement{
     fn generate_code(&self) -> Vec<String>{
-        let mut instructions : Vec<String> = Vec::new(); 
+        let mut instructions : Vec<String> = Vec::new();
         for s in &self.block.statements{
             //instructions.extend(s.generate_code().into_iter());
         }
@@ -298,7 +308,7 @@ impl WhileStatement{
 
 impl Statement for WhileStatement{
     fn generate_code(&self) -> Vec<String>{
-        let mut instructions : Vec<String> = Vec::new(); 
+        let mut instructions : Vec<String> = Vec::new();
         for s in &self.do_stat.block.statements{
             //instructions.extend(s.generate_code().into_iter());
         }

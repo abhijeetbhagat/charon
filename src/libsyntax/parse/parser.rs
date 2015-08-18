@@ -16,12 +16,12 @@ impl Parser{
     pub fn new(src : String)->Self{
         Parser {lexer : Lexer::new(src),  block_stack : BlockStack::new()}
     }
-    
+
     pub fn run(& mut self)->Option<Block>{
         self.parse_block()
         //self.block.generate();
     }
-    
+
     fn parse_block(& mut self)->Option<Block>{
         let mut b = Block::new();
         self.block_stack.push(b);
@@ -37,7 +37,7 @@ impl Parser{
             Some(main_block)
         }
     }
-    
+
     fn stat(&mut self){
       //let mut block = self.block_stack.pop().unwrap();
       loop{
@@ -52,12 +52,12 @@ impl Parser{
                        let mut curr_block = self.block_stack.last_mut().unwrap();
                        let local = Local::new(self.lexer.curr_string.clone(), LuaType::LNil, expr);
                        curr_block.statements.push(Box::new(Stmt::VarDeclStmt(local)));//(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
-                       
+
                     },
                     _ => panic!("Expected '='")
                 }
             },
-            Token::ColonColon => { 
+            Token::ColonColon => {
                 match self.lexer.get_token(){
                     Token::Ident => {
                         match self.lexer.get_token(){
@@ -109,7 +109,7 @@ impl Parser{
         }
       }
     }
-    
+
     fn exprlist(&mut self){
          self.expr();
          match self.lexer.get_token(){
@@ -117,11 +117,11 @@ impl Parser{
             _ => {}
          }
     }
-    
+
     fn varlist(&mut self){
-            
+
     }
-    
+
     fn expr(&mut self) -> Option<Box<Expr>> {
         match self.lexer.get_token(){
             /*Token::Nil => {},
@@ -133,7 +133,7 @@ impl Parser{
             Token::Ident => {
                 //check if symbol defined in the sym tab
                 //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
-                Some(Box::new(Expr::IdentExpr(self.lexer.curr_string.clone()))) 
+                Some(Box::new(Expr::IdentExpr(self.lexer.curr_string.clone())))
             }
             /*Token::DotDotDot => {},
             Token::Function => {},
@@ -141,64 +141,4 @@ impl Parser{
             _ => {Some(Box::new(Expr::IdentExpr("fsf".to_string())))}
         }
     }
-}
-
-#[test]
-fn test_break(){
-    let mut p = Parser::new("break".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "jmp");
-}
-
-#[test]
-fn test_label(){
-    let mut p = Parser::new("::abhi::".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "abhi:");
-}
-
-#[test]
-fn test_break_and_label(){
-    let mut p = Parser::new("break::abhi::".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "jmp");
-    assert!(&*b.instructions[1] == "abhi:");
-}
-
-#[test]
-fn test_goto(){
-    let mut p = Parser::new("goto abhi".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "bra abhi");
-}
-
-#[test]
-fn test_nested_do_stmt(){
-    let mut p = Parser::new("do do do break end break end break end".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "jmp");
-    assert!(&*b.instructions[1] == "jmp");
-    assert!(&*b.instructions[2] == "jmp");
-}
-
-#[test]
-fn test_single_do_stmt(){
-    let mut p = Parser::new("do  break end".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "jmp");
-}
-
-#[test]
-fn test_single_assign_stmt(){
-    let mut p = Parser::new("a=1".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "MOV 1,2");
-}
-
-#[test]
-fn test_assign_break_in_do(){
-    let mut p = Parser::new("do break a=1 end".to_string());
-    let b = p.run().unwrap();
-    assert!(&*b.instructions[0] == "jmp");
-    assert!(&*b.instructions[1] == "MOV 1,2");
 }

@@ -4,13 +4,13 @@
 	fn visit_num(&self, &NumExpression);
 	fn visit_ident(&self, &IdentExpression);
 }*/
-use ast::{Expr, Block, Stmt}; 
+use ast::{Expr, Block, Stmt};
 
 /*pub trait Visitor<T : ?Sized> {
     fn visit(&mut self, t: T);
 }
 
-pub trait Accept{
+pub trait Accept{ 
     type Visitable = Expression;
     fn accept<'a>(&'a self, &mut Visitor<&'a Self::Visitable>);
 }*/
@@ -18,7 +18,7 @@ pub trait Accept{
 //struct CodeGenVisitor;
 /*fn main() {
     let visitor = PrintVisitor;
-    
+
     visitor.visit(1);
     visitor.visit("Hello, world");
     visitor.visit(NotDisplayable);
@@ -26,17 +26,17 @@ pub trait Accept{
 
 pub trait Visitor<'a> : Sized  {
     fn visit_block(&mut self, block : &'a Block){
-        
+
     }
-    
+
     fn visit_stmt(&mut self, stmt : &'a Stmt){
-        
+
     }
-    
+
     fn visit_expr(&mut self, expr : &'a Expr){
         walk_expr(self, expr)
     }
-    
+
 }
 
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor : &mut V, expr: &'a Expr){
@@ -46,9 +46,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor : &mut V, expr: &'a Expr){
             visitor.visit_expr(right_expr);
         },
         &Expr::NumExpr(value) => {
-            
+
         }
         _ => {}
     }
 }
-

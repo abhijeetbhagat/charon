@@ -65,12 +65,12 @@ impl<'a> Visitor<'a> for TypeChecker{
     fn visit_expr(&mut self, expr: &'a Expr){
         match expr{
             &Expr::AddExpr(ref left, ref right) => {
-                   
+
             },
             _ => {}
         }
     }
-    
+
     /*fn visit_numexpr(&mut self, expr: &'a NumExpr){
         self.ty = LuaType::LNumber(expr.value);
     }*/
@@ -95,17 +95,19 @@ impl<'a> Visitor<'a> for PrettyPrintVisitor{
             _ => {}
         }
     }
-    
+
     fn visit_block(&mut self, block: &'a Block){
         for s in &block.statements{
             self.visit_stmt(&*s);
         }
     }
-    
+
     fn visit_stmt(&mut self, stmt : &'a Stmt){
         match stmt{
             &Stmt::VarDeclStmt(ref local) => {
                 println!("(var {} type {} init ", local.ident, local.ty);
+                self.visit_expr(&*local.expr);
+                println!(")");
             },
             &Stmt::ExprStmt(ref expr) => {
                 self.visit_expr(expr);
@@ -115,7 +117,28 @@ impl<'a> Visitor<'a> for PrettyPrintVisitor{
 }
 
 #[test]
-fn test_visitor(){
+fn test_pp_visit_add_expr(){
     let mut p = PrettyPrintVisitor;
     p.visit_expr(&Expr::AddExpr(Box::new(Expr::NumExpr(1)), Box::new(Expr::NumExpr(2))));
+}
+
+#[test]
+fn test_pp_visit_block(){
+    let mut p = PrettyPrintVisitor;
+    let mut b = Block::new();
+    let l = Local::new("a".to_string(), LuaType::LNil, Box::new(Expr::NumExpr(1)));
+    b.statements.push(Box::new(Stmt::VarDeclStmt(l)));
+    p.visit_block(&b);
+}
+
+#[test]
+fn test_pp_visit_add(){
+    let mut p = PrettyPrintVisitor;
+    let mut b = Block::new();
+    let l = Local::new("a".to_string(), LuaType::LNil,
+                        Box::new(Expr::AddExpr(
+                                        Box::new(Expr::NumExpr(1)),
+                                        Box::new(Expr::NumExpr(2)))));
+    b.statements.push(Box::new(Stmt::VarDeclStmt(l)));
+    p.visit_block(&b);
 }

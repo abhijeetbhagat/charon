@@ -6,5 +6,8 @@
 -learn type erasure
 -learn traits from http://huonw.github.io
 
-For your use case, you could do something like `fn visit<T: Visitable>(visitable: T)(self)` 
-and then have a trait Visitable that's impl'ed for each visitable type.
+For your use case, you could do something like `fn visit<T: Visitable>(visitable: T)(self)`
+and then have a trait Visitable that's impl'ed for each visitable type.+
+
+-Add a method in block to add statements
+-Remove data for LuaType
