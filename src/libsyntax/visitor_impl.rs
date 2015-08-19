@@ -2,6 +2,7 @@
 
 use ast::*;
 use visit::{Visitor};
+use std::cell::RefCell;
 
 /*impl<T> Visitor<T> for CodeGenVisitor where T: std::fmt::Display {
     fn visit(&self, t: T) {
@@ -112,6 +113,31 @@ impl<'a> Visitor<'a> for PrettyPrintVisitor{
             &Stmt::ExprStmt(ref expr) => {
                 self.visit_expr(expr);
             }
+        }
+    }
+}
+
+struct SymbolTableBuilder<'a>{
+    block_stack : Vec<RefCell<&'a  Block>>
+}
+
+impl<'a> Visitor<'a> for SymbolTableBuilder<'a>{
+    fn visit_block(&mut self, block : &'a Block){
+        self.block_stack.push(RefCell::new(block));
+        for s in &block.statements{
+            self.visit_stmt(s);
+        }
+        self.block_stack.pop();
+    }
+
+    fn visit_stmt(&mut self, stmt : &Stmt){
+        match stmt{
+            &Stmt::VarDeclStmt(ref local) => {
+                    //FIXME deduce the correct type
+                    let mut block = self.block_stack.last_mut().unwrap().borrow_mut();
+                    block.sym_tab.borrow_mut().insert(local.ident.clone(), LuaType::LNumber(1));
+                },
+            _ => {}
         }
     }
 }

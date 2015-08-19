@@ -4,6 +4,7 @@
 
 pub mod parse;
 pub mod ast;
+pub mod ptr;
 
 
 pub mod syntax {
@@ -13,4 +14,3 @@ pub mod syntax {
 
 pub mod visit;
 pub mod visitor_impl;
-

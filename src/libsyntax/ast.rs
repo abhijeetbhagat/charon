@@ -3,6 +3,8 @@
 use std::fmt;
 use std::collections::{HashMap};
 use visit::{Visitor};
+use ptr::{B};
+use std::cell::RefCell;
 
 struct ExpressionEvaluator;
 
@@ -47,25 +49,28 @@ pub trait Statement{
 }
 
 pub struct Block{
-    sym_tab : HashMap<String, LuaType>,
-    pub statements : Vec<Box<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
+    pub sym_tab : RefCell<HashMap<String, LuaType>>,
+    pub statements : Vec<B<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
     pub instructions : Vec<String>
 }
 
 impl Block{
     pub fn new()->Self{
-        Block {sym_tab : HashMap::new(), statements : Vec::new(), instructions : Vec::new()}
+        Block {sym_tab : RefCell::new(HashMap::new()), statements : Vec::new(), instructions : Vec::new()}
     }
 
     pub fn add_sym(&mut self, sym_id : String, value : LuaType){
-        self.sym_tab.insert(sym_id, value);
+        //FIXME
+        //self.sym_tab.insert(sym_id, value);
     }
 
     pub fn contains(&self, sym_id : &String)->bool{
-        match self.sym_tab.get(sym_id){
+        //FIXME
+        /*match self.sym_tab.get(sym_id){
             Some(s) => true,
             _ => false
-        }
+        }*/
+        false
     }
 
     pub fn generate(&mut self){
@@ -81,15 +86,15 @@ impl Block{
 pub enum Expr{
    NumExpr(i32),
    IdentExpr(String),
-   AddExpr(Box<Expr>, Box<Expr>),
-   SubExpr(Box<Expr>, Box<Expr>),
-   MulExpr(Box<Expr>, Box<Expr>),
-   DivExpr(Box<Expr>, Box<Expr>),
-   ModExpr(Box<Expr>, Box<Expr>),
-   BlockExpr(Box<Block>),
-   IfElseExpr(Box<Expr>, Box<Block>, Box<Expr>),
-   WhileExpr(Box<Expr>, Box<Block>),
-   AssignExpr(String, Box<Expr>),
+   AddExpr(B<Expr>, B<Expr>),
+   SubExpr(B<Expr>, B<Expr>),
+   MulExpr(B<Expr>, B<Expr>),
+   DivExpr(B<Expr>, B<Expr>),
+   ModExpr(B<Expr>, B<Expr>),
+   BlockExpr(B<Block>),
+   IfElseExpr(B<Expr>, B<Block>, B<Expr>),
+   WhileExpr(B<Expr>, B<Block>),
+   AssignExpr(String, B<Expr>),
    LabelExpr(String),
    BreakExpr,
    GotoExpr(String)
@@ -99,18 +104,18 @@ pub enum Expr{
 pub struct Local{
     pub ident : String,
     pub ty : LuaType,
-    pub expr : Box<Expr>
+    pub expr : B<Expr>
 }
 
 impl Local{
-    pub fn new(ident : String, ty : LuaType, expr : Box<Expr>) -> Local{
+    pub fn new(ident : String, ty : LuaType, expr : B<Expr>) -> Local{
         Local {ident : ident, ty : ty, expr : expr}
     }
 }
 
 pub enum Stmt{
      VarDeclStmt(Local),
-     ExprStmt(Box<Expr>)
+     ExprStmt(B<Expr>)
      //FnDecl()
 }
 

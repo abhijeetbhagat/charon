@@ -2,7 +2,11 @@
 
 use parse::lexer::*;
 use parse::tokens::*;
-use ast::*;
+use ast::{Stmt, Expr, Block, LuaType, Local};
+use ast::Stmt::*;
+use ast::Expr::*;
+//use ast::*;
+use ptr::{B};
 //use ast::{Expr, Stmt};
 
 type BlockStack = Vec<Block>;
@@ -44,15 +48,12 @@ impl Parser{
         match self.lexer.get_token(){
             Token::SemiColon => continue,
             Token::Ident => {
-                //self.varlist();
                 match self.lexer.get_token(){
                     Token::Assign => {
-                       //let lhs = Expr::IdentExpr(self.lexer.curr_string.clone());//IdentExpr::new(self.lexer.curr_string.clone());
                        let expr = self.expr().unwrap();
                        let mut curr_block = self.block_stack.last_mut().unwrap();
                        let local = Local::new(self.lexer.curr_string.clone(), LuaType::LNil, expr);
-                       curr_block.statements.push(Box::new(Stmt::VarDeclStmt(local)));//(Box::new(AssignStatement::new(self.lexer.line_pos, lhs, expression)));
-
+                       curr_block.statements.push(Self::mk_var_decl(local));
                     },
                     _ => panic!("Expected '='")
                 }
@@ -64,7 +65,7 @@ impl Parser{
                             Token::ColonColon => {
                                 //add statement to the current block scope
                                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                                curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::LabelExpr(self.lexer.curr_string.clone())))));//(Box::new(LabelStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
+                                curr_block.statements.push(Self::mk_label_stmt(self.lexer.curr_string.clone()));
                             },
                             _ => panic!("Expected '::'")
                         }
@@ -74,28 +75,26 @@ impl Parser{
             },
             Token::Break => {
                 let mut curr_block = self.block_stack.last_mut().unwrap();
-                curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::BreakExpr))));//BreakStatement::new(self.lexer.line_pos)))
+                curr_block.statements.push(Self::mk_break_stmt());
             },
             Token::Goto => {
                 match self.lexer.get_token(){
                     Token::Ident => {
                         let mut curr_block = self.block_stack.last_mut().unwrap();
-                        curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::GotoExpr(self.lexer.curr_string.clone())))));//GotoStatement::new(self.lexer.line_pos, self.lexer.curr_string.clone())))
+                        curr_block.statements.push(Self::mk_goto_stmt(self.lexer.curr_string.clone()));
                     },
                     _ => panic!("Expected a label")
                 }
             },
             Token::Do => {
-                let mut do_stat = DoStatement::new(self.lexer.line_pos);
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
                 self.stat();
                 if self.lexer.curr_token == Token::End{
                     //TODO make sure we track all block openings
-                    //do_stat.block
                     let block = self.block_stack.pop().unwrap();
                     let mut curr_block = self.block_stack.last_mut().unwrap();
-                    curr_block.statements.push(Box::new(Stmt::ExprStmt(Box::new(Expr::BlockExpr(Box::new(block))))));//do_stat));
+                    curr_block.statements.push(Self::mk_block_stmt(block));
                 }
             },
             Token::Return => {},
@@ -110,6 +109,38 @@ impl Parser{
       }
     }
 
+    fn mk_var_decl(local : Local)->B<Stmt>{
+        B(VarDeclStmt(local))
+    }
+
+    fn mk_label_stmt(label : String)->B<Stmt>{
+        B(ExprStmt(Self::mk_label_expr(label)))
+    }
+
+    fn mk_label_expr(label: String)->B<Expr>{
+        B(LabelExpr(label))
+    }
+
+    fn mk_goto_stmt(label : String) -> B<Stmt>{
+        B(ExprStmt(Self::mk_goto_expr(label)))
+    }
+
+    fn mk_goto_expr(label : String) -> B<Expr>{
+        B(GotoExpr(label))
+    }
+
+    fn mk_break_stmt() -> B<Stmt>{
+        B(ExprStmt(B(BreakExpr)))
+    }
+
+    fn mk_block_stmt(block : Block) -> B<Stmt>{
+        B(Stmt::ExprStmt(Self::mk_block_expr(block)))
+    }
+
+    fn mk_block_expr(block : Block) -> B<Expr>{
+        B(Expr::BlockExpr(B(block)))
+    }
+
     fn exprlist(&mut self){
          self.expr();
          match self.lexer.get_token(){
@@ -122,23 +153,23 @@ impl Parser{
 
     }
 
-    fn expr(&mut self) -> Option<Box<Expr>> {
+    fn expr(&mut self) -> Option<B<Expr>> {
         match self.lexer.get_token(){
             /*Token::Nil => {},
             Token::False => {},
             Token::True => {},*/
             Token::Number => {
-                Some(Box::new(Expr::NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
+                Some(B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
             },
             Token::Ident => {
                 //check if symbol defined in the sym tab
                 //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
-                Some(Box::new(Expr::IdentExpr(self.lexer.curr_string.clone())))
+                Some(B(IdentExpr(self.lexer.curr_string.clone())))
             }
             /*Token::DotDotDot => {},
             Token::Function => {},
             Token::LeftCurly => {},*/
-            _ => {Some(Box::new(Expr::IdentExpr("fsf".to_string())))}
+            _ => {Some(B(IdentExpr("fsf".to_string())))}
         }
     }
 }
