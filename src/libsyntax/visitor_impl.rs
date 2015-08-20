@@ -3,6 +3,7 @@
 use ast::*;
 use visit::{Visitor};
 use std::cell::RefCell;
+use ptr::*;
 
 /*impl<T> Visitor<T> for CodeGenVisitor where T: std::fmt::Display {
     fn visit(&self, t: T) {
@@ -121,6 +122,12 @@ struct SymbolTableBuilder<'a>{
     block_stack : Vec<RefCell<&'a  Block>>
 }
 
+impl<'a> SymbolTableBuilder<'a>{
+    fn new()->Self{
+        SymbolTableBuilder {block_stack : Vec::new()}
+    }
+}
+
 impl<'a> Visitor<'a> for SymbolTableBuilder<'a>{
     fn visit_block(&mut self, block : &'a Block){
         self.block_stack.push(RefCell::new(block));
@@ -130,14 +137,22 @@ impl<'a> Visitor<'a> for SymbolTableBuilder<'a>{
         self.block_stack.pop();
     }
 
-    fn visit_stmt(&mut self, stmt : &Stmt){
+    fn visit_stmt(&mut self, stmt : &'a Stmt){
         match stmt{
             &Stmt::VarDeclStmt(ref local) => {
                     //FIXME deduce the correct type
                     let mut block = self.block_stack.last_mut().unwrap().borrow_mut();
                     block.sym_tab.borrow_mut().insert(local.ident.clone(), LuaType::LNumber(1));
                 },
-            _ => {}
+            &Stmt::ExprStmt(ref expr) => {
+                let b =  &**expr; //*expr is deref B which is Box<T>; **expr is deref Box<T> which is T; &**expr is therefore &T
+                match b {
+                    &Expr::BlockExpr(ref block) => {
+                        self.visit_block(block);
+                    },
+                    _ => {}
+                }
+            }
         }
     }
 }
@@ -145,15 +160,15 @@ impl<'a> Visitor<'a> for SymbolTableBuilder<'a>{
 #[test]
 fn test_pp_visit_add_expr(){
     let mut p = PrettyPrintVisitor;
-    p.visit_expr(&Expr::AddExpr(Box::new(Expr::NumExpr(1)), Box::new(Expr::NumExpr(2))));
+    p.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(2))));
 }
 
 #[test]
 fn test_pp_visit_block(){
     let mut p = PrettyPrintVisitor;
     let mut b = Block::new();
-    let l = Local::new("a".to_string(), LuaType::LNil, Box::new(Expr::NumExpr(1)));
-    b.statements.push(Box::new(Stmt::VarDeclStmt(l)));
+    let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
+    b.statements.push(B(Stmt::VarDeclStmt(l)));
     p.visit_block(&b);
 }
 
@@ -162,9 +177,34 @@ fn test_pp_visit_add(){
     let mut p = PrettyPrintVisitor;
     let mut b = Block::new();
     let l = Local::new("a".to_string(), LuaType::LNil,
-                        Box::new(Expr::AddExpr(
-                                        Box::new(Expr::NumExpr(1)),
-                                        Box::new(Expr::NumExpr(2)))));
-    b.statements.push(Box::new(Stmt::VarDeclStmt(l)));
+                        B(Expr::AddExpr(
+                                        B(Expr::NumExpr(1)),
+                                        B(Expr::NumExpr(2)))));
+    b.statements.push(B(Stmt::VarDeclStmt(l)));
     p.visit_block(&b);
+}
+
+#[test]
+fn test_st_visit_block_two_same_var_decls(){
+    let mut b = Block::new();
+    let mut stb = SymbolTableBuilder::new();
+    let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
+    b.statements.push(B(Stmt::VarDeclStmt(l)));
+    let l2 = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
+    b.statements.push(B(Stmt::VarDeclStmt(l2)));
+    stb.visit_block(&b);
+    assert_eq!(b.sym_tab.borrow().len(), 1);
+}
+
+
+#[test]
+fn test_st_visit_block_two_diff_var_decls(){
+    let mut b = Block::new();
+    let mut stb = SymbolTableBuilder::new();
+    let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
+    b.statements.push(B(Stmt::VarDeclStmt(l)));
+    let l2 = Local::new("b".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
+    b.statements.push(B(Stmt::VarDeclStmt(l2)));
+    stb.visit_block(&b);
+    assert_eq!(b.sym_tab.borrow().len(), 2);
 }
