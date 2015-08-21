@@ -30,6 +30,24 @@ pub enum LuaType{
     LNil
 }
 
+pub enum TType{
+    TInt32,
+    TString,
+    TArray(TType), //TType can be anything
+    TRecord
+}
+
+impl fmt::Display for TType{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        match *self{
+            TType::TInt32 => f.write_str("Number"),
+            TType::TString => f.write_str("String"),
+            TType::TArray(T) => f.wrwrite_str("Array of some type"),
+            TType::TRecord => f.write_str("Record")
+        }
+    }
+}
+
 impl fmt::Display for LuaType{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
         match *self{
@@ -84,6 +102,12 @@ impl Block{
 }
 
 pub enum Expr{
+   LetExpr(Vec<Decl>, Option<B<Expr>>),
+   IdExpr(String),
+   NilExpr,
+   LitExpr,
+   StringExpr,
+   CallExpr(String, Option<B<Expr>>),
    NumExpr(i32),
    IdentExpr(String),
    AddExpr(B<Expr>, B<Expr>),
@@ -98,7 +122,6 @@ pub enum Expr{
    LabelExpr(String),
    BreakExpr,
    GotoExpr(String)
-
 }
 
 pub struct Local{

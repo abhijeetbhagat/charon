@@ -49,7 +49,7 @@ impl Parser{
             Token::SemiColon => continue,
             Token::Ident => {
                 match self.lexer.get_token(){
-                    Token::Assign => {
+                    Token::Equals => {
                        let expr = self.expr().unwrap();
                        let mut curr_block = self.block_stack.last_mut().unwrap();
                        let local = Local::new(self.lexer.curr_string.clone(), LuaType::LNil, expr);
@@ -58,33 +58,9 @@ impl Parser{
                     _ => panic!("Expected '='")
                 }
             },
-            Token::ColonColon => {
-                match self.lexer.get_token(){
-                    Token::Ident => {
-                        match self.lexer.get_token(){
-                            Token::ColonColon => {
-                                //add statement to the current block scope
-                                let mut curr_block = self.block_stack.last_mut().unwrap();
-                                curr_block.statements.push(Self::mk_label_stmt(self.lexer.curr_string.clone()));
-                            },
-                            _ => panic!("Expected '::'")
-                        }
-                    },
-                    _ => panic!("Expected a label")
-                }
-            },
             Token::Break => {
                 let mut curr_block = self.block_stack.last_mut().unwrap();
                 curr_block.statements.push(Self::mk_break_stmt());
-            },
-            Token::Goto => {
-                match self.lexer.get_token(){
-                    Token::Ident => {
-                        let mut curr_block = self.block_stack.last_mut().unwrap();
-                        curr_block.statements.push(Self::mk_goto_stmt(self.lexer.curr_string.clone()));
-                    },
-                    _ => panic!("Expected a label")
-                }
             },
             Token::Do => {
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
@@ -97,7 +73,6 @@ impl Parser{
                     curr_block.statements.push(Self::mk_block_stmt(block));
                 }
             },
-            Token::Return => {},
             Token::Eof => {return},
             Token::End => {
                 //TODO block stack pop
