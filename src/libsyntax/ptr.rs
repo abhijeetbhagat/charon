@@ -1,9 +1,11 @@
 use std::ops::Deref;
 
+#[derive(PartialEq, Clone)] //this is necessary so that TType can be compared, cloned
 pub struct B<T>{
     ptr : Box<T>
 }
 
+//acts like a constructor
 pub fn B<T>(value : T)->B<T>{
     B {ptr : Box::new(value)}
 }

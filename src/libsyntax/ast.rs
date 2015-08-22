@@ -19,22 +19,13 @@ impl SymbolVisitor for ExpressionEvaluator{
 	}
 }
 */
-
-pub enum LuaType{
-    LString(String),
-    LNumber(i32),
-    LFunction,
-    LBool,
-    LThread,
-    LTable,
-    LNil
-}
-
+#[derive(PartialEq, Clone)]
 pub enum TType{
     TInt32,
     TString,
-    TArray(TType), //TType can be anything
-    TRecord
+    TArray(B<TType>), //TType can be anything
+    TRecord,
+    TCustom(String)
 }
 
 impl fmt::Display for TType{
@@ -42,22 +33,9 @@ impl fmt::Display for TType{
         match *self{
             TType::TInt32 => f.write_str("Number"),
             TType::TString => f.write_str("String"),
-            TType::TArray(T) => f.wrwrite_str("Array of some type"),
-            TType::TRecord => f.write_str("Record")
-        }
-    }
-}
-
-impl fmt::Display for LuaType{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        match *self{
-            LuaType::LString(_) => f.write_str("String"),
-            LuaType::LNumber(_) => f.write_str("Number"),
-            LuaType::LFunction => f.write_str("Function"),
-            LuaType::LBool => f.write_str("Bool"),
-            LuaType::LThread => f.write_str("Thread"),
-            LuaType::LTable => f.write_str("Table"),
-            LuaType::LNil => f.write_str("Nil")
+            TType::TArray(ref T) => f.write_str("Array of some type"),
+            TType::TRecord => f.write_str("Record"),
+            TType::TCustom(ref name) => f.write_str("Custom")
         }
     }
 }
@@ -67,28 +45,32 @@ pub trait Statement{
 }
 
 pub struct Block{
-    pub sym_tab : RefCell<HashMap<String, LuaType>>,
+    pub sym_tab : RefCell<HashMap<String, TType>>,
     pub statements : Vec<B<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
-    pub instructions : Vec<String>
+    pub instructions : Vec<String>,
+    pub expr : Option<B<Expr>> //this holds the main expr as in the production program -> expr
 }
 
 impl Block{
     pub fn new()->Self{
-        Block {sym_tab : RefCell::new(HashMap::new()), statements : Vec::new(), instructions : Vec::new()}
+        Block {sym_tab : RefCell::new(HashMap::new()),
+               statements : Vec::new(),
+               instructions : Vec::new(),
+               expr : None
+        }
     }
 
-    pub fn add_sym(&mut self, sym_id : String, value : LuaType){
-        //FIXME
-        //self.sym_tab.insert(sym_id, value);
+    pub fn add_sym(&mut self, sym_id : String, ty : TType){
+        self.sym_tab.borrow_mut().insert(sym_id, ty);
     }
 
     pub fn contains(&self, sym_id : &String)->bool{
-        //FIXME
-        /*match self.sym_tab.get(sym_id){
+        //FIXME use contains key
+        match self.sym_tab.borrow().get(sym_id){
             Some(s) => true,
             _ => false
-        }*/
-        false
+        }
+        //false
     }
 
     pub fn generate(&mut self){
@@ -102,13 +84,16 @@ impl Block{
 }
 
 pub enum Expr{
-   LetExpr(Vec<Decl>, Option<B<Expr>>),
+   LetExpr(Vec<Decl>, Option<Vec<B<Expr>>>),
    IdExpr(String),
    NilExpr,
    LitExpr,
    StringExpr,
+   BreakExpr,
    CallExpr(String, Option<B<Expr>>),
    NumExpr(i32),
+
+
    IdentExpr(String),
    AddExpr(B<Expr>, B<Expr>),
    SubExpr(B<Expr>, B<Expr>),
@@ -120,18 +105,28 @@ pub enum Expr{
    WhileExpr(B<Expr>, B<Block>),
    AssignExpr(String, B<Expr>),
    LabelExpr(String),
-   BreakExpr,
    GotoExpr(String)
+}
+
+pub struct FieldDec{
+    id : String,
+    ty : TType
+}
+
+pub enum Decl{
+    TyDec(String, TType),
+    VarDec(String, B<Expr>),
+    FunDec(String, Option<Vec<FieldDec>>)
 }
 
 pub struct Local{
     pub ident : String,
-    pub ty : LuaType,
+    pub ty : TType,
     pub expr : B<Expr>
 }
 
 impl Local{
-    pub fn new(ident : String, ty : LuaType, expr : B<Expr>) -> Local{
+    pub fn new(ident : String, ty : TType, expr : B<Expr>) -> Local{
         Local {ident : ident, ty : ty, expr : expr}
     }
 }

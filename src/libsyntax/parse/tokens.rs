@@ -20,6 +20,8 @@ pub enum Token{
     Var,
     Function,
     Nil,
+    Int,
+    TokString,
 
     //structural symbols
     Plus,
@@ -29,13 +31,13 @@ pub enum Token{
     LogAnd,
     LogNot,
     LogOr,
-    Equals,
-    LessAssign,
-    GreaterAssign,
+    Equals,                // =
+    LessEquals,            // <=
+    GreaterEquals,         // >=
     LessThan,
     GreaterThan,
     LessThanGreaterThan,
-    ColonEquals,
+    ColonEquals,           // :=
     LeftParen,
     RightParen,
     LeftCurly,

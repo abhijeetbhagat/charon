@@ -43,7 +43,7 @@ impl Lexer{
             '>' => {
                 self.curr_token =
                 if self.curr_char == '=' {
-                    Token::GreaterAssign
+                    Token::GreaterEquals
                 }
                 else{
                     Token::GreaterThan
@@ -57,7 +57,7 @@ impl Lexer{
                     Token::LessThanGreaterThan
                 }
                 else if self.curr_char == '=' {
-                    Token::LessAssign
+                    Token::LessEquals
                 }
                 else{
                     Token::LessThan
@@ -163,6 +163,8 @@ impl Lexer{
            "in"     => Token::In,
            "function"     => Token::Function,
            "nil"     => Token::Nil,
+           "int"    => Token::Int,
+           "string" => Token::TokString,
             _ => Token::Ident
         }
     }
