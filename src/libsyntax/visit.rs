@@ -4,13 +4,13 @@
 	fn visit_num(&self, &NumExpression);
 	fn visit_ident(&self, &IdentExpression);
 }*/
-use ast::{Expr, Block, Stmt};
+use ast::{Expr, Block, Stmt, Decl};
 
 /*pub trait Visitor<T : ?Sized> {
     fn visit(&mut self, t: T);
 }
 
-pub trait Accept{ 
+pub trait Accept{
     type Visitable = Expression;
     fn accept<'a>(&'a self, &mut Visitor<&'a Self::Visitable>);
 }*/
@@ -37,6 +37,9 @@ pub trait Visitor<'a> : Sized  {
         walk_expr(self, expr)
     }
 
+    fn visit_decl(&mut self, decl : &'a Decl){
+        
+    }
 }
 
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor : &mut V, expr: &'a Expr){

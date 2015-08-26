@@ -2,7 +2,6 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 
-
 extern crate syntax;
 
 use syntax::ast;

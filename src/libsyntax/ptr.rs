@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-#[derive(PartialEq, Clone)] //this is necessary so that TType can be compared, cloned
+#[derive(Debug, PartialEq, Clone)] //this is necessary so that TType can be used in assert, compared, cloned
 pub struct B<T>{
     ptr : Box<T>
 }

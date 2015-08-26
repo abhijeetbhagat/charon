@@ -29,11 +29,12 @@ impl Parser{
     }
 
     fn parse_block(& mut self)->Option<Block>{
-        let mut b = Block::new();
-        self.block_stack.push(b);
+        //let mut b = Block::new();
+        //self.block_stack.push(b);
         self.lexer.get_char();
         self.program(); //begin parsing
-        debug_assert!(self.block_stack.len() == 1, "Only parent block should be on the stack when the parsing is finished");
+        debug_assert!(self.block_stack.len() == 1, "Only parent block should be on
+                                                    the stack when the parsing is finished");
         let mut main_block = self.block_stack.pop().unwrap();
         //main_block.generate();
         //if main_block.statements.len() == 0{
@@ -46,7 +47,6 @@ impl Parser{
     }
 
     fn program(&mut self){
-      //let mut block = self.block_stack.pop().unwrap();
       loop{
         match self.lexer.get_token(){
             //FIXME semicolon handling should change:
@@ -70,7 +70,7 @@ impl Parser{
                 let mut curr_block = self.block_stack.last_mut().unwrap();
                 curr_block.statements.push(Self::mk_break_stmt());
             },*/
-            Token::Do => {
+            /*Token::Do => {
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
                 self.expr();
@@ -78,9 +78,9 @@ impl Parser{
                     //TODO make sure we track all block openings
                     let block = self.block_stack.pop().unwrap();
                     let mut curr_block = self.block_stack.last_mut().unwrap();
-                    curr_block.statements.push(Self::mk_block_stmt(block));
+                    //curr_block.statements.push(Self::mk_block_stmt(block));
                 }
-            },
+            },*/
             Token::Eof => {return},
             Token::End => {
                 //TODO block stack pop
@@ -92,49 +92,49 @@ impl Parser{
       }
     }
 
-    fn mk_var_decl(local : Local)->B<Stmt>{
-        B(VarDeclStmt(local))
-    }
-
-    fn mk_label_stmt(label : String)->B<Stmt>{
-        B(ExprStmt(Self::mk_label_expr(label)))
-    }
-
-    fn mk_label_expr(label: String)->B<Expr>{
-        B(LabelExpr(label))
-    }
-
-    fn mk_goto_stmt(label : String) -> B<Stmt>{
-        B(ExprStmt(Self::mk_goto_expr(label)))
-    }
-
-    fn mk_goto_expr(label : String) -> B<Expr>{
-        B(GotoExpr(label))
-    }
-
-    fn mk_break_stmt() -> B<Stmt>{
-        B(ExprStmt(B(BreakExpr)))
-    }
-
-    fn mk_block_stmt(block : Block) -> B<Stmt>{
-        B(Stmt::ExprStmt(Self::mk_block_expr(block)))
-    }
-
-    fn mk_block_expr(block : Block) -> B<Expr>{
-        B(Expr::BlockExpr(B(block)))
-    }
-
-    fn exprlist(&mut self){
-         self.expr();
-         match self.lexer.get_token(){
-            Token::Ident => {},
-            _ => {}
-         }
-    }
-
-    fn varlist(&mut self){
-
-    }
+    // fn mk_var_decl(local : Local)->B<Stmt>{
+    //     B(VarDeclStmt(local))
+    // }
+    //
+    // fn mk_label_stmt(label : String)->B<Stmt>{
+    //     B(ExprStmt(Self::mk_label_expr(label)))
+    // }
+    //
+    // fn mk_label_expr(label: String)->B<Expr>{
+    //     B(LabelExpr(label))
+    // }
+    //
+    // fn mk_goto_stmt(label : String) -> B<Stmt>{
+    //     B(ExprStmt(Self::mk_goto_expr(label)))
+    // }
+    //
+    // fn mk_goto_expr(label : String) -> B<Expr>{
+    //     B(GotoExpr(label))
+    // }
+    //
+    // fn mk_break_stmt() -> B<Stmt>{
+    //     B(ExprStmt(B(BreakExpr)))
+    // }
+    //
+    // fn mk_block_stmt(block : Block) -> B<Stmt>{
+    //     B(Stmt::ExprStmt(Self::mk_block_expr(block)))
+    // }
+    //
+    // fn mk_block_expr(block : Block) -> B<Expr>{
+    //     B(Expr::BlockExpr(B(block)))
+    // }
+    //
+    // fn exprlist(&mut self){
+    //      self.expr();
+    //      match self.lexer.get_token(){
+    //         Token::Ident => {},
+    //         _ => {}
+    //      }
+    // }
+    //
+    // fn varlist(&mut self){
+    //
+    // }
 
     fn expr(&mut self) -> Option<B<Expr>> {
         match self.lexer.curr_token{
@@ -157,6 +157,9 @@ impl Parser{
                 Some(B(IdentExpr(self.lexer.curr_string.clone())))
             },
             Token::Let => {
+                let mut b = Block::new();
+                //set parent-child relationship
+                self.block_stack.push(b);
                 let mut decls = Vec::new();
                 loop{
                     match self.lexer.get_token() {
@@ -191,11 +194,8 @@ impl Parser{
                                                         Token::ColonEquals => {
                                                             //get rhs expr and its type
                                                             let (ty, expr) = self.evaluable_expr();
-                                                            //register the lhs id in the current symbol table
-                                                            let b = self.block_stack.last().unwrap();
-                                                            //FIXME add_sym() on block cannot be called because of borrow rules
-                                                            b.sym_tab.borrow_mut().insert(id.clone(), ty);
-                                                            decls.push(VarDec(id.clone(), expr));
+                                                            self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
+                                                            decls.push(VarDec(id.clone(), TInt32, expr));
                                                         },
                                                         _ => panic!("Expected ':='")
                                                     }
@@ -221,10 +221,14 @@ impl Parser{
 
                         },
                         Token::In => break,
+                        //FIXME Eof occurrence is an error
+                        Token::Eof => break,
+                        //FIXME End occurrence is an error
+                        Token::End => break,
                         _ => panic!("Unexpected token. Expected a declaration or 'in'")
                     }
                 }//let loop ends
-                //FIXME start scanning expressions
+                //FIXME start scanning expressions after 'in'
                 return Some(B(LetExpr(decls, None)))
             },
             /*Token::DotDotDot => {},
@@ -250,6 +254,7 @@ impl Parser{
                     Token::LeftSquare => {
 
                     },
+                    //FIXME can new line be replaced with a semicolon as a decl terminator instead?
                     Token::NewLine => {
                         //search the ident in the current symbol table
                         let mut b = self.block_stack.last_mut().unwrap();
@@ -272,6 +277,7 @@ impl Parser{
                 match self.lexer.get_token(){
                     Token::Plus => {
                         let (t, op2) = self.evaluable_expr();
+                        //FIXME it's better to use a type-checker
                         if t == TInt32{
                             return (TInt32, B(AddExpr(op1, op2)))
                         }
@@ -300,7 +306,83 @@ fn test_let_var_decl_returns_let_expr() {
     let mut p = Parser::new("let var a : int := 1 in end".to_string());
     let b = p.run().unwrap();
     match *b.expr.unwrap(){
-        LetExpr(v, _) => {},
+        LetExpr(ref v, ref o) => {
+            assert_eq!(v.len(), 1);
+            assert_eq!(o.is_some(), false);
+            match v[0]{
+                VarDec(ref id, ref ty, ref e) => {
+                    assert_eq!(*id, "a".to_string());
+                    match **e{ //**e means deref deref B<T> which results in T
+                        NumExpr(ref n) => assert_eq!(1, *n),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_let_var_decl_sym_tab_count() {
+    let mut p = Parser::new("let var a : int := 1 in end".to_string());
+    let b = p.run().unwrap();
+    assert_eq!(b.sym_tab.borrow().len(), 1);
+    assert_eq!(b.sym_tab.borrow().get(&"a".to_string()), Some(&TInt32));
+}
+
+#[test]
+fn test_let_add_expr() {
+    let mut p = Parser::new("let var a : int := 1 + 3 + 1 in end".to_string());
+    let b = p.run().unwrap();
+    match *b.expr.unwrap(){
+        LetExpr(ref v, ref o) => {
+            assert_eq!(v.len(), 1);
+            assert_eq!(o.is_some(), false);
+            match v[0]{
+                VarDec(ref id, ref ty, ref e) => {
+                    assert_eq!(*id, "a".to_string());
+                    match **e{ //**e means deref deref B<T> which results in T
+                        AddExpr(ref e1, ref e2) => {
+                            match **e1{
+                                NumExpr(ref n) => assert_eq!(*n, 1),
+                                _ => panic!("num expr expected")
+                            }
+
+                            match **e2{
+                                AddExpr(ref e1, ref e2) => {
+                                    match **e1{
+                                        NumExpr(ref n) => assert_eq!(*n, 3),
+                                        _ => panic!("num expr expected")
+                                    }
+
+                                    match **e2{
+                                        NumExpr(ref n) => assert_eq!(*n, 1),
+                                        _ => panic!("num expr expected")
+                                    }
+                                },
+                                _ => panic!("add expr expected")
+                            }
+                        },
+                        _ => panic!("add expr expected")
+                    }
+                },
+                _ => panic!("ver decl expected")
+            }
+        },
+        _ => panic!("let expr expected")
+    }
+}
+
+#[test]
+fn test_parse_2_vars_in_let() {
+    let mut p = Parser::new("let var a : int := 1\nvar b : int:=2\n in end".to_string());
+    let b = p.run().unwrap();
+    match *b.expr.unwrap(){
+        LetExpr(ref v, ref o) => {
+            assert_eq!(v.len(), 2);
+        },
         _ => {}
     }
 }

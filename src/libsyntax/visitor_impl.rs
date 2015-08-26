@@ -60,14 +60,87 @@ impl<'a> Visitor<'a> for ExpEvaluator{
 }
 
 struct TypeChecker{
-    ty : TType
+    //block_stack : Vec<RefCell<&'a  Block>>,
+    pub sym_tab : Vec<(String, TType)>,
+    //decl_cnt : u32,
+    //decl_cnt_stack : Vec<u32>,
+    pub ty : TType
+}
+
+impl TypeChecker{
+    fn new()->Self{
+        TypeChecker {sym_tab : Vec::new(), ty : TType::TNil}
+    }
+
+    fn get_type_for(&self){//}->&TType{
+        //self.block_stack
+    }
 }
 
 impl<'a> Visitor<'a> for TypeChecker{
     fn visit_expr(&mut self, expr: &'a Expr){
         match expr{
+            //FIXME remove NilExpr; this is only for unit testing
+            &Expr::NilExpr => self.ty = TType::TString,
+            &Expr::NumExpr(ref n) => self.ty = TType::TInt32,
+            &Expr::IdentExpr(ref id) =>{
+                //search in the symtab for id's existence and get the type
+                let mut found = false;
+                for &(ref _id, ref _ty) in &self.sym_tab{ //iterator returns a ref to tuple while iterating; so &(_,_) has to be used
+                    if *_id == *id{
+                        found = true;
+                        self.ty = _ty.clone();
+                        break;
+                    }
+                }
+                if !found{
+                    panic!("{} not found", id);
+                }
+            },
             &Expr::AddExpr(ref left, ref right) => {
+                self.visit_expr(left);
+                let left_ty = self.ty.clone();
+                if left_ty != TType::TInt32{
+                    panic!("Expected left operand of int type");
+                }
+                self.visit_expr(right);
+                if self.ty != TType::TInt32{
+                    panic!("Expected right operand of int type")
+                }
+            },
 
+            &Expr::LetExpr(ref decls, ref expressions) => {
+                self.sym_tab.push(("<marker>".to_string(), TType::TNil));
+                for dec in decls{ //decls is a &
+                    self.visit_decl(dec);
+                }
+
+                match expressions {
+                    &Some(ref list) => {
+                        for expr in list{
+                            self.visit_expr(&**expr);
+                        }
+                    },
+                    _ => {}
+                }
+                //pop till marker and then pop marker
+                while self.sym_tab.last().unwrap().0 != "<marker>".to_string(){
+                    self.sym_tab.pop();
+                }
+                self.sym_tab.pop();
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_decl(&mut self, decl : &'a Decl){
+        match decl{
+            &Decl::VarDec(ref id, ref ty, ref expr) => {
+                self.visit_expr(expr);
+                if *ty != self.ty{
+                    panic!("Types mismatch");
+                }
+                self.sym_tab.push((id.clone(), self.ty.clone()));
             },
             _ => {}
         }
@@ -79,6 +152,14 @@ struct PrettyPrintVisitor;
 impl<'a> Visitor<'a> for PrettyPrintVisitor{
     fn visit_expr(&mut self, expr:&'a Expr){
         match expr{
+            &Expr::LetExpr(ref v, _) => {
+                println!("(let");
+                for d in v{
+                    println!("\t(");
+
+                }
+                println!(")");
+            },
             &Expr::AddExpr(ref left, ref right) => {
                 self.visit_expr(left);
                 println!(" Plus ");
@@ -168,39 +249,73 @@ fn test_pp_visit_block(){
     p.visit_block(&b);
 }
 
-#[test]
+//#[test]
 fn test_pp_visit_add(){
     let mut p = PrettyPrintVisitor;
     let mut b = Block::new();
-    // let l = Local::new("a".to_string(), LuaType::LNil,
-    //                     B(Expr::AddExpr(
-    //                                     B(Expr::NumExpr(1)),
-    //                                     B(Expr::NumExpr(2)))));
-    // b.statements.push(B(Stmt::VarDeclStmt(l)));
     p.visit_block(&b);
 }
 
-// #[test]
-// fn test_st_visit_block_two_same_var_decls(){
-//     let mut b = Block::new();
-//     let mut stb = SymbolTableBuilder::new();
-//     // let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
-//     // b.statements.push(B(Stmt::VarDeclStmt(l)));
-//     // let l2 = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
-//     // b.statements.push(B(Stmt::VarDeclStmt(l2)));
-//     stb.visit_block(&b);
-//     assert_eq!(b.sym_tab.borrow().len(), 1);
-// }
-//
-//
-// #[test]
-// fn test_st_visit_block_two_diff_var_decls(){
-//     let mut b = Block::new();
-//     let mut stb = SymbolTableBuilder::new();
-//     // let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
-//     // b.statements.push(B(Stmt::VarDeclStmt(l)));
-//     // let l2 = Local::new("b".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
-//     // b.statements.push(B(Stmt::VarDeclStmt(l2)));
-//     stb.visit_block(&b);
-//     assert_eq!(b.sym_tab.borrow().len(), 2);
-// }
+#[test]
+fn test_ty_set_for_num() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::NumExpr(23));
+    assert_eq!(TType::TInt32, v.ty);
+}
+
+#[test]
+fn test_ty_set_for_int_id() {
+    let mut v = TypeChecker::new();
+    v.sym_tab.push(("a".to_string(), TType::TInt32));
+    v.visit_expr(&Expr::IdentExpr("a".to_string()));
+    assert_eq!(TType::TInt32, v.ty);
+}
+
+#[test]
+fn test_type_match_int_for_var_dec() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NumExpr(4))));
+    assert_eq!(TType::TInt32, v.ty);
+    assert_eq!(v.sym_tab.len(), 1);
+    assert_eq!(v.sym_tab[0].0, "a".to_string());
+    assert_eq!(v.sym_tab[0].1, TType::TInt32);
+}
+
+#[test]
+fn test_type_match_string_for_var_dec() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TString, B(Expr::NilExpr)));
+    assert_eq!(TType::TString, v.ty);
+    assert_eq!(v.sym_tab.len(), 1);
+    assert_eq!(v.sym_tab[0].0, "a".to_string());
+    assert_eq!(v.sym_tab[0].1, TType::TString);
+}
+
+#[test]
+#[should_panic]
+fn test_type_check_for_var_dec_type_mismatch() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NilExpr)));
+    assert_eq!(TType::TInt32, v.ty);
+}
+
+#[test]
+fn test_correct_types_for_add_expr() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NumExpr(4))));
+    assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+#[should_panic(expected="Expected left operand of int type")]
+fn test_left_type_invalid_for_add_expr() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::AddExpr(B(Expr::NilExpr), B(Expr::NumExpr(4))));
+}
+
+#[test]
+#[should_panic(expected="Expected right operand of int type")]
+fn test_right_type_invalid_for_add_expr() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NilExpr)));
+}

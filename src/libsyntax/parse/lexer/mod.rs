@@ -152,6 +152,8 @@ impl Lexer{
 
     fn match_token(&self)->Token{
         match &*self.curr_string{
+           "let"      => Token::Let,
+           "var"      => Token::Var,
            "break"      => Token::Break,
            "do"      => Token::Do,
            "end"     => Token::End,
@@ -240,5 +242,43 @@ mod tests {
         assert!(l.line_pos == 3);
         l.get_token();
         assert!(l.line_pos == 4);
+    }
+
+    #[test]
+    fn test_let_block(){
+        let mut l = Lexer::new("let var a : int := 1 in end".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Let);
+        assert_eq!(l.get_token(), Token::Var);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::ColonEquals);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::In);
+        assert_eq!(l.get_token(), Token::End);
+    }
+
+    #[test]
+    fn test_let_block_with_2_var_decls(){
+        let mut l = Lexer::new("let var a : int := 1\nvar b : int:=2\n in end".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Let);
+        assert_eq!(l.get_token(), Token::Var);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::ColonEquals);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::NewLine);
+        assert_eq!(l.get_token(), Token::Var);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::ColonEquals);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::NewLine);
+        assert_eq!(l.get_token(), Token::In);
+        assert_eq!(l.get_token(), Token::End);
     }
 }

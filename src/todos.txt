@@ -11,3 +11,5 @@ and then have a trait Visitable that's impl'ed for each visitable type.+
 
 -Add a method in block to add statements
 -Use Cow for strings
+
+-Move unit tests in submodules - mod test

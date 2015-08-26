@@ -11,3 +11,5 @@ path = "src/driver/main.rs"
 path = "src/libcharon_driver"
 test = true
 
+[dependencies.syntax]
+path = "src/libsyntax"

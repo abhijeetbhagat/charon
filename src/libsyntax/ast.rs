@@ -19,13 +19,14 @@ impl SymbolVisitor for ExpressionEvaluator{
 	}
 }
 */
-#[derive(PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TType{
     TInt32,
     TString,
     TArray(B<TType>), //TType can be anything
     TRecord,
-    TCustom(String)
+    TCustom(String),
+    TNil,
 }
 
 impl fmt::Display for TType{
@@ -35,7 +36,8 @@ impl fmt::Display for TType{
             TType::TString => f.write_str("String"),
             TType::TArray(ref T) => f.write_str("Array of some type"),
             TType::TRecord => f.write_str("Record"),
-            TType::TCustom(ref name) => f.write_str("Custom")
+            TType::TCustom(ref name) => f.write_str("Custom"),
+            TType::TNil => f.write_str("Nil")
         }
     }
 }
@@ -48,7 +50,9 @@ pub struct Block{
     pub sym_tab : RefCell<HashMap<String, TType>>,
     pub statements : Vec<B<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
     pub instructions : Vec<String>,
-    pub expr : Option<B<Expr>> //this holds the main expr as in the production program -> expr
+    pub expr : Option<B<Expr>>, //this holds the main expr as in the production program -> expr
+    // pub child_block : Option<Block>,
+    // pub parent_block : Option<Block>
 }
 
 impl Block{
@@ -56,7 +60,10 @@ impl Block{
         Block {sym_tab : RefCell::new(HashMap::new()),
                statements : Vec::new(),
                instructions : Vec::new(),
-               expr : None
+               expr : None,
+            //    child_block : None,
+            //    parent_block : None
+
         }
     }
 
@@ -115,7 +122,7 @@ pub struct FieldDec{
 
 pub enum Decl{
     TyDec(String, TType),
-    VarDec(String, B<Expr>),
+    VarDec(String, TType, B<Expr>),
     FunDec(String, Option<Vec<FieldDec>>)
 }
 

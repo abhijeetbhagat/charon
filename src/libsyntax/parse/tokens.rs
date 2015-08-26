@@ -1,6 +1,7 @@
 #[derive(Copy, Clone, PartialEq)]
 //Copy and Clone - this is to enable returning of clone of enum members and hence avoid getting `moving-borrow` errors
 //PartialEq - this is to enable comparison during unit tests, etc.
+#[derive(Debug)]
 pub enum Token{
     //keywords
     Array,
