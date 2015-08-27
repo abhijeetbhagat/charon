@@ -319,3 +319,8 @@ fn test_right_type_invalid_for_add_expr() {
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NilExpr)));
 }
+
+#[test]
+fn test_var_hiding() {
+    //let mut v = 
+}

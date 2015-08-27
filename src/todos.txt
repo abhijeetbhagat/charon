@@ -13,3 +13,23 @@ and then have a trait Visitable that's impl'ed for each visitable type.+
 -Use Cow for strings
 
 -Move unit tests in submodules - mod test
+
+-Tiger has forward symbol referencing:
+/* define valid mutually recursive functions */
+let
+
+function do_nothing1(a: int, b: string):int=
+		(do_nothing2(a+1);0)
+
+function do_nothing2(d: int):string =
+		(do_nothing1(d, "str");" ")
+
+in
+	do_nothing1(0, "str2")
+end
+
+Body of while is a unit type:
+/* error : body of while not unit */
+while(10 > 5) do 5+6
+
+ifthen type is always unit while ifthenelse types can be anything and both should match

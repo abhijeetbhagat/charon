@@ -15,12 +15,17 @@ type BlockStack = Vec<Block>;
 
 pub struct Parser{
     lexer : Lexer,
-    block_stack : BlockStack
+    block_stack : BlockStack,
+    paren_stack : Vec<char>,
+    seq_expr_list : Vec<B<Expr>>
 }
 
 impl Parser{
     pub fn new(src : String)->Self{
-        Parser {lexer : Lexer::new(src),  block_stack : BlockStack::new()}
+        Parser {lexer : Lexer::new(src),
+                block_stack : BlockStack::new(),
+                paren_stack : Vec::new(),
+                seq_expr_list : Vec::new() }
     }
 
     pub fn run(& mut self)->Option<Block>{
@@ -173,12 +178,28 @@ impl Parser{
                                                 Token::Int => decls.push(TyDec(id, TInt32)),
                                                 Token::TokString => decls.push(TyDec(id, TString)),
                                                 Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
-                                                _ => panic!("Expected type-id after '='")
+                                                Token::Array => {
+                                                    match self.lexer.get_token() {
+                                                        Token::Of => {
+                                                            match self.lexer.get_token() {
+                                                                Token::Int => {},
+                                                                Token::TokString => {},
+                                                                Token::Ident => {},
+                                                                _ => panic!("Expected either int, string or type-id")
+                                                            }
+                                                        },
+                                                        _ => panic!("Expected 'of' after 'array'")
+                                                    }
+                                                },
+                                                Token::LeftCurly => { //rectype
+
+                                                },
+                                                _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
                                             }
                                         },
                                         _ => panic!("Expected '=' after type-id")
                                     }
-                                }
+                                },
                                 _ => panic!("Expected identifier after 'type'")
                             }
                         },
@@ -231,10 +252,24 @@ impl Parser{
                 //FIXME start scanning expressions after 'in'
                 return Some(B(LetExpr(decls, None)))
             },
-            /*Token::DotDotDot => {},
-            Token::Function => {},
-            Token::LeftCurly => {},*/
-            _ => {Some(B(IdentExpr("fsf".to_string())))}
+            Token::LeftParen => { //seqexpr
+                self.paren_stack.push('(');
+                let e = self.expr();
+                if e.is_some() {
+                    self.seq_expr_list.push(e.unwrap());
+                }
+                //FIXME remove this:
+                Some(B(SeqExpr(None)))
+            },
+            Token::RightParen => {
+                if self.paren_stack.is_empty(){
+                    panic!("Mismatched parenthesis");
+                }
+                self.paren_stack.pop();
+                //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
+                Some(B(SeqExpr(None)))
+            },
+            _ => Some(B(IdentExpr("fsf".to_string())))
         }
     }
 
@@ -291,6 +326,7 @@ impl Parser{
             },
             _ => panic!("evaluable_expr : pattern not covered")
         }
+        //FIXME remove this:
         return (TInt32, B(NumExpr(1)))
     }
 }

@@ -27,6 +27,7 @@ pub enum TType{
     TRecord,
     TCustom(String),
     TNil,
+    TVoid
 }
 
 impl fmt::Display for TType{
@@ -37,7 +38,8 @@ impl fmt::Display for TType{
             TType::TArray(ref T) => f.write_str("Array of some type"),
             TType::TRecord => f.write_str("Record"),
             TType::TCustom(ref name) => f.write_str("Custom"),
-            TType::TNil => f.write_str("Nil")
+            TType::TNil => f.write_str("Nil"),
+            TType::TVoid => f.write_str("Void")
         }
     }
 }
@@ -91,15 +93,24 @@ impl Block{
 }
 
 pub enum Expr{
+   //let dec+ in exp; end
    LetExpr(Vec<Decl>, Option<Vec<B<Expr>>>),
+   //id
    IdExpr(String),
+   //nil
    NilExpr,
+   //FIXME is this needed?
    LitExpr,
-   StringExpr,
+   //stringLit
+   StringExpr(String),
+   //break
    BreakExpr,
+   //id ( exp*, )
    CallExpr(String, Option<B<Expr>>),
+   //intLit
    NumExpr(i32),
-
+   //( exp*; )
+   SeqExpr(Option<Vec<B<Expr>>>),
 
    IdentExpr(String),
    AddExpr(B<Expr>, B<Expr>),
@@ -121,9 +132,12 @@ pub struct FieldDec{
 }
 
 pub enum Decl{
+    //type tyId = ty
     TyDec(String, TType),
+    //var a : int := 1
     VarDec(String, TType, B<Expr>),
-    FunDec(String, Option<Vec<FieldDec>>)
+    //function id ( eldDec; ) : tyId = exp
+    FunDec(String, Option<Vec<FieldDec>>, TType, Option<Vec<B<Expr>>>, TType)
 }
 
 pub struct Local{

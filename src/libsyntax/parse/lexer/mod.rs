@@ -154,6 +154,9 @@ impl Lexer{
         match &*self.curr_string{
            "let"      => Token::Let,
            "var"      => Token::Var,
+           "array"    => Token::Array,
+           "of"       => Token::Of,
+           "type"      => Token::Type,
            "break"      => Token::Break,
            "do"      => Token::Do,
            "end"     => Token::End,
@@ -295,5 +298,27 @@ mod tests {
         assert_eq!(l.get_token(), Token::Number);
         assert_eq!(l.get_token(), Token::In);
         assert_eq!(l.get_token(), Token::End);
+    }
+
+    #[test]
+    fn test_type_dec_int() {
+        let mut l = Lexer::new("type a = int".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Type);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Equals);
+        assert_eq!(l.get_token(), Token::Int);
+    }
+
+    #[test]
+    fn test_type_dec_array_of_int() {
+        let mut l = Lexer::new("type ai = array of int".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Type);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Equals);
+        assert_eq!(l.get_token(), Token::Array);
+        assert_eq!(l.get_token(), Token::Of);
+        assert_eq!(l.get_token(), Token::Int);
     }
 }
