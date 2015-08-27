@@ -59,7 +59,7 @@ impl<'a> Visitor<'a> for ExpEvaluator{
     }
 }
 
-struct TypeChecker{
+pub struct TypeChecker{
     //block_stack : Vec<RefCell<&'a  Block>>,
     pub sym_tab : Vec<(String, TType)>,
     //decl_cnt : u32,
@@ -68,7 +68,7 @@ struct TypeChecker{
 }
 
 impl TypeChecker{
-    fn new()->Self{
+    pub fn new()->Self{
         TypeChecker {sym_tab : Vec::new(), ty : TType::TNil}
     }
 

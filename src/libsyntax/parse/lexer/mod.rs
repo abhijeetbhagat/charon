@@ -86,12 +86,12 @@ impl Lexer{
                 self.get_char();
                 self.curr_token =
                  if self.curr_char == '=' {
+                     self.get_char();
                     Token::ColonEquals
                  }
                  else {
                     Token::Colon
                  };
-                 self.get_char();
                  return self.curr_token
              },
             ';' => { self.curr_token = Token::SemiColon; self.get_char(); return self.curr_token},
@@ -278,6 +278,21 @@ mod tests {
         assert_eq!(l.get_token(), Token::ColonEquals);
         assert_eq!(l.get_token(), Token::Number);
         assert_eq!(l.get_token(), Token::NewLine);
+        assert_eq!(l.get_token(), Token::In);
+        assert_eq!(l.get_token(), Token::End);
+    }
+
+    #[test]
+    fn test_let_without_spaces() {
+        let mut l = Lexer::new("let var a:int := 1 in end".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Let);
+        assert_eq!(l.get_token(), Token::Var);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::ColonEquals);
+        assert_eq!(l.get_token(), Token::Number);
         assert_eq!(l.get_token(), Token::In);
         assert_eq!(l.get_token(), Token::End);
     }
