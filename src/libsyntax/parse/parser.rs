@@ -148,110 +148,11 @@ impl Parser{
                 Some(B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
             },
             Token::Ident => {
-                //check if symbol defined in the sym tab
-                //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
-                match self.lexer.get_token(){
-                    Token::LeftSquare => {}, //subscript
-                    Token::Dot => {}, //fieldexp
-                    Token::LeftParen => {}, //callexpr
-
-                    _ => {
-                        return Some(B(IdExpr(self.lexer.curr_string.clone())))
-                    }
-                }
-                Some(B(IdentExpr(self.lexer.curr_string.clone())))
+                return self.parse_ident_expr()
             },
-            Token::Let => {
-                let mut b = Block::new();
-                //set parent-child relationship
-                self.block_stack.push(b);
-                let mut decls = Vec::new();
-                loop{
-                    match self.lexer.get_token() {
-                        Token::Type => { //typedec
-                            match self.lexer.get_token() {
-                                Token::Ident => {
-                                    let id = self.lexer.curr_string.clone();
-                                    match self.lexer.get_token(){
-                                        Token::Equals => {
-                                            match self.lexer.get_token(){
-                                                Token::Int => decls.push(TyDec(id, TInt32)),
-                                                Token::TokString => decls.push(TyDec(id, TString)),
-                                                Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
-                                                Token::Array => {
-                                                    match self.lexer.get_token() {
-                                                        Token::Of => {
-                                                            match self.lexer.get_token() {
-                                                                Token::Int => {},
-                                                                Token::TokString => {},
-                                                                Token::Ident => {},
-                                                                _ => panic!("Expected either int, string or type-id")
-                                                            }
-                                                        },
-                                                        _ => panic!("Expected 'of' after 'array'")
-                                                    }
-                                                },
-                                                Token::LeftCurly => { //rectype
-
-                                                },
-                                                _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
-                                            }
-                                        },
-                                        _ => panic!("Expected '=' after type-id")
-                                    }
-                                },
-                                _ => panic!("Expected identifier after 'type'")
-                            }
-                        },
-                        Token::Var => { //Vardec
-                            match self.lexer.get_token() {
-                                Token::Ident => {
-                                    let id = self.lexer.curr_string.clone();
-                                    match self.lexer.get_token() {
-                                        Token::Colon => {
-                                            match self.lexer.get_token() {
-                                                Token::Int => {
-                                                    match self.lexer.get_token(){
-                                                        Token::ColonEquals => {
-                                                            //get rhs expr and its type
-                                                            let (ty, expr) = self.evaluable_expr();
-                                                            self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
-                                                            decls.push(VarDec(id.clone(), TInt32, expr));
-                                                        },
-                                                        _ => panic!("Expected ':='")
-                                                    }
-                                                },
-                                                Token::TokString => {
-                                                    match self.lexer.get_token(){
-                                                        Token::ColonEquals => {
-                                                            self.expr();
-                                                        },
-                                                        _ => panic!("Expected ':='")
-                                                    }
-                                                },
-                                                _ => panic!("expr : pattern not covered")
-                                            }
-                                        },
-                                        _ => panic!("Expected ':' after identifier")
-                                    }
-                                },
-                                _ => panic!("Expected an identifier")
-                            }
-                        },
-                        Token::Function => { //functiondec
-
-                        },
-                        Token::In => break,
-                        //FIXME Eof occurrence is an error
-                        Token::Eof => break,
-                        //FIXME End occurrence is an error
-                        Token::End => break,
-                        _ => panic!("Unexpected token. Expected a declaration or 'in'")
-                    }
-                }//let loop ends
-                //FIXME start scanning expressions after 'in'
-                return Some(B(LetExpr(decls, None)))
-            },
+            Token::Let =>{
+                return self.parse_let_expr()
+            }
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
                 let e = self.expr();
@@ -332,6 +233,126 @@ impl Parser{
         }
         //FIXME remove this:
         return (TInt32, B(NumExpr(1)))
+    }
+
+    fn parse_let_expr(&mut self) -> Option<B<Expr>>{
+        let mut b = Block::new();
+        //set parent-child relationship
+        self.block_stack.push(b);
+        let mut decls : Vec<Decl> = Vec::new();
+        loop{
+            match self.lexer.get_token() {
+                Token::Type => { //typedec
+                    self.parse_type_decl(&mut decls);
+                },
+                Token::Var => { //Vardec
+                    self.parse_var_decl(&mut decls);
+                },
+                Token::Function => { //functiondec
+
+                },
+                Token::In => break,
+                //FIXME Eof occurrence is an error
+                Token::Eof => break,
+                //FIXME End occurrence is an error
+                Token::End => break,
+                _ => panic!("Unexpected token. Expected a declaration or 'in'")
+            }
+        }//let loop ends
+        if self.lexer.curr_token == Token::In{
+            //FIXME get the list of exprs and the type of the last expr in the list
+        }
+        else{
+            panic!("Expected 'in' after declarations");
+        }
+        return Some(B(LetExpr(decls, None)))
+    }
+
+    fn parse_type_decl(&mut self, decls : &mut Vec<Decl>){
+        match self.lexer.get_token() {
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token(){
+                    Token::Equals => {
+                        match self.lexer.get_token(){
+                            Token::Int => decls.push(TyDec(id, TInt32)),
+                            Token::TokString => decls.push(TyDec(id, TString)),
+                            Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
+                            Token::Array => {
+                                match self.lexer.get_token() {
+                                    Token::Of => {
+                                        match self.lexer.get_token() {
+                                            Token::Int => {},
+                                            Token::TokString => {},
+                                            Token::Ident => {},
+                                            _ => panic!("Expected either int, string or type-id")
+                                        }
+                                    },
+                                    _ => panic!("Expected 'of' after 'array'")
+                                }
+                            },
+                            Token::LeftCurly => { //rectype
+
+                            },
+                            _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
+                        }
+                    },
+                    _ => panic!("Expected '=' after type-id")
+                }
+            },
+            _ => panic!("Expected identifier after 'type'")
+        }
+    }
+
+    fn parse_var_decl(&mut self,  decls : &mut Vec<Decl>){
+        match self.lexer.get_token() {
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token() {
+                    Token::Colon => {
+                        match self.lexer.get_token() {
+                            Token::Int => {
+                                match self.lexer.get_token(){
+                                    Token::ColonEquals => {
+                                        //get rhs expr and its type
+                                        let (ty, expr) = self.evaluable_expr();
+                                        self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
+                                        decls.push(VarDec(id.clone(), TInt32, expr));
+                                    },
+                                    _ => panic!("Expected ':='")
+                                }
+                            },
+                            Token::TokString => {
+                                match self.lexer.get_token(){
+                                    Token::ColonEquals => {
+                                        self.expr();
+                                    },
+                                    _ => panic!("Expected ':='")
+                                }
+                            },
+                            _ => panic!("expr : pattern not covered")
+                        }
+                    },
+                    _ => panic!("Expected ':' after identifier")
+                }
+            },
+            _ => panic!("Expected an identifier")
+        }
+    }
+
+    fn parse_ident_expr(&mut self) -> Option<B<Expr>>{
+        //check if symbol defined in the sym tab
+        //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
+        match self.lexer.get_token(){
+            Token::LeftSquare => {}, //subscript
+            Token::Dot => {}, //fieldexp
+            Token::LeftParen => {}, //callexpr
+
+            _ => {
+                return Some(B(IdExpr(self.lexer.curr_string.clone())))
+            }
+        }
+        Some(B(IdentExpr(self.lexer.curr_string.clone())))
     }
 }
 
