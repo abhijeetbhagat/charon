@@ -301,7 +301,11 @@ impl Parser{
                         else{
                             panic!("Undefined symbol - {}", self.lexer.curr_string);
                         }
-                    }
+                    },
+                    Token::Plus => {
+                        return (TInt32, self.evaluable_expr().1)
+                    },
+                    //TODO add more binary operators
                     _ => panic!("evaluable_expr : pattern not covered")
                 }
             },
