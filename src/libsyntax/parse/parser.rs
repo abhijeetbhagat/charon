@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::mem;
 use parse::lexer::*;
 use parse::tokens::*;
 use ast::{Stmt, Expr, Block, TType, Local, Decl};
@@ -17,15 +18,20 @@ pub struct Parser{
     lexer : Lexer,
     block_stack : BlockStack,
     paren_stack : Vec<char>,
-    seq_expr_list : Vec<B<Expr>>
+    seq_expr_list : Vec<B<Expr>>,
+    last_expr_type : Option<TType>
 }
 
 impl Parser{
     pub fn new(src : String)->Self{
-        Parser {lexer : Lexer::new(src),
+        Parser {
+                lexer : Lexer::new(src),
                 block_stack : BlockStack::new(),
                 paren_stack : Vec::new(),
-                seq_expr_list : Vec::new() }
+                seq_expr_list : Vec::new(),
+                last_expr_type : None
+        }
+
     }
 
     pub fn run(& mut self)->Option<Block>{
@@ -66,7 +72,7 @@ impl Parser{
             Token::Break |
             Token::Let |
             Token::Ident => {
-                let expr = self.expr();
+                let expr = Some(self.expr().unwrap().1);
                 self.block_stack.last_mut().unwrap().expr = expr;
                 //FIXME should we break?
                 break;
@@ -141,11 +147,14 @@ impl Parser{
     //
     // }
 
-    fn expr(&mut self) -> Option<B<Expr>> {
+    fn expr(&mut self) -> Option<(TType, B<Expr>)> {
         match self.lexer.curr_token{
-            Token::Nil => {Some(B(NilExpr))},
+            Token::Nil => {
+                Some((TNil, B(NilExpr)))
+            },
             Token::Number => {
-                Some(B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
+                return self.parse_num_expr()
+                //B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap()))
             },
             Token::Ident => {
                 return self.parse_ident_expr()
@@ -155,22 +164,34 @@ impl Parser{
             }
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
-                let e = self.expr();
-                if e.is_some() {
-                    self.seq_expr_list.push(e.unwrap());
+
+                while self.lexer.get_token() != Token::RightParen {
+                    let optional_expr = self.expr();
+                    if optional_expr.is_some() {
+                        let (ty, e) = optional_expr.unwrap();
+                        self.seq_expr_list.push(e);
+                        self.last_expr_type = Some(ty);
+                    }
                 }
-                //FIXME remove this:
-                Some(B(SeqExpr(None)))
-            },
-            Token::RightParen => {
-                if self.paren_stack.is_empty(){
-                    panic!("Mismatched parenthesis");
-                }
+
                 self.paren_stack.pop();
-                //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
-                Some(B(SeqExpr(None)))
+                if !self.paren_stack.is_empty() {
+                    panic!("Missing ')'");
+                }
+
+                let last_type = mem::replace(&mut self.last_expr_type, None);
+                let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
+                Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
-            _ => Some(B(IdentExpr("fsf".to_string())))
+            // Token::RightParen => {
+            //     if self.paren_stack.is_empty(){
+            //         panic!("Mismatched parenthesis");
+            //     }
+            //     self.paren_stack.pop();
+            //     //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
+            //     Some(B(SeqExpr(None)))
+            // },
+            _ => panic!("FIXME: handle more patterns")
         }
     }
 
@@ -235,7 +256,7 @@ impl Parser{
         return (TInt32, B(NumExpr(1)))
     }
 
-    fn parse_let_expr(&mut self) -> Option<B<Expr>>{
+    fn parse_let_expr(&mut self) -> Option<(TType, B<Expr>)>{
         let mut b = Block::new();
         //set parent-child relationship
         self.block_stack.push(b);
@@ -251,6 +272,8 @@ impl Parser{
                 Token::Function => { //functiondec
 
                 },
+
+                //FIXME probably all these following guards are useless?
                 Token::In => break,
                 //FIXME Eof occurrence is an error
                 Token::Eof => break,
@@ -258,14 +281,20 @@ impl Parser{
                 Token::End => break,
                 _ => panic!("Unexpected token. Expected a declaration or 'in'")
             }
+
+            //this is needed because a var decl parse can set the curr_token to 'in'
+            if self.lexer.curr_token == Token::In{
+                break;
+            }
         }//let loop ends
+
         if self.lexer.curr_token == Token::In{
             //FIXME get the list of exprs and the type of the last expr in the list
         }
         else{
             panic!("Expected 'in' after declarations");
         }
-        return Some(B(LetExpr(decls, None)))
+        return Some((TVoid, B(LetExpr(decls, None))))
     }
 
     fn parse_type_decl(&mut self, decls : &mut Vec<Decl>){
@@ -340,19 +369,59 @@ impl Parser{
         }
     }
 
-    fn parse_ident_expr(&mut self) -> Option<B<Expr>>{
+    fn parse_ident_expr(&mut self) -> Option<(TType, B<Expr>)>{
         //check if symbol defined in the sym tab
         //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
+        let op1 = B(IdExpr(self.lexer.curr_string.clone()));
         match self.lexer.get_token(){
             Token::LeftSquare => {}, //subscript
             Token::Dot => {}, //fieldexp
             Token::LeftParen => {}, //callexpr
-
+            Token::Plus => {
+                let (t, op2) = self.expr().unwrap();
+                //FIXME it's better to let the type-checker do the checking
+                if t == TInt32{
+                    return Some((TInt32, B(AddExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
             _ => {
-                return Some(B(IdExpr(self.lexer.curr_string.clone())))
+                //TVoid because we dont know the type of the identifier yet.
+                return Some((TVoid, B(IdExpr(self.lexer.curr_string.clone()))))
             }
         }
-        Some(B(IdentExpr(self.lexer.curr_string.clone())))
+        Some((TVoid, B(IdentExpr(self.lexer.curr_string.clone()))))
+    }
+
+    fn parse_num_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let num = self.lexer.curr_string.parse::<i32>().unwrap();
+        let op1 = B(NumExpr(num));
+        match self.lexer.get_token(){
+            Token::Plus => {
+                let (t, op2) = self.expr().unwrap(); //self.evaluable_expr();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(AddExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            Token::Minus => {
+                let (t, op2) = self.expr().unwrap();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(SubExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            //FIXME ';' can be a encountered as well. deal with it.
+            _ => return Some((TInt32, op1))
+        }
     }
 }
 
