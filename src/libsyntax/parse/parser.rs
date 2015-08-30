@@ -34,6 +34,11 @@ impl Parser{
 
     }
 
+    pub fn start_lexer(&mut self){
+        self.lexer.get_char();
+        self.lexer.get_token();
+    }
+
     pub fn run(& mut self)->Option<Block>{
         self.parse_block()
         //self.block.generate();
@@ -166,12 +171,23 @@ impl Parser{
                 self.paren_stack.push('(');
 
                 while self.lexer.get_token() != Token::RightParen {
+                    if self.lexer.curr_token == Token::SemiColon { continue; }
+                    if self.lexer.curr_token == Token::Eof {break;}
                     let optional_expr = self.expr();
                     if optional_expr.is_some() {
                         let (ty, e) = optional_expr.unwrap();
                         self.seq_expr_list.push(e);
                         self.last_expr_type = Some(ty);
                     }
+
+                    //check closing paren here because self.expr() above could have curr_token set to it
+                    if self.lexer.curr_token == Token::RightParen{
+                        break;
+                    }
+                }
+
+                if self.lexer.curr_token == Token::Eof {
+                    panic!("Unexpected eof encountered");
                 }
 
                 self.paren_stack.pop();
@@ -191,7 +207,9 @@ impl Parser{
             //     //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
             //     Some(B(SeqExpr(None)))
             // },
-            _ => panic!("FIXME: handle more patterns")
+            _ => {
+                panic!("FIXME: handle more patterns")
+            }
         }
     }
 
@@ -344,7 +362,7 @@ impl Parser{
                                 match self.lexer.get_token(){
                                     Token::ColonEquals => {
                                         //get rhs expr and its type
-                                        let (ty, expr) = self.evaluable_expr();
+                                        let (ty, expr) = self.get_nxt_and_parse();
                                         self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
                                         decls.push(VarDec(id.clone(), TInt32, expr));
                                     },
@@ -378,7 +396,8 @@ impl Parser{
             Token::Dot => {}, //fieldexp
             Token::LeftParen => {}, //callexpr
             Token::Plus => {
-                let (t, op2) = self.expr().unwrap();
+                let (t, op2) = self.get_nxt_and_parse();
+
                 //FIXME it's better to let the type-checker do the checking
                 if t == TInt32{
                     return Some((TInt32, B(AddExpr(op1, op2))))
@@ -397,10 +416,11 @@ impl Parser{
 
     fn parse_num_expr(&mut self) -> Option<(TType, B<Expr>)>{
         let num = self.lexer.curr_string.parse::<i32>().unwrap();
+
         let op1 = B(NumExpr(num));
         match self.lexer.get_token(){
             Token::Plus => {
-                let (t, op2) = self.expr().unwrap(); //self.evaluable_expr();
+                let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
                     return Some((TInt32, B(AddExpr(op1, op2))))
@@ -410,7 +430,7 @@ impl Parser{
                 }
             },
             Token::Minus => {
-                let (t, op2) = self.expr().unwrap();
+                let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
                     return Some((TInt32, B(SubExpr(op1, op2))))
@@ -419,9 +439,16 @@ impl Parser{
                     panic!("Expected i32 as the type of rhs expression");
                 }
             },
-            //FIXME ';' can be a encountered as well. deal with it.
-            _ => return Some((TInt32, op1))
+            //FIXME ';', ')' can be a encountered as well. deal with it.
+            _ => {
+                return Some((TInt32, op1))
+            }
         }
+    }
+
+    fn get_nxt_and_parse(&mut self) -> (TType, B<Expr>){
+        self.lexer.get_token();
+        self.expr().unwrap()
     }
 }
 
@@ -514,5 +541,89 @@ fn test_parse_2_vars_in_let() {
             assert_eq!(v.len(), 2);
         },
         _ => {}
+    }
+}
+
+#[test]
+fn test_1_seq_expr_able_to_parse() {
+    let mut p = Parser::new("(1;)".to_string());
+    p.start_lexer();
+    assert_eq!(p.expr().is_some(), true);
+}
+
+#[test]
+fn test_1_seq_expr_last_type_int() {
+    let mut p = Parser::new("(1;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        SeqExpr(ref o) => {
+            assert_eq!(o.as_ref().unwrap().len(), 1);
+            match *o.as_ref().unwrap()[0]{
+                NumExpr(ref n) => {
+                    assert_eq!(*n, 1);
+                },
+                _ => {}
+            }
+        },
+        _ => panic!("Invalid expr")
+    }
+}
+
+#[test]
+fn test_1_seq_expr_last_type_void() {
+    let mut p = Parser::new("(a;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TVoid);
+}
+
+#[test]
+fn test_2_seq_exprs_last_type_void() {
+    let mut p = Parser::new("(1;a;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TVoid);
+}
+
+#[test]
+fn test_2_seq_exprs_last_type_int() {
+    let mut p = Parser::new("(a;1;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TInt32);
+}
+
+#[test]
+fn test_1_seq_expr_without_semicolon_type_int() {
+    let mut p = Parser::new("(1)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TInt32);
+}
+
+#[test]
+fn test_1_seq_expr_add_expr() {
+    let mut p = Parser::new("(5+16)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        SeqExpr(ref o) => {
+            assert_eq!(o.as_ref().unwrap().len(), 1);
+            match *o.as_ref().unwrap()[0]{
+                AddExpr(ref e1, ref e2) => {
+                    match **e1 {
+                        NumExpr(ref n) => assert_eq!(*n, 5),
+                        _ => {}
+                    }
+                    match **e2 {
+                        NumExpr(ref n) => assert_eq!(*n, 16),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => panic!("Invalid expr")
     }
 }
