@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::mem;
 use parse::lexer::*;
 use parse::tokens::*;
 use ast::{Stmt, Expr, Block, TType, Local, Decl};
@@ -17,15 +18,25 @@ pub struct Parser{
     lexer : Lexer,
     block_stack : BlockStack,
     paren_stack : Vec<char>,
-    seq_expr_list : Vec<B<Expr>>
+    seq_expr_list : Vec<B<Expr>>,
+    last_expr_type : Option<TType>
 }
 
 impl Parser{
     pub fn new(src : String)->Self{
-        Parser {lexer : Lexer::new(src),
+        Parser {
+                lexer : Lexer::new(src),
                 block_stack : BlockStack::new(),
                 paren_stack : Vec::new(),
-                seq_expr_list : Vec::new() }
+                seq_expr_list : Vec::new(),
+                last_expr_type : None
+        }
+
+    }
+
+    pub fn start_lexer(&mut self){
+        self.lexer.get_char();
+        self.lexer.get_token();
     }
 
     pub fn run(& mut self)->Option<Block>{
@@ -66,7 +77,7 @@ impl Parser{
             Token::Break |
             Token::Let |
             Token::Ident => {
-                let expr = self.expr();
+                let expr = Some(self.expr().unwrap().1);
                 self.block_stack.last_mut().unwrap().expr = expr;
                 //FIXME should we break?
                 break;
@@ -141,135 +152,64 @@ impl Parser{
     //
     // }
 
-    fn expr(&mut self) -> Option<B<Expr>> {
+    fn expr(&mut self) -> Option<(TType, B<Expr>)> {
         match self.lexer.curr_token{
-            Token::Nil => {Some(B(NilExpr))},
+            Token::Nil => {
+                Some((TNil, B(NilExpr)))
+            },
             Token::Number => {
-                Some(B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap())))
+                return self.parse_num_expr()
+                //B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap()))
             },
             Token::Ident => {
-                //check if symbol defined in the sym tab
-                //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
-                match self.lexer.get_token(){
-                    Token::LeftSquare => {}, //subscript
-                    Token::Dot => {}, //fieldexp
-                    Token::LeftParen => {}, //callexpr
-
-                    _ => {
-                        return Some(B(IdExpr(self.lexer.curr_string.clone())))
-                    }
-                }
-                Some(B(IdentExpr(self.lexer.curr_string.clone())))
+                return self.parse_ident_expr()
             },
-            Token::Let => {
-                let mut b = Block::new();
-                //set parent-child relationship
-                self.block_stack.push(b);
-                let mut decls = Vec::new();
-                loop{
-                    match self.lexer.get_token() {
-                        Token::Type => { //typedec
-                            match self.lexer.get_token() {
-                                Token::Ident => {
-                                    let id = self.lexer.curr_string.clone();
-                                    match self.lexer.get_token(){
-                                        Token::Equals => {
-                                            match self.lexer.get_token(){
-                                                Token::Int => decls.push(TyDec(id, TInt32)),
-                                                Token::TokString => decls.push(TyDec(id, TString)),
-                                                Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
-                                                Token::Array => {
-                                                    match self.lexer.get_token() {
-                                                        Token::Of => {
-                                                            match self.lexer.get_token() {
-                                                                Token::Int => {},
-                                                                Token::TokString => {},
-                                                                Token::Ident => {},
-                                                                _ => panic!("Expected either int, string or type-id")
-                                                            }
-                                                        },
-                                                        _ => panic!("Expected 'of' after 'array'")
-                                                    }
-                                                },
-                                                Token::LeftCurly => { //rectype
-
-                                                },
-                                                _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
-                                            }
-                                        },
-                                        _ => panic!("Expected '=' after type-id")
-                                    }
-                                },
-                                _ => panic!("Expected identifier after 'type'")
-                            }
-                        },
-                        Token::Var => { //Vardec
-                            match self.lexer.get_token() {
-                                Token::Ident => {
-                                    let id = self.lexer.curr_string.clone();
-                                    match self.lexer.get_token() {
-                                        Token::Colon => {
-                                            match self.lexer.get_token() {
-                                                Token::Int => {
-                                                    match self.lexer.get_token(){
-                                                        Token::ColonEquals => {
-                                                            //get rhs expr and its type
-                                                            let (ty, expr) = self.evaluable_expr();
-                                                            self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
-                                                            decls.push(VarDec(id.clone(), TInt32, expr));
-                                                        },
-                                                        _ => panic!("Expected ':='")
-                                                    }
-                                                },
-                                                Token::TokString => {
-                                                    match self.lexer.get_token(){
-                                                        Token::ColonEquals => {
-                                                            self.expr();
-                                                        },
-                                                        _ => panic!("Expected ':='")
-                                                    }
-                                                },
-                                                _ => panic!("expr : pattern not covered")
-                                            }
-                                        },
-                                        _ => panic!("Expected ':' after identifier")
-                                    }
-                                },
-                                _ => panic!("Expected an identifier")
-                            }
-                        },
-                        Token::Function => { //functiondec
-
-                        },
-                        Token::In => break,
-                        //FIXME Eof occurrence is an error
-                        Token::Eof => break,
-                        //FIXME End occurrence is an error
-                        Token::End => break,
-                        _ => panic!("Unexpected token. Expected a declaration or 'in'")
-                    }
-                }//let loop ends
-                //FIXME start scanning expressions after 'in'
-                return Some(B(LetExpr(decls, None)))
-            },
+            Token::Let =>{
+                return self.parse_let_expr()
+            }
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
-                let e = self.expr();
-                if e.is_some() {
-                    self.seq_expr_list.push(e.unwrap());
+
+                while self.lexer.get_token() != Token::RightParen {
+                    if self.lexer.curr_token == Token::SemiColon { continue; }
+                    if self.lexer.curr_token == Token::Eof {break;}
+                    let optional_expr = self.expr();
+                    if optional_expr.is_some() {
+                        let (ty, e) = optional_expr.unwrap();
+                        self.seq_expr_list.push(e);
+                        self.last_expr_type = Some(ty);
+                    }
+
+                    //check closing paren here because self.expr() above could have curr_token set to it
+                    if self.lexer.curr_token == Token::RightParen{
+                        break;
+                    }
                 }
-                //FIXME remove this:
-                Some(B(SeqExpr(None)))
-            },
-            Token::RightParen => {
-                if self.paren_stack.is_empty(){
-                    panic!("Mismatched parenthesis");
+
+                if self.lexer.curr_token == Token::Eof {
+                    panic!("Unexpected eof encountered");
                 }
+
                 self.paren_stack.pop();
-                //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
-                Some(B(SeqExpr(None)))
+                if !self.paren_stack.is_empty() {
+                    panic!("Missing ')'");
+                }
+
+                let last_type = mem::replace(&mut self.last_expr_type, None);
+                let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
+                Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
-            _ => Some(B(IdentExpr("fsf".to_string())))
+            // Token::RightParen => {
+            //     if self.paren_stack.is_empty(){
+            //         panic!("Mismatched parenthesis");
+            //     }
+            //     self.paren_stack.pop();
+            //     //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
+            //     Some(B(SeqExpr(None)))
+            // },
+            _ => {
+                panic!("FIXME: handle more patterns")
+            }
         }
     }
 
@@ -332,6 +272,183 @@ impl Parser{
         }
         //FIXME remove this:
         return (TInt32, B(NumExpr(1)))
+    }
+
+    fn parse_let_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let mut b = Block::new();
+        //set parent-child relationship
+        self.block_stack.push(b);
+        let mut decls : Vec<Decl> = Vec::new();
+        loop{
+            match self.lexer.get_token() {
+                Token::Type => { //typedec
+                    self.parse_type_decl(&mut decls);
+                },
+                Token::Var => { //Vardec
+                    self.parse_var_decl(&mut decls);
+                },
+                Token::Function => { //functiondec
+
+                },
+
+                //FIXME probably all these following guards are useless?
+                Token::In => break,
+                //FIXME Eof occurrence is an error
+                Token::Eof => break,
+                //FIXME End occurrence is an error
+                Token::End => break,
+                _ => panic!("Unexpected token. Expected a declaration or 'in'")
+            }
+
+            //this is needed because a var decl parse can set the curr_token to 'in'
+            if self.lexer.curr_token == Token::In{
+                break;
+            }
+        }//let loop ends
+
+        if self.lexer.curr_token == Token::In{
+            //FIXME get the list of exprs and the type of the last expr in the list
+        }
+        else{
+            panic!("Expected 'in' after declarations");
+        }
+        return Some((TVoid, B(LetExpr(decls, None))))
+    }
+
+    fn parse_type_decl(&mut self, decls : &mut Vec<Decl>){
+        match self.lexer.get_token() {
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token(){
+                    Token::Equals => {
+                        match self.lexer.get_token(){
+                            Token::Int => decls.push(TyDec(id, TInt32)),
+                            Token::TokString => decls.push(TyDec(id, TString)),
+                            Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
+                            Token::Array => {
+                                match self.lexer.get_token() {
+                                    Token::Of => {
+                                        match self.lexer.get_token() {
+                                            Token::Int => {},
+                                            Token::TokString => {},
+                                            Token::Ident => {},
+                                            _ => panic!("Expected either int, string or type-id")
+                                        }
+                                    },
+                                    _ => panic!("Expected 'of' after 'array'")
+                                }
+                            },
+                            Token::LeftCurly => { //rectype
+
+                            },
+                            _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
+                        }
+                    },
+                    _ => panic!("Expected '=' after type-id")
+                }
+            },
+            _ => panic!("Expected identifier after 'type'")
+        }
+    }
+
+    fn parse_var_decl(&mut self,  decls : &mut Vec<Decl>){
+        match self.lexer.get_token() {
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token() {
+                    Token::Colon => {
+                        match self.lexer.get_token() {
+                            Token::Int => {
+                                match self.lexer.get_token(){
+                                    Token::ColonEquals => {
+                                        //get rhs expr and its type
+                                        let (ty, expr) = self.get_nxt_and_parse();
+                                        self.block_stack.last_mut().unwrap().sym_tab.borrow_mut().insert(id.clone(), ty);
+                                        decls.push(VarDec(id.clone(), TInt32, expr));
+                                    },
+                                    _ => panic!("Expected ':='")
+                                }
+                            },
+                            Token::TokString => {
+                                match self.lexer.get_token(){
+                                    Token::ColonEquals => {
+                                        self.expr();
+                                    },
+                                    _ => panic!("Expected ':='")
+                                }
+                            },
+                            _ => panic!("expr : pattern not covered")
+                        }
+                    },
+                    _ => panic!("Expected ':' after identifier")
+                }
+            },
+            _ => panic!("Expected an identifier")
+        }
+    }
+
+    fn parse_ident_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        //check if symbol defined in the sym tab
+        //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
+        let op1 = B(IdExpr(self.lexer.curr_string.clone()));
+        match self.lexer.get_token(){
+            Token::LeftSquare => {}, //subscript
+            Token::Dot => {}, //fieldexp
+            Token::LeftParen => {}, //callexpr
+            Token::Plus => {
+                let (t, op2) = self.get_nxt_and_parse();
+
+                //FIXME it's better to let the type-checker do the checking
+                if t == TInt32{
+                    return Some((TInt32, B(AddExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            _ => {
+                //TVoid because we dont know the type of the identifier yet.
+                return Some((TVoid, B(IdExpr(self.lexer.curr_string.clone()))))
+            }
+        }
+        Some((TVoid, B(IdentExpr(self.lexer.curr_string.clone()))))
+    }
+
+    fn parse_num_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let num = self.lexer.curr_string.parse::<i32>().unwrap();
+
+        let op1 = B(NumExpr(num));
+        match self.lexer.get_token(){
+            Token::Plus => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(AddExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            Token::Minus => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(SubExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            //FIXME ';', ')' can be a encountered as well. deal with it.
+            _ => {
+                return Some((TInt32, op1))
+            }
+        }
+    }
+
+    fn get_nxt_and_parse(&mut self) -> (TType, B<Expr>){
+        self.lexer.get_token();
+        self.expr().unwrap()
     }
 }
 
@@ -424,5 +541,89 @@ fn test_parse_2_vars_in_let() {
             assert_eq!(v.len(), 2);
         },
         _ => {}
+    }
+}
+
+#[test]
+fn test_1_seq_expr_able_to_parse() {
+    let mut p = Parser::new("(1;)".to_string());
+    p.start_lexer();
+    assert_eq!(p.expr().is_some(), true);
+}
+
+#[test]
+fn test_1_seq_expr_last_type_int() {
+    let mut p = Parser::new("(1;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        SeqExpr(ref o) => {
+            assert_eq!(o.as_ref().unwrap().len(), 1);
+            match *o.as_ref().unwrap()[0]{
+                NumExpr(ref n) => {
+                    assert_eq!(*n, 1);
+                },
+                _ => {}
+            }
+        },
+        _ => panic!("Invalid expr")
+    }
+}
+
+#[test]
+fn test_1_seq_expr_last_type_void() {
+    let mut p = Parser::new("(a;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TVoid);
+}
+
+#[test]
+fn test_2_seq_exprs_last_type_void() {
+    let mut p = Parser::new("(1;a;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TVoid);
+}
+
+#[test]
+fn test_2_seq_exprs_last_type_int() {
+    let mut p = Parser::new("(a;1;)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TInt32);
+}
+
+#[test]
+fn test_1_seq_expr_without_semicolon_type_int() {
+    let mut p = Parser::new("(1)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    assert_eq!(ty, TInt32);
+}
+
+#[test]
+fn test_1_seq_expr_add_expr() {
+    let mut p = Parser::new("(5+16)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        SeqExpr(ref o) => {
+            assert_eq!(o.as_ref().unwrap().len(), 1);
+            match *o.as_ref().unwrap()[0]{
+                AddExpr(ref e1, ref e2) => {
+                    match **e1 {
+                        NumExpr(ref n) => assert_eq!(*n, 5),
+                        _ => {}
+                    }
+                    match **e2 {
+                        NumExpr(ref n) => assert_eq!(*n, 16),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => panic!("Invalid expr")
     }
 }
