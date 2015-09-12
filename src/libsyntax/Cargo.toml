@@ -1,7 +1,7 @@
 [package]
 name = "syntax"
 version = "0.1.0"
-authors = ["abhijeet bhagat <abhijeet.bhagat@gmx.com>"]
+authors = ["abhijeet bhagat"]
 
 [lib]
 name = "syntax"
