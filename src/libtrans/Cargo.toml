@@ -1,0 +1,17 @@
+[package]
+name = "trans"
+version = "0.1.0"
+authors = ["abhijeet bhagat"]
+
+[lib]
+name = "trans"
+path = "lib.rs"
+test = true
+
+[dependencies]
+llvm-sys = "0.2.0"
+
+[dependencies.syntax]
+name = "syntax"
+path = "../libsyntax"
+test = true
