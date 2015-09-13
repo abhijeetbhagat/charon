@@ -15,6 +15,7 @@ pub fn run(args: Vec<String>) -> i32{
 fn run_compiler(){
 	let mut p = Parser::new("break".to_string());
 	p.run();
+	//TODO extract the expr and call pass it to trans to get the llvm context
 }
 
 #[test]

@@ -1,28 +1,5 @@
 
-
-/*pub trait SymbolVisitor{
-	fn visit_num(&self, &NumExpression);
-	fn visit_ident(&self, &IdentExpression);
-}*/
 use ast::{Expr, Block, Stmt, Decl};
-
-/*pub trait Visitor<T : ?Sized> {
-    fn visit(&mut self, t: T);
-}
-
-pub trait Accept{
-    type Visitable = Expression;
-    fn accept<'a>(&'a self, &mut Visitor<&'a Self::Visitable>);
-}*/
-
-//struct CodeGenVisitor;
-/*fn main() {
-    let visitor = PrintVisitor;
-
-    visitor.visit(1);
-    visitor.visit("Hello, world");
-    visitor.visit(NotDisplayable);
-}*/
 
 pub trait Visitor<'a> : Sized  {
     fn visit_block(&mut self, block : &'a Block){
@@ -38,7 +15,7 @@ pub trait Visitor<'a> : Sized  {
     }
 
     fn visit_decl(&mut self, decl : &'a Decl){
-        
+
     }
 }
 
