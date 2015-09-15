@@ -53,6 +53,7 @@ impl Drop for Context{
     }
 }
 
+//TODO move these in a seperate file
 type IRBuildingResult = Result<LLVMValueRef, String>;
 
 trait IRBuilder{
@@ -86,5 +87,5 @@ pub fn translate(expr : &Expr) -> Option<Context>{
 
 fn trans_expr(expr: &Expr, ctxt : &mut Context){
     let value = expr.codegen(ctxt); //ctxt is already &mut
-    
+
 }

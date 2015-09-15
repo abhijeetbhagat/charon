@@ -199,6 +199,9 @@ impl Parser{
                 let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
                 Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
+            Token::Function => {
+                return self.parse_function_block();
+            },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
             //         panic!("Mismatched parenthesis");
@@ -444,6 +447,25 @@ impl Parser{
                 return Some((TInt32, op1))
             }
         }
+    }
+
+    fn parse_function_block(&mut self){
+         match self.lexer.get_token() {
+             Token::Ident => {
+                 let id = self.lexer.curr_string.clone();
+                 match self.lexer.get_token() {
+                     Token::LeftParen => {
+                         //self.parse_function_args();
+                     },
+                     _ => panic!("Expected '(' after function identifier")
+                 }
+             },
+             _ => panic!("Expected id after function")
+         }
+    }
+
+    fn parse_function_args(&mut self){
+
     }
 
     fn get_nxt_and_parse(&mut self) -> (TType, B<Expr>){
