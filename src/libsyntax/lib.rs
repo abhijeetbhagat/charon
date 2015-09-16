@@ -1,6 +1,7 @@
 #![crate_name = "syntax"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
+#![feature(convert)]
 
 pub mod parse;
 pub mod ast;

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::mem;
+use std::collections::{HashMap};
 use parse::lexer::*;
 use parse::tokens::*;
 use ast::{Stmt, Expr, Block, TType, Local, Decl};
@@ -166,7 +167,10 @@ impl Parser{
             },
             Token::Let =>{
                 return self.parse_let_expr()
-            }
+            },
+            Token::Function => {
+                return self.parse_function_block();
+            },
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
 
@@ -216,6 +220,7 @@ impl Parser{
         }
     }
 
+    //TODO remove this function;
     fn evaluable_expr(&mut self)->(TType, B<Expr>){
         match self.lexer.get_token() {
             Token::Ident => {
@@ -449,29 +454,147 @@ impl Parser{
         }
     }
 
-    fn parse_function_block(&mut self){
-         match self.lexer.get_token() {
-             Token::Ident => {
-                 let id = self.lexer.curr_string.clone();
-                 match self.lexer.get_token() {
-                     Token::LeftParen => {
-                         //self.parse_function_args();
-                     },
-                     _ => panic!("Expected '(' after function identifier")
-                 }
-             },
-             _ => panic!("Expected id after function")
-         }
+    fn parse_function_block(&mut self) -> Option<(TType, B<Expr>)>{
+        match self.lexer.get_token(){
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                //FIXME can get_token() be moved in parse_function_args_list() instead?
+                match self.lexer.get_token(){
+                    Token::LeftParen => {
+                        //parse the parameters list
+                        let field_decs = self.parse_function_args_list();
+
+                        //parse return type
+
+                    },
+                    _ => panic!("Expected a '(' after function id")
+                }
+            },
+            _ => panic!("Expected an id after 'function'")
+        }
+        //FIXME return the correct function return type and the whole body
+        None
     }
 
-    fn parse_function_args(&mut self){
+    fn parse_function_args_list(&mut self) -> Option<HashMap<String, TType>> {
+        let mut field_decs = HashMap::new();
+        loop{
+            match self.lexer.get_token() {
+                Token::Comma => continue,
+                Token::RightParen => { //parameterless function
+                    break;
+                },
+                Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
+                Token::Ident => {
+                    let id = self.lexer.curr_string.clone();
+                    match  self.lexer.get_token() {
+                        Token::Colon => {
+                            match self.lexer.get_token() {
+                                Token::Int |
+                                Token::TokString |
+                                Token::Ident => {
+                                    let ty = Self::get_ty_from_string(self.lexer.curr_string.as_str());
+                                    field_decs.insert(id, ty);
+                                },
+                                _ => panic!("Expected type-id after ':'")
+                            }
+                        },
+                        _ => panic!("Expected ':' after id")
+                    }
+                },
+                _ => panic!("Expected a ')' or parameter id")
+            }
+        }
 
+        if field_decs.is_empty(){
+            None
+        }
+        else{
+            Some(field_decs)
+        }
+
+    }
+
+    fn parse_function_ret_type(&mut self) -> Option<TType>{
+        match self.lexer.get_token() {
+            Token::Colon => {
+                match self.lexer.get_token() {
+                    Token::Int |
+                    Token::TokString |
+                    Token::Ident => Some(Self::get_ty_from_string(self.lexer.curr_string.as_str()))
+                }
+            }
+            Token::Equals => {
+                None
+            }
+            _ => panic!("Expected ':' or '=' after the parameter list")
+        }
+    }
+
+    fn get_ty_from_string(str_ : &str) -> TType{
+        match str_ {
+            "int" => TInt32,
+            "string" => TString,
+            _ => TCustom(str_.to_string())
+        }
     }
 
     fn get_nxt_and_parse(&mut self) -> (TType, B<Expr>){
         self.lexer.get_token();
         self.expr().unwrap()
     }
+}
+
+#[test]
+fn test_field_decs_none(){
+    let mut p = Parser::new("()".to_string());
+    p.start_lexer();
+    let m = p.parse_function_args_list();
+    assert_eq!(m, None);
+}
+
+#[test]
+fn test_field_decs_one_dec(){
+    let mut p = Parser::new("(a: int)".to_string());
+    p.start_lexer();
+    let m = p.parse_function_args_list();
+    assert_eq!(m.is_some(), true);
+    assert_eq!(m.unwrap().len(), 1);
+}
+
+#[test]
+fn test_field_decs_two_decs(){
+    let mut p = Parser::new("(a: int, b:int)".to_string());
+    p.start_lexer();
+    let m = p.parse_function_args_list();
+    assert_eq!(m.is_some(), true);
+    assert_eq!(m.unwrap().len(), 2);
+}
+
+#[test]
+fn test_field_decs_two_decs_int_string(){
+    let mut p = Parser::new("(a: int, b:string)".to_string());
+    p.start_lexer();
+    let m = p.parse_function_args_list().unwrap();
+    assert_eq!(m.len(), 2);
+    assert_eq!(m[&"a".to_string()], TType::TInt32);
+    assert_eq!(m[&"b".to_string()], TType::TString);
+}
+
+#[test]
+fn test_field_decs_one_dec_with_alias(){
+    let mut p = Parser::new("(a: myint)".to_string());
+    p.start_lexer();
+    let m = p.parse_function_args_list().unwrap();
+    assert_eq!(m[&"a".to_string()], TType::TCustom("myint".to_string()));
+}
+
+#[test]
+#[should_panic(expected="Unexpected eof encountered. Expected a ')' after field-declaration.")]
+fn test_field_decs_no_closing_paren(){
+    let mut p = Parser::new("(a: myint".to_string());
+    p.start_lexer();
+    p.parse_function_args_list();
 }
 
 #[test]
@@ -648,4 +771,11 @@ fn test_1_seq_expr_add_expr() {
         },
         _ => panic!("Invalid expr")
     }
+}
+
+#[test]
+fn test_get_ty(){
+    assert_eq!(Parser::get_ty_from_string("int"), TInt32);
+    assert_eq!(Parser::get_ty_from_string("string"), TString);
+    assert_eq!(Parser::get_ty_from_string("index_type"), TCustom("index_type".to_string()));
 }
