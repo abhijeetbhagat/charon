@@ -166,7 +166,10 @@ impl Parser{
             },
             Token::Let =>{
                 return self.parse_let_expr()
-            }
+            },
+            Token::Function => {
+                return self.parse_function_block();
+            },
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
 
@@ -213,6 +216,7 @@ impl Parser{
         }
     }
 
+    //TODO remove this function;
     fn evaluable_expr(&mut self)->(TType, B<Expr>){
         match self.lexer.get_token() {
             Token::Ident => {
@@ -442,6 +446,40 @@ impl Parser{
             //FIXME ';', ')' can be a encountered as well. deal with it.
             _ => {
                 return Some((TInt32, op1))
+            }
+        }
+    }
+
+    fn parse_function_block(&mut self) -> Option<(TType, B<Expr>)>{
+        match self.lexer.get_token(){
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token(){
+                    Token::LeftParen => {
+                        self.parse_function_args_list();
+                    },
+                    _ => panic!("Expected a '(' after function id")
+                }
+            },
+            _ => panic!("Expected an id after 'function'")
+        }
+
+        None
+    }
+
+    fn parse_function_args_list(&mut self) {
+        let mut field_decs = Vec::new();
+        loop{
+            match self.lexer.get_token() {
+                Token::RightParen => { //parameterless function
+                    //do return type parsing
+                },
+                Token::Ident => {
+                    loop {
+
+                    }
+                },
+                _ => panic!("Expected a ')' or parameter id")
             }
         }
     }
