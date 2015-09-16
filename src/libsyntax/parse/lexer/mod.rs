@@ -321,4 +321,14 @@ mod tests {
         assert_eq!(l.get_token(), Token::Of);
         assert_eq!(l.get_token(), Token::Int);
     }
+
+    #[test]
+    fn test_field_dec_int() {
+        let mut l = Lexer::new("(a:int)".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::LeftParen);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+    }
 }

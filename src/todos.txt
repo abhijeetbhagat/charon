@@ -36,4 +36,4 @@ ifthen type is always unit while ifthenelse types can be anything and both shoul
 
 --------------------------------------------------------------------------------------------------
 
-**Use expr() instead of evaluable_expr()
+**Allow underscores in idents
