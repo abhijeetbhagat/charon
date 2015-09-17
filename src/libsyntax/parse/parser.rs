@@ -4,7 +4,7 @@ use std::mem;
 use std::collections::{HashMap};
 use parse::lexer::*;
 use parse::tokens::*;
-use ast::{Stmt, Expr, Block, TType, Local, Decl};
+use ast::{Stmt, Expr, Block, TType, Local, Decl, OptionalTypeExprTupleList};
 use ast::Stmt::*;
 use ast::Expr::*;
 use ast::TType::*;
@@ -77,6 +77,7 @@ impl Parser{
             Token::For |
             Token::Break |
             Token::Let |
+            Token::Function |
             Token::Ident => {
                 let expr = Some(self.expr().unwrap().1);
                 self.block_stack.last_mut().unwrap().expr = expr;
@@ -335,7 +336,15 @@ impl Parser{
         match self.lexer.get_token(){
             Token::LeftSquare => {}, //subscript
             Token::Dot => {}, //fieldexp
-            Token::LeftParen => {}, //callexpr
+            Token::LeftParen => { //callexpr
+                let args_list = self.parse_call_args();
+                //FIXME should a marker type be used instead of TVoid to indicate that the type should be verified by the type-checker?
+                match *op1 {
+                    IdExpr(ref fn_name) => return Some((TVoid, B(CallExpr(fn_name.clone(), args_list)))),
+                    _ => {}
+                };
+
+            },
             Token::Plus => {
                 let (t, op2) = self.get_nxt_and_parse();
 
@@ -393,10 +402,13 @@ impl Parser{
                 let id = self.lexer.curr_string.clone();
 
                 //parse the parameters list
-                let field_decs = self.parse_function_args_list();
+                let field_decs = self.parse_function_params_list();
 
                 //parse return type
                 let ret_type = self.parse_function_ret_type();
+
+                //parse body here
+                //self.expr()
             },
             _ => panic!("Expected an id after 'function'")
         }
@@ -404,7 +416,7 @@ impl Parser{
         None
     }
 
-    fn parse_function_args_list(&mut self) -> Option<HashMap<String, TType>> {
+    fn parse_function_params_list(&mut self) -> Option<HashMap<String, TType>> {
         match self.lexer.get_token(){
             Token::LeftParen => {
                 let mut field_decs = HashMap::new();
@@ -439,6 +451,41 @@ impl Parser{
             },
             _ => panic!("Expected a '(' after function id")
         }
+    }
+
+    fn parse_call_args(&mut self) -> OptionalTypeExprTupleList{
+        let mut args_list  = Vec::new();
+        // loop{
+        //     match self.lexer.get_token() {
+        //         Token::RightParen => break,
+        //         Token::Number => {
+        //             args_list.push(TypeValue::TInt32(self.lexer.curr_string.parse::<i32>().unwrap()));
+        //         },
+        //         //FIXME add string parsing - "blahblah"
+        //         // Token::String => {
+        //         //     args_list.push(self.lexer.curr_string.clone());
+        //         // },
+        //         Token::Ident => {
+        //             args_list.push(TypeValue::TIdent(self.lexer.curr_string.clone()));
+        //         },
+        //         _ => panic!("Expected an int, string or an identifier")
+        //     }
+        // }
+        loop {
+            match self.lexer.get_token() {
+                Token::RightParen => break,
+                _ => {
+                    let e = self.expr();
+                    if e.is_some() {
+                        args_list.push(e.unwrap());
+                    }
+                    else{
+                        panic!("Invalid expression used as a call argument")
+                    }
+                }
+            }
+        }
+        return if args_list.is_empty() {None} else {Some(args_list)}
     }
 
     fn parse_function_ret_type(&mut self) -> TType{
@@ -508,7 +555,7 @@ fn test_parse_func_ret_type_custom(){
 fn test_field_decs_none(){
     let mut p = Parser::new("f()".to_string());
     p.start_lexer();
-    let m = p.parse_function_args_list();
+    let m = p.parse_function_params_list();
     assert_eq!(m, None);
 }
 
@@ -516,7 +563,7 @@ fn test_field_decs_none(){
 fn test_field_decs_one_dec(){
     let mut p = Parser::new("f(a: int)".to_string());
     p.start_lexer();
-    let m = p.parse_function_args_list();
+    let m = p.parse_function_params_list();
     assert_eq!(m.is_some(), true);
     assert_eq!(m.unwrap().len(), 1);
 }
@@ -525,7 +572,7 @@ fn test_field_decs_one_dec(){
 fn test_field_decs_two_decs(){
     let mut p = Parser::new("f(a: int, b:int)".to_string());
     p.start_lexer();
-    let m = p.parse_function_args_list();
+    let m = p.parse_function_params_list();
     assert_eq!(m.is_some(), true);
     assert_eq!(m.unwrap().len(), 2);
 }
@@ -534,7 +581,7 @@ fn test_field_decs_two_decs(){
 fn test_field_decs_two_decs_int_string(){
     let mut p = Parser::new("f(a: int, b:string)".to_string());
     p.start_lexer();
-    let m = p.parse_function_args_list().unwrap();
+    let m = p.parse_function_params_list().unwrap();
     assert_eq!(m.len(), 2);
     assert_eq!(m[&"a".to_string()], TType::TInt32);
     assert_eq!(m[&"b".to_string()], TType::TString);
@@ -544,7 +591,7 @@ fn test_field_decs_two_decs_int_string(){
 fn test_field_decs_one_dec_with_alias(){
     let mut p = Parser::new("f(a: myint)".to_string());
     p.start_lexer();
-    let m = p.parse_function_args_list().unwrap();
+    let m = p.parse_function_params_list().unwrap();
     assert_eq!(m[&"a".to_string()], TType::TCustom("myint".to_string()));
 }
 
@@ -553,7 +600,7 @@ fn test_field_decs_one_dec_with_alias(){
 fn test_field_decs_no_closing_paren(){
     let mut p = Parser::new("f(a: myint".to_string());
     p.start_lexer();
-    p.parse_function_args_list();
+    p.parse_function_params_list();
 }
 
 #[test]

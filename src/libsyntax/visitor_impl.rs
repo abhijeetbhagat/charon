@@ -322,5 +322,5 @@ fn test_right_type_invalid_for_add_expr() {
 
 #[test]
 fn test_var_hiding() {
-    //let mut v = 
+    //let mut v =
 }

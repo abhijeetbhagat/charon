@@ -19,6 +19,9 @@ impl SymbolVisitor for ExpressionEvaluator{
 	}
 }
 */
+pub type OptionalExprList = Option<Vec<B<Expr>>>;
+pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TType{
     TInt32,
@@ -28,6 +31,12 @@ pub enum TType{
     TCustom(String),
     TNil,
     TVoid
+}
+
+pub enum TypeValue{
+    TInt32(i32),
+    TString(String),
+    TIdent(String)
 }
 
 impl fmt::Display for TType{
@@ -94,7 +103,7 @@ impl Block{
 
 pub enum Expr{
    //let dec+ in exp; end
-   LetExpr(Vec<Decl>, Option<Vec<B<Expr>>>),
+   LetExpr(Vec<Decl>, OptionalExprList),
    //id
    IdExpr(String),
    //nil
@@ -106,11 +115,11 @@ pub enum Expr{
    //break
    BreakExpr,
    //id ( exp*, )
-   CallExpr(String, Option<B<Expr>>),
+   CallExpr(String, OptionalTypeExprTupleList),
    //intLit
    NumExpr(i32),
    //( exp*; )
-   SeqExpr(Option<Vec<B<Expr>>>),
+   SeqExpr(OptionalExprList),
 
    IdentExpr(String),
    AddExpr(B<Expr>, B<Expr>),
