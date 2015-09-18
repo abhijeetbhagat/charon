@@ -408,7 +408,8 @@ impl Parser{
                 let ret_type = self.parse_function_ret_type();
 
                 //parse body here
-                //self.expr()
+                let body = self.expr();
+
             },
             _ => panic!("Expected an id after 'function'")
         }
@@ -455,34 +456,24 @@ impl Parser{
 
     fn parse_call_args(&mut self) -> OptionalTypeExprTupleList{
         let mut args_list  = Vec::new();
-        // loop{
-        //     match self.lexer.get_token() {
-        //         Token::RightParen => break,
-        //         Token::Number => {
-        //             args_list.push(TypeValue::TInt32(self.lexer.curr_string.parse::<i32>().unwrap()));
-        //         },
-        //         //FIXME add string parsing - "blahblah"
-        //         // Token::String => {
-        //         //     args_list.push(self.lexer.curr_string.clone());
-        //         // },
-        //         Token::Ident => {
-        //             args_list.push(TypeValue::TIdent(self.lexer.curr_string.clone()));
-        //         },
-        //         _ => panic!("Expected an int, string or an identifier")
-        //     }
-        // }
         loop {
             match self.lexer.get_token() {
                 Token::RightParen => break,
-                _ => {
+                Token::Number |
+                Token::Ident => {
                     let e = self.expr();
                     if e.is_some() {
                         args_list.push(e.unwrap());
                     }
-                    else{
-                        panic!("Invalid expression used as a call argument")
-                    }
+                },
+                _ => {
+                    panic!("Invalid expression used as a call argument");
                 }
+                //_ => panic!("Invalid expression used as a call argument")
+            }
+
+            if self.lexer.curr_token == Token::RightParen {
+                break
             }
         }
         return if args_list.is_empty() {None} else {Some(args_list)}
@@ -517,6 +508,145 @@ impl Parser{
         self.lexer.get_token();
         self.expr().unwrap()
     }
+}
+
+#[test]
+fn test_parse_call_expr_num_expr(){
+    let mut p = Parser::new("f(1)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[0usize];
+                    assert_eq!(*ty, TInt32);
+                    match &**b_expr {
+                        &NumExpr(ref n) => assert_eq!(*n, 1),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_parse_call_expr_ident_expr(){
+    let mut p = Parser::new("f(abc)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[0usize];
+                    assert_eq!(*ty, TVoid);
+                    match &**b_expr {
+                        &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_parse_call_expr_inum_ident_exprs(){
+    let mut p = Parser::new("f(1, abc)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 2);
+                    let (ref ty, ref b_expr) = l[1usize];
+                    assert_eq!(*ty, TVoid);
+                    match &**b_expr {
+                        &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_parse_call_expr_add_expr(){
+    let mut p = Parser::new("f(1+2)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[0usize];
+                    assert_eq!(*ty, TInt32);
+                    match &**b_expr {
+                        &AddExpr(ref op1, ref op2) => {
+                            match &**op1 {
+                                &NumExpr(ref n) => assert_eq!(*n, 1),
+                                _ => {}
+                            }
+                            match &**op2 {
+                                &NumExpr(ref n) => assert_eq!(*n, 2),
+                                _ => {}
+                            }
+                        },
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_parse_call_expr_no_args(){
+    let mut p = Parser::new("f()".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+     match *b_expr {
+        CallExpr(ref n, _) => assert_eq!(n, "f"),
+        _ => {}
+     }
 }
 
 #[test]
