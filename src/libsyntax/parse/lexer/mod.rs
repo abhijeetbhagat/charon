@@ -95,6 +95,27 @@ impl Lexer{
                  return self.curr_token
              },
             ';' => { self.curr_token = Token::SemiColon; self.get_char(); return self.curr_token},
+            '"' => {
+                let mut closing_quote_found = false;
+                self.curr_string.clear();
+                loop{
+                    self.get_char();
+                    if self.curr_char == '"'{
+                        closing_quote_found = true;
+                        break;
+                    }
+                    if self.curr_char == '\' {
+
+                    }
+                    if self.curr_char == '\0' {
+                        panic!("Expected '\"'. Eof found.");
+                    }
+                    self.curr_string.push(self.curr_char);
+                }
+                if closing_quote_found {
+                    //success
+                }
+            },
             '0' ... '9' => {
                 self.curr_string.clear();
                 self.curr_string.push(self.curr_char);

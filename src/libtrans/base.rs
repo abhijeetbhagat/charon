@@ -92,7 +92,7 @@ fn std_functions_call_factory(fn_name : &str,
                                                      c_str_ptr!("printf"),
                                                      proto);
                 let gstr = LLVMBuildGlobalStringPtr(ctxt.builder,
-                                                    str_arg,
+                                                    c_str_ptr!("abhi"),
                                                     c_str_ptr!(".str"));
                 let mut pf_args = Vec::new();
                 pf_args.push(gstr);
@@ -166,7 +166,7 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
 }
 
 #[test]
-fn test_translate() {
+fn test_translate_std_print_call() {
     let ctxt = translate(&Expr::CallExpr("print".to_string(),
                                   Some(vec![(TType::TString,
                                              B(Expr::StringExpr("abhi".to_string())))])));

@@ -510,6 +510,11 @@ impl Parser{
     }
 }
 
+// #[test]
+// fn test_function_declaration() {
+//     let mut p = Parser::new("function foo()=print()");
+// }
+
 #[test]
 fn test_parse_call_expr_num_expr(){
     let mut p = Parser::new("f(1)".to_string());
