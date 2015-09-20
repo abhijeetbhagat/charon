@@ -11,6 +11,7 @@ use std::collections::{HashMap};
 use std::mem;
 
 use syntax::ast::{Block, Expr, TType, OptionalTypeExprTupleList};
+use syntax::ptr::{B};
 
 macro_rules! c_str_ptr {
     ($s:expr) => {
@@ -145,11 +146,12 @@ pub fn translate(expr : &Expr) -> Option<Context>{
                                                function,
                                                c_str_ptr!("entry"));
         LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+        trans_expr(expr, &mut ctxt);
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
         //add translated code as part of the block
-        trans_expr(expr, &mut ctxt);
+
 
     }
     Some(ctxt)
@@ -161,4 +163,13 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
         Ok(_) => {},
         Err(msg) => panic!(msg)
     }
+}
+
+#[test]
+fn test_translate() {
+    let ctxt = translate(&Expr::CallExpr("print".to_string(),
+                                  Some(vec![(TType::TString,
+                                             B(Expr::StringExpr("abhi".to_string())))])));
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
 }
