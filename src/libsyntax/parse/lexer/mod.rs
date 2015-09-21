@@ -95,6 +95,38 @@ impl Lexer{
                  return self.curr_token
              },
             ';' => { self.curr_token = Token::SemiColon; self.get_char(); return self.curr_token},
+            '"' => {
+                self.curr_string.clear();
+                loop {
+                    self.get_char();
+                    if self.curr_char == '\\' {
+                        self.get_char();
+                        match self.curr_char {
+                            'n' => self.curr_string.push('\n'),
+                            't' => self.curr_string.push('\t'),
+                            '"' => self.curr_string.push('"'),
+                            '\\' => self.curr_string.push('\\'),
+                            _ => panic!("Unrecognized escape sequence")
+                        }
+                        //self.curr_string.push(self.curr_char);
+                        continue;
+                    }
+
+                    if self.curr_char == '"' {
+                        self.get_char(); //eat "
+                        break;
+                    }
+
+                    if self.curr_char == '\0' {
+                        panic!("Unexpected eof. Expected a closing '\"'.");
+                    }
+
+                    self.curr_string.push(self.curr_char);
+                }
+
+                self.curr_token = Token::TokString;
+                return self.curr_token;
+            },
             '0' ... '9' => {
                 self.curr_string.clear();
                 self.curr_string.push(self.curr_char);
@@ -340,5 +372,40 @@ mod tests {
         assert_eq!(l.get_token(), Token::LeftParen);
         assert_eq!(l.get_token(), Token::Number);
         assert_eq!(l.get_token(), Token::RightParen);
+    }
+
+    #[test]
+    fn test_call_expr_string_arg() {
+        let mut l = Lexer::new("f(\"abc\")".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::LeftParen);
+        assert_eq!(l.get_token(), Token::TokString);
+        assert_eq!(l.get_token(), Token::RightParen);
+    }
+
+
+    #[test]
+    fn test_simple_string() {
+        let mut l = Lexer::new("\"abhi\"".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::TokString);
+        assert_eq!(l.curr_string, "abhi".to_string());
+    }
+
+    #[test]
+    fn test_string_with_escaped_double_quote() {
+        let mut l = Lexer::new("\"ab\\\"hi\"".to_string());
+        l.get_char();
+        l.get_token();
+        assert_eq!(l.curr_string, "ab\"hi".to_string());
+    }
+
+    #[test]
+    fn test_string_with_escaped_backslash() {
+        let mut l = Lexer::new("\"ab\\\\\"".to_string());
+        l.get_char();
+        l.get_token();
+        assert_eq!(l.curr_string, "ab\\".to_string());
     }
 }

@@ -12,6 +12,8 @@ use std::mem;
 
 use syntax::ast::{Block, Expr, TType, OptionalTypeExprTupleList};
 use syntax::ptr::{B};
+//FIXME this import is for integration testing purposes
+use syntax::parse::{Parser};
 
 macro_rules! c_str_ptr {
     ($s:expr) => {
@@ -166,10 +168,24 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
 }
 
 #[test]
-fn test_translate() {
+fn test_translate_manual_call_expr() {
     let ctxt = translate(&Expr::CallExpr("print".to_string(),
                                   Some(vec![(TType::TString,
                                              B(Expr::StringExpr("abhi".to_string())))])));
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_translate_parser_backend_integration() {
+    let mut p = Parser::new("print(\"Grrrr!\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    // let ctxt = translate();&Expr::CallExpr("print".to_string(),
+    //                               Some(vec![(TType::TString,
+    //                                          B(Expr::StringExpr("abhi".to_string())))])));
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }

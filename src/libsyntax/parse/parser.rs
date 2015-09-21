@@ -78,7 +78,8 @@ impl Parser{
             Token::Break |
             Token::Let |
             Token::Function |
-            Token::Ident => {
+            Token::Ident |
+            Token::TokString => {
                 let expr = Some(self.expr().unwrap().1);
                 self.block_stack.last_mut().unwrap().expr = expr;
                 //FIXME should we break?
@@ -166,11 +167,14 @@ impl Parser{
             Token::Ident => {
                 return self.parse_ident_expr()
             },
+            Token::TokString => {
+                return self.parse_string_expr()
+            },
             Token::Let =>{
                 return self.parse_let_expr()
             },
             Token::Function => {
-                return self.parse_function_decl();
+                return self.parse_function_decl()
             },
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
@@ -364,6 +368,10 @@ impl Parser{
         Some((TVoid, B(IdentExpr(self.lexer.curr_string.clone()))))
     }
 
+    fn parse_string_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        Some((TString, B(StringExpr(self.lexer.curr_string.clone()))))
+    }
+
     fn parse_num_expr(&mut self) -> Option<(TType, B<Expr>)>{
         let num = self.lexer.curr_string.parse::<i32>().unwrap();
 
@@ -460,7 +468,8 @@ impl Parser{
             match self.lexer.get_token() {
                 Token::RightParen => break,
                 Token::Number |
-                Token::Ident => {
+                Token::Ident |
+                Token::TokString => {
                     let e = self.expr();
                     if e.is_some() {
                         args_list.push(e.unwrap());
@@ -558,6 +567,42 @@ fn test_parse_call_expr_ident_expr(){
                     assert_eq!(*ty, TVoid);
                     match &**b_expr {
                         &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_only_string_expr() {
+    let mut p = Parser::new("\"abc\"".to_string());
+    p.start_lexer();
+    assert_eq!(p.lexer.curr_token, Token::TokString);
+}
+
+#[test]
+fn test_parse_call_expr_string_arg(){
+    let mut p = Parser::new("f(\"abc\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[0usize];
+                    assert_eq!(*ty, TString);
+                    match &**b_expr {
+                        &StringExpr(ref value) => assert_eq!(*value, "abc"),
                         _ => {}
                     }
                 },
