@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use std::collections::{HashMap};
+use std::collections::{HashMap, BTreeMap};
 use visit::{Visitor};
 use ptr::{B};
 use std::cell::RefCell;
@@ -145,8 +145,8 @@ pub enum Decl{
     TyDec(String, TType),
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
-    //function id ( eldDec; ) : tyId = exp
-    FunDec(String, Option<Vec<FieldDec>>, TType, Option<Vec<B<Expr>>>, TType)
+    //function id ( fieldDec; ) : tyId = exp
+    FunDec(String, Option<BTreeMap<String, TType>>, TType, Option<Vec<B<Expr>>>, TType)
 }
 
 pub struct Local{
@@ -164,5 +164,4 @@ impl Local{
 pub enum Stmt{
      VarDeclStmt(Local),
      ExprStmt(B<Expr>)
-     //FnDecl()
 }

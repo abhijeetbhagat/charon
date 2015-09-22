@@ -111,50 +111,6 @@ impl Parser{
       }
     }
 
-    // fn mk_var_decl(local : Local)->B<Stmt>{
-    //     B(VarDeclStmt(local))
-    // }
-    //
-    // fn mk_label_stmt(label : String)->B<Stmt>{
-    //     B(ExprStmt(Self::mk_label_expr(label)))
-    // }
-    //
-    // fn mk_label_expr(label: String)->B<Expr>{
-    //     B(LabelExpr(label))
-    // }
-    //
-    // fn mk_goto_stmt(label : String) -> B<Stmt>{
-    //     B(ExprStmt(Self::mk_goto_expr(label)))
-    // }
-    //
-    // fn mk_goto_expr(label : String) -> B<Expr>{
-    //     B(GotoExpr(label))
-    // }
-    //
-    // fn mk_break_stmt() -> B<Stmt>{
-    //     B(ExprStmt(B(BreakExpr)))
-    // }
-    //
-    // fn mk_block_stmt(block : Block) -> B<Stmt>{
-    //     B(Stmt::ExprStmt(Self::mk_block_expr(block)))
-    // }
-    //
-    // fn mk_block_expr(block : Block) -> B<Expr>{
-    //     B(Expr::BlockExpr(B(block)))
-    // }
-    //
-    // fn exprlist(&mut self){
-    //      self.expr();
-    //      match self.lexer.get_token(){
-    //         Token::Ident => {},
-    //         _ => {}
-    //      }
-    // }
-    //
-    // fn varlist(&mut self){
-    //
-    // }
-
     fn expr(&mut self) -> Option<(TType, B<Expr>)> {
         match self.lexer.curr_token{
             Token::Nil => {
@@ -173,9 +129,9 @@ impl Parser{
             Token::Let =>{
                 return self.parse_let_expr()
             },
-            Token::Function => {
-                return self.parse_function_decl()
-            },
+            // Token::Function => {
+            //     return self.parse_function_decl()
+            // },
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
 
@@ -234,7 +190,7 @@ impl Parser{
                     self.parse_var_decl(&mut decls);
                 },
                 Token::Function => { //functiondec
-
+                    self.parse_function_decl();
                 },
 
                 //FIXME probably all these following guards are useless?
@@ -404,7 +360,7 @@ impl Parser{
         }
     }
 
-    fn parse_function_decl(&mut self) -> Option<(TType, B<Expr>)>{
+    fn parse_function_decl(&mut self, decls : &mut Vec<Decl>){
         match self.lexer.get_token(){
             Token::Ident => {
                 let id = self.lexer.curr_string.clone();
@@ -418,11 +374,10 @@ impl Parser{
                 //parse body here
                 let body = self.expr();
 
+                decls.push(FunDec(id, ));
             },
             _ => panic!("Expected an id after 'function'")
         }
-        //FIXME return the correct function return type and the whole body
-        None
     }
 
     fn parse_function_params_list(&mut self) -> Option<HashMap<String, TType>> {

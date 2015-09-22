@@ -128,7 +128,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                     self.sym_tab.pop();
                 }
                 self.sym_tab.pop();
-            }
+            },
+
+            
             _ => {}
         }
     }
