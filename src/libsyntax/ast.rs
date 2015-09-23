@@ -21,6 +21,7 @@ impl SymbolVisitor for ExpressionEvaluator{
 */
 pub type OptionalExprList = Option<Vec<B<Expr>>>;
 pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
+pub type OptionalParamInfoList = Option<Vec<(String, TType)>>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TType{
@@ -140,13 +141,15 @@ pub struct FieldDec{
     ty : TType
 }
 
+//lst.where(move |x|{x.id == "id"}).first()
+
 pub enum Decl{
     //type tyId = ty
     TyDec(String, TType),
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
     //function id ( fieldDec; ) : tyId = exp
-    FunDec(String, Option<BTreeMap<String, TType>>, TType, Option<Vec<B<Expr>>>, TType)
+    FunDec(String, OptionalParamInfoList, TType, B<Expr>)
 }
 
 pub struct Local{

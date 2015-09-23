@@ -4,7 +4,7 @@ use std::mem;
 use std::collections::{HashMap};
 use parse::lexer::*;
 use parse::tokens::*;
-use ast::{Stmt, Expr, Block, TType, Local, Decl, OptionalTypeExprTupleList};
+use ast::{Stmt, Expr, Block, TType, Local, Decl, OptionalTypeExprTupleList, OptionalParamInfoList};
 use ast::Stmt::*;
 use ast::Expr::*;
 use ast::TType::*;
@@ -190,7 +190,7 @@ impl Parser{
                     self.parse_var_decl(&mut decls);
                 },
                 Token::Function => { //functiondec
-                    self.parse_function_decl();
+                    self.parse_function_decl(&mut decls);
                 },
 
                 //FIXME probably all these following guards are useless?
@@ -372,18 +372,21 @@ impl Parser{
                 let ret_type = self.parse_function_ret_type();
 
                 //parse body here
-                let body = self.expr();
+                let e = self.expr();
+                debug_assert!(e.is_some() == true, "Function body cannot be empty");
+                let body = e.unwrap().1;
 
-                decls.push(FunDec(id, ));
+                //function id ( fieldDec; ) : tyId = exp
+                decls.push(FunDec(id, field_decs, ret_type, body));
             },
             _ => panic!("Expected an id after 'function'")
         }
     }
 
-    fn parse_function_params_list(&mut self) -> Option<HashMap<String, TType>> {
+    fn parse_function_params_list(&mut self) -> OptionalParamInfoList {
         match self.lexer.get_token(){
             Token::LeftParen => {
-                let mut field_decs = HashMap::new();
+                let mut field_decs = Vec::new();
                 loop{
                     match self.lexer.get_token() {
                         Token::Comma => continue,
@@ -393,6 +396,8 @@ impl Parser{
                         Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
                         Token::Ident => {
                             let id = self.lexer.curr_string.clone();
+                            //FIXME should we verify duplicate params here?
+
                             match  self.lexer.get_token() {
                                 Token::Colon => {
                                     match self.lexer.get_token() {
@@ -400,7 +405,7 @@ impl Parser{
                                         Token::TokString |
                                         Token::Ident => {
                                             let ty = Self::get_ty_from_string(self.lexer.curr_string.as_str());
-                                            field_decs.insert(id, ty);
+                                            field_decs.push((id, ty));
                                         },
                                         _ => panic!("Expected type-id after ':'")
                                     }
@@ -713,8 +718,8 @@ fn test_field_decs_two_decs_int_string(){
     p.start_lexer();
     let m = p.parse_function_params_list().unwrap();
     assert_eq!(m.len(), 2);
-    assert_eq!(m[&"a".to_string()], TType::TInt32);
-    assert_eq!(m[&"b".to_string()], TType::TString);
+    assert_eq!(m[0].1, TType::TInt32);
+    assert_eq!(m[1].1, TType::TString);
 }
 
 #[test]
@@ -722,7 +727,7 @@ fn test_field_decs_one_dec_with_alias(){
     let mut p = Parser::new("f(a: myint)".to_string());
     p.start_lexer();
     let m = p.parse_function_params_list().unwrap();
-    assert_eq!(m[&"a".to_string()], TType::TCustom("myint".to_string()));
+    assert_eq!(m[0].1, TType::TCustom("myint".to_string()));
 }
 
 #[test]
