@@ -85,10 +85,6 @@ impl Parser{
                 //FIXME should we break?
                 break;
             },
-            /*Token::Break => {
-                let mut curr_block = self.block_stack.last_mut().unwrap();
-                curr_block.statements.push(Self::mk_break_stmt());
-            },*/
             /*Token::Do => {
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
@@ -386,7 +382,7 @@ impl Parser{
     fn parse_function_params_list(&mut self) -> OptionalParamInfoList {
         match self.lexer.get_token(){
             Token::LeftParen => {
-                let mut field_decs = Vec::new();
+                let mut field_decs : Vec<(String, TType)> = Vec::new();
                 loop{
                     match self.lexer.get_token() {
                         Token::Comma => continue,
@@ -397,7 +393,10 @@ impl Parser{
                         Token::Ident => {
                             let id = self.lexer.curr_string.clone();
                             //FIXME should we verify duplicate params here?
-
+                            //need multi_index kind of a structure from C++ Boost
+                            if field_decs.iter().find(|&x| x.0 == id).is_some(){
+                                panic!(format!("parameter '{}' found more than once", id));
+                            }
                             match  self.lexer.get_token() {
                                 Token::Colon => {
                                     match self.lexer.get_token() {

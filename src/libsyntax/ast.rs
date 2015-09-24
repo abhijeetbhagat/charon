@@ -129,8 +129,8 @@ pub enum Expr{
    DivExpr(B<Expr>, B<Expr>),
    ModExpr(B<Expr>, B<Expr>),
    BlockExpr(B<Block>),
-   IfElseExpr(B<Expr>, B<Block>, B<Expr>),
-   WhileExpr(B<Expr>, B<Block>),
+   IfElseExpr(B<Expr>, B<Expr>, B<Expr>),
+   WhileExpr(B<Expr>, B<Expr>),
    AssignExpr(String, B<Expr>),
    LabelExpr(String),
    GotoExpr(String)
