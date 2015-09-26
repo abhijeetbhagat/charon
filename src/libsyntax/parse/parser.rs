@@ -393,8 +393,11 @@ impl Parser{
                         Token::Ident => {
                             let id = self.lexer.curr_string.clone();
                             //FIXME should we verify duplicate params here?
-                            //need multi_index kind of a structure from C++ Boost
-                            if field_decs.iter().find(|&x| x.0 == id).is_some(){
+                            //HashMap and BTreeMap do not respect the order of insertions
+                            //which is required to set up args during call.
+                            //Vec will respect the order but cost O(n) for the verification
+                            //Need multi_index kind of a structure from C++ Boost
+                            if field_decs.iter().find(|&tup| tup.0 == id).is_some(){
                                 panic!(format!("parameter '{}' found more than once", id));
                             }
                             match  self.lexer.get_token() {
@@ -476,6 +479,14 @@ impl Parser{
         self.lexer.get_token();
         self.expr().unwrap()
     }
+}
+
+#[test]
+#[should_panic(expected="parameter 'a' found more than once")]
+fn test_parse_function_params_list_duplicate_params() {
+    let mut p = Parser::new("foo(a:int, a:int)".to_string());
+    p.start_lexer();
+    p.parse_function_params_list();
 }
 
 #[test]
