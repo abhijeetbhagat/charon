@@ -4,14 +4,17 @@ extern crate libc;
 use std::ptr;
 use std::ffi;
 
-use self::llvm::prelude::{LLVMContextRef, LLVMModuleRef, LLVMBuilderRef, LLVMValueRef};
+use self::llvm::prelude::{LLVMContextRef, LLVMModuleRef, LLVMBuilderRef, LLVMValueRef, LLVMTypeRef};
 use self::llvm::core::*;
 
 use std::collections::{HashMap};
 use std::mem;
 
-use syntax::ast::{Block, Expr, TType, OptionalTypeExprTupleList};
+use syntax::ast::{Block, Expr, Decl, TType, OptionalTypeExprTupleList};
 use syntax::ptr::{B};
+//FIXME this import is for integration testing purposes
+use syntax::parse::*;//{Parser};
+use syntax::parse::parser::{Parser};
 
 macro_rules! c_str_ptr {
     ($s:expr) => {
@@ -79,7 +82,7 @@ fn std_functions_call_factory(fn_name : &str,
                 debug_assert!(lst.len() == 1, "One arg should be passed to print()");
                 debug_assert!(lst[0].0 == TType::TString);
                 let str_arg = match &*lst[0].1 {
-                    &Expr::StringExpr(ref value) => c_str_ptr!(&**value),
+                    &Expr::StringExpr(ref value) => c_str_ptr!(&*(value.clone())),
                     _ => panic!("Expected a string expr")
                 };
 
@@ -92,7 +95,7 @@ fn std_functions_call_factory(fn_name : &str,
                                                      c_str_ptr!("printf"),
                                                      proto);
                 let gstr = LLVMBuildGlobalStringPtr(ctxt.builder,
-                                                    c_str_ptr!("abhi"),
+                                                    str_arg,
                                                     c_str_ptr!(".str"));
                 let mut pf_args = Vec::new();
                 pf_args.push(gstr);
@@ -104,6 +107,16 @@ fn std_functions_call_factory(fn_name : &str,
                                    c_str_ptr!("call")))
             },
             _ => {None}
+        }
+    }
+}
+
+fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
+    unsafe{
+        match ty {
+            &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
+            &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
+            _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
         }
     }
 }
@@ -127,6 +140,33 @@ impl IRBuilder for Expr{
                         _ => {Err("Should handle non std functions".to_string())}
                     }
                 },
+                &Expr::LetExpr(ref decls, ref expr) => {
+                    debug_assert!(!decls.is_empty(), "Declarations in a let block can't be empty");
+                    debug_assert!(expr.is_some(), "Expr in a let block can't be empty");
+                    for decl in &*decls {
+                        match decl {
+                            &Decl::FunDec(ref name, ref params, ref ty, ref body) => {
+                                let ty = get_llvm_type_for_ttype(ty, ctxt);
+                                let proto = LLVMFunctionType(ty, ptr::null_mut(), 0, 0);
+                                let function = LLVMAddFunction(ctxt.module,
+                                                               c_str_ptr!(&(*name.clone())),
+                                                               proto);
+                                let bb = LLVMAppendBasicBlockInContext(ctxt.context,
+                                                                       function,
+                                                                       c_str_ptr!("entry"));
+                                LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+                                //trans_expr(body, &mut ctxt);
+                                body.codegen(ctxt);
+                            },
+                            _ => panic!("More decl types should be covered")
+                        }
+
+                    }
+                    //trans_expr(&*expr.unwrap(), &mut ctxt);
+                    let e = &expr.as_ref().unwrap();
+                    let v = try!(e.codegen(ctxt));
+                    Ok(v)
+                }
                 _ => Err("error".to_string())
             }
         }
@@ -151,8 +191,6 @@ pub fn translate(expr : &Expr) -> Option<Context>{
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
         //add translated code as part of the block
-
-
     }
     Some(ctxt)
 }
@@ -165,11 +203,36 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
     }
 }
 
-#[test]
+//#[test]
 fn test_translate_std_print_call() {
     let ctxt = translate(&Expr::CallExpr("print".to_string(),
                                   Some(vec![(TType::TString,
                                              B(Expr::StringExpr("abhi".to_string())))])));
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+
+//#[test]
+fn test_prsr_bcknd_intgrtion_prnt_call() {
+    let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    // let ctxt = translate();&Expr::CallExpr("print".to_string(),
+    //                               Some(vec![(TType::TString,
+    //                                          B(Expr::StringExpr("abhi".to_string())))])));
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_let_blk() {
+    let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }

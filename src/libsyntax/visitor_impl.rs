@@ -109,7 +109,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
             },
 
-            &Expr::LetExpr(ref decls, ref expressions) => {
+            /*&Expr::LetExpr(ref decls, ref expressions) => {
                 self.sym_tab.push(("<marker>".to_string(), TType::TNil));
                 for dec in decls{ //decls is a &
                     self.visit_decl(dec);
@@ -128,7 +128,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                     self.sym_tab.pop();
                 }
                 self.sym_tab.pop();
-            }
+            },*/
+
+
             _ => {}
         }
     }

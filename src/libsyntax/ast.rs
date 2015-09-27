@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use std::collections::{HashMap};
+use std::collections::{HashMap, BTreeMap};
 use visit::{Visitor};
 use ptr::{B};
 use std::cell::RefCell;
@@ -20,7 +20,9 @@ impl SymbolVisitor for ExpressionEvaluator{
 }
 */
 pub type OptionalExprList = Option<Vec<B<Expr>>>;
+pub type OptionalExpr = Option<B<Expr>>;
 pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
+pub type OptionalParamInfoList = Option<Vec<(String, TType)>>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TType{
@@ -102,8 +104,23 @@ impl Block{
 }
 
 pub enum Expr{
-   //let dec+ in exp; end
-   LetExpr(Vec<Decl>, OptionalExprList),
+   //let dec+ in exp*; end
+   //note: instead of making a list of exprs as the grammar suggests,
+   //use a seq-expr. This will make parsing easier.
+   //i.e. we don't want this:
+   //let var v := 6
+   //in print(v);
+   //   print("a");
+   //   print("b")
+   //end
+   //instead we want this (note the parens):
+   //let var v:= 6
+   //in (print(v);
+   //    print("a");
+   //    print("b")
+   //   )
+   //end
+   LetExpr(Vec<Decl>, OptionalExpr),
    //id
    IdExpr(String),
    //nil
@@ -128,8 +145,8 @@ pub enum Expr{
    DivExpr(B<Expr>, B<Expr>),
    ModExpr(B<Expr>, B<Expr>),
    BlockExpr(B<Block>),
-   IfElseExpr(B<Expr>, B<Block>, B<Expr>),
-   WhileExpr(B<Expr>, B<Block>),
+   IfElseExpr(B<Expr>, B<Expr>, B<Expr>),
+   WhileExpr(B<Expr>, B<Expr>),
    AssignExpr(String, B<Expr>),
    LabelExpr(String),
    GotoExpr(String)
@@ -140,13 +157,15 @@ pub struct FieldDec{
     ty : TType
 }
 
+//lst.where(move |x|{x.id == "id"}).first()
+
 pub enum Decl{
     //type tyId = ty
     TyDec(String, TType),
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
-    //function id ( eldDec; ) : tyId = exp
-    FunDec(String, Option<Vec<FieldDec>>, TType, Option<Vec<B<Expr>>>, TType)
+    //function id ( fieldDec; ) : tyId = exp
+    FunDec(String, OptionalParamInfoList, TType, B<Expr>)
 }
 
 pub struct Local{
@@ -164,5 +183,4 @@ impl Local{
 pub enum Stmt{
      VarDeclStmt(Local),
      ExprStmt(B<Expr>)
-     //FnDecl()
 }

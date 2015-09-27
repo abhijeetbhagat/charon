@@ -4,7 +4,7 @@ use std::mem;
 use std::collections::{HashMap};
 use parse::lexer::*;
 use parse::tokens::*;
-use ast::{Stmt, Expr, Block, TType, Local, Decl, OptionalTypeExprTupleList};
+use ast::{Stmt, Expr, Block, TType, Local, Decl, OptionalTypeExprTupleList, OptionalParamInfoList};
 use ast::Stmt::*;
 use ast::Expr::*;
 use ast::TType::*;
@@ -78,16 +78,13 @@ impl Parser{
             Token::Break |
             Token::Let |
             Token::Function |
-            Token::Ident => {
+            Token::Ident |
+            Token::TokString => {
                 let expr = Some(self.expr().unwrap().1);
                 self.block_stack.last_mut().unwrap().expr = expr;
                 //FIXME should we break?
                 break;
             },
-            /*Token::Break => {
-                let mut curr_block = self.block_stack.last_mut().unwrap();
-                curr_block.statements.push(Self::mk_break_stmt());
-            },*/
             /*Token::Do => {
                 debug_assert!(self.block_stack.len() > 0, "No parent block on the stack");
                 self.block_stack.push(Block::new());
@@ -110,51 +107,8 @@ impl Parser{
       }
     }
 
-    // fn mk_var_decl(local : Local)->B<Stmt>{
-    //     B(VarDeclStmt(local))
-    // }
-    //
-    // fn mk_label_stmt(label : String)->B<Stmt>{
-    //     B(ExprStmt(Self::mk_label_expr(label)))
-    // }
-    //
-    // fn mk_label_expr(label: String)->B<Expr>{
-    //     B(LabelExpr(label))
-    // }
-    //
-    // fn mk_goto_stmt(label : String) -> B<Stmt>{
-    //     B(ExprStmt(Self::mk_goto_expr(label)))
-    // }
-    //
-    // fn mk_goto_expr(label : String) -> B<Expr>{
-    //     B(GotoExpr(label))
-    // }
-    //
-    // fn mk_break_stmt() -> B<Stmt>{
-    //     B(ExprStmt(B(BreakExpr)))
-    // }
-    //
-    // fn mk_block_stmt(block : Block) -> B<Stmt>{
-    //     B(Stmt::ExprStmt(Self::mk_block_expr(block)))
-    // }
-    //
-    // fn mk_block_expr(block : Block) -> B<Expr>{
-    //     B(Expr::BlockExpr(B(block)))
-    // }
-    //
-    // fn exprlist(&mut self){
-    //      self.expr();
-    //      match self.lexer.get_token(){
-    //         Token::Ident => {},
-    //         _ => {}
-    //      }
-    // }
-    //
-    // fn varlist(&mut self){
-    //
-    // }
-
-    fn expr(&mut self) -> Option<(TType, B<Expr>)> {
+    //FIXME temporarily pub for integration testing
+    pub fn expr(&mut self) -> Option<(TType, B<Expr>)> {
         match self.lexer.curr_token{
             Token::Nil => {
                 Some((TNil, B(NilExpr)))
@@ -166,12 +120,15 @@ impl Parser{
             Token::Ident => {
                 return self.parse_ident_expr()
             },
+            Token::TokString => {
+                return self.parse_string_expr()
+            },
             Token::Let =>{
                 return self.parse_let_expr()
             },
-            Token::Function => {
-                return self.parse_function_decl();
-            },
+            // Token::Function => {
+            //     return self.parse_function_decl()
+            // },
             Token::LeftParen => { //seqexpr
                 self.paren_stack.push('(');
 
@@ -212,7 +169,8 @@ impl Parser{
             //     //TODO mem::replace self.seq_expr_list with Vec::new and assign it to SeqExpr
             //     Some(B(SeqExpr(None)))
             // },
-            _ => panic!("FIXME: handle more patterns")
+            Token::End => panic!("Unexpected 'end'. Expected an expr."),
+            _ =>panic!("FIXME: handle more patterns")
         }
     }
 
@@ -230,7 +188,7 @@ impl Parser{
                     self.parse_var_decl(&mut decls);
                 },
                 Token::Function => { //functiondec
-
+                    self.parse_function_decl(&mut decls);
                 },
 
                 //FIXME probably all these following guards are useless?
@@ -247,14 +205,18 @@ impl Parser{
                 break;
             }
         }//let loop ends
-
+        let (_ty, _expr) =
         if self.lexer.curr_token == Token::In{
             //FIXME get the list of exprs and the type of the last expr in the list
+            self.lexer.get_token();
+            let expr = self.expr();
+            debug_assert!(expr.is_some(), "expr expected after 'in'");
+            expr.unwrap()
         }
         else{
             panic!("Expected 'in' after declarations");
-        }
-        return Some((TVoid, B(LetExpr(decls, None))))
+        };
+        return Some((_ty, B(LetExpr(decls, Some(_expr)))))
     }
 
     fn parse_type_decl(&mut self, decls : &mut Vec<Decl>){
@@ -364,6 +326,10 @@ impl Parser{
         Some((TVoid, B(IdentExpr(self.lexer.curr_string.clone()))))
     }
 
+    fn parse_string_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        Some((TString, B(StringExpr(self.lexer.curr_string.clone()))))
+    }
+
     fn parse_num_expr(&mut self) -> Option<(TType, B<Expr>)>{
         let num = self.lexer.curr_string.parse::<i32>().unwrap();
 
@@ -396,7 +362,7 @@ impl Parser{
         }
     }
 
-    fn parse_function_decl(&mut self) -> Option<(TType, B<Expr>)>{
+    fn parse_function_decl(&mut self, decls : &mut Vec<Decl>){
         match self.lexer.get_token(){
             Token::Ident => {
                 let id = self.lexer.curr_string.clone();
@@ -408,19 +374,21 @@ impl Parser{
                 let ret_type = self.parse_function_ret_type();
 
                 //parse body here
-                let body = self.expr();
+                let e = self.expr();
+                debug_assert!(e.is_some() == true, "Function body cannot be empty");
+                let body = e.unwrap().1;
 
+                //function id ( fieldDec; ) : tyId = exp
+                decls.push(FunDec(id, field_decs, ret_type, body));
             },
             _ => panic!("Expected an id after 'function'")
         }
-        //FIXME return the correct function return type and the whole body
-        None
     }
 
-    fn parse_function_params_list(&mut self) -> Option<HashMap<String, TType>> {
+    fn parse_function_params_list(&mut self) -> OptionalParamInfoList {
         match self.lexer.get_token(){
             Token::LeftParen => {
-                let mut field_decs = HashMap::new();
+                let mut field_decs : Vec<(String, TType)> = Vec::new();
                 loop{
                     match self.lexer.get_token() {
                         Token::Comma => continue,
@@ -430,6 +398,14 @@ impl Parser{
                         Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
                         Token::Ident => {
                             let id = self.lexer.curr_string.clone();
+                            //FIXME should we verify duplicate params here?
+                            //HashMap and BTreeMap do not respect the order of insertions
+                            //which is required to set up args during call.
+                            //Vec will respect the order but cost O(n) for the verification
+                            //Need multi_index kind of a structure from C++ Boost
+                            if field_decs.iter().find(|&tup| tup.0 == id).is_some(){
+                                panic!(format!("parameter '{}' found more than once", id));
+                            }
                             match  self.lexer.get_token() {
                                 Token::Colon => {
                                     match self.lexer.get_token() {
@@ -437,7 +413,7 @@ impl Parser{
                                         Token::TokString |
                                         Token::Ident => {
                                             let ty = Self::get_ty_from_string(self.lexer.curr_string.as_str());
-                                            field_decs.insert(id, ty);
+                                            field_decs.push((id, ty));
                                         },
                                         _ => panic!("Expected type-id after ':'")
                                     }
@@ -460,7 +436,8 @@ impl Parser{
             match self.lexer.get_token() {
                 Token::RightParen => break,
                 Token::Number |
-                Token::Ident => {
+                Token::Ident |
+                Token::TokString => {
                     let e = self.expr();
                     if e.is_some() {
                         args_list.push(e.unwrap());
@@ -490,6 +467,7 @@ impl Parser{
                 }
             }
             Token::Equals => {
+                self.lexer.get_token(); //eat '='
                 TVoid
             }
             _ => panic!("Expected ':' or '=' after the parameter list")
@@ -510,10 +488,33 @@ impl Parser{
     }
 }
 
-// #[test]
-// fn test_function_declaration() {
-//     let mut p = Parser::new("function foo()=print()");
-// }
+#[test]
+fn test_func_decl_no_params() {
+    let mut p = Parser::new("function foo()=print(\"ab\")".to_string());
+    p.start_lexer();
+    let mut decls = Vec::new();
+    p.parse_function_decl(&mut decls);
+    assert_eq!(decls.len(), 1);
+    match &decls[0]{
+        &FunDec(ref name, _, ref ty, ref b_expr) => {
+            assert_eq!(String::from("foo"), *name);
+            assert_eq!(TVoid, *ty);
+            match &**b_expr {
+                &CallExpr(ref name, _) => assert_eq!(String::from("print"), *name),
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+#[should_panic(expected="parameter 'a' found more than once")]
+fn test_parse_function_params_list_duplicate_params() {
+    let mut p = Parser::new("foo(a:int, a:int)".to_string());
+    p.start_lexer();
+    p.parse_function_params_list();
+}
 
 #[test]
 fn test_parse_call_expr_num_expr(){
@@ -563,6 +564,42 @@ fn test_parse_call_expr_ident_expr(){
                     assert_eq!(*ty, TVoid);
                     match &**b_expr {
                         &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_only_string_expr() {
+    let mut p = Parser::new("\"abc\"".to_string());
+    p.start_lexer();
+    assert_eq!(p.lexer.curr_token, Token::TokString);
+}
+
+#[test]
+fn test_parse_call_expr_string_arg(){
+    let mut p = Parser::new("f(\"abc\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[0usize];
+                    assert_eq!(*ty, TString);
+                    match &**b_expr {
+                        &StringExpr(ref value) => assert_eq!(*value, "abc"),
                         _ => {}
                     }
                 },
@@ -718,8 +755,8 @@ fn test_field_decs_two_decs_int_string(){
     p.start_lexer();
     let m = p.parse_function_params_list().unwrap();
     assert_eq!(m.len(), 2);
-    assert_eq!(m[&"a".to_string()], TType::TInt32);
-    assert_eq!(m[&"b".to_string()], TType::TString);
+    assert_eq!(m[0].1, TType::TInt32);
+    assert_eq!(m[1].1, TType::TString);
 }
 
 #[test]
@@ -727,7 +764,7 @@ fn test_field_decs_one_dec_with_alias(){
     let mut p = Parser::new("f(a: myint)".to_string());
     p.start_lexer();
     let m = p.parse_function_params_list().unwrap();
-    assert_eq!(m[&"a".to_string()], TType::TCustom("myint".to_string()));
+    assert_eq!(m[0].1, TType::TCustom("myint".to_string()));
 }
 
 #[test]
@@ -740,18 +777,18 @@ fn test_field_decs_no_closing_paren(){
 
 #[test]
 fn test_let_var_decl_returns_block() {
-    let mut p = Parser::new("let var a : int := 1 in end".to_string());
+    let mut p = Parser::new("let var a : int := 1 in 1+1 end".to_string());
     assert_eq!(p.run().is_some(), true);
 }
 
 #[test]
 fn test_let_var_decl_returns_let_expr() {
-    let mut p = Parser::new("let var a : int := 1 in end".to_string());
+    let mut p = Parser::new("let var a : int := 1 in a end".to_string());
     let b = p.run().unwrap();
     match *b.expr.unwrap(){
         LetExpr(ref v, ref o) => {
             assert_eq!(v.len(), 1);
-            assert_eq!(o.is_some(), false);
+            assert_eq!(o.is_some(), true);
             match v[0]{
                 VarDec(ref id, ref ty, ref e) => {
                     assert_eq!(*id, "a".to_string());
@@ -769,7 +806,7 @@ fn test_let_var_decl_returns_let_expr() {
 
 #[test]
 fn test_let_var_decl_sym_tab_count() {
-    let mut p = Parser::new("let var a : int := 1 in end".to_string());
+    let mut p = Parser::new("let var a : int := 1 in a end".to_string());
     let b = p.run().unwrap();
     assert_eq!(b.sym_tab.borrow().len(), 1);
     assert_eq!(b.sym_tab.borrow().get(&"a".to_string()), Some(&TInt32));
@@ -777,12 +814,12 @@ fn test_let_var_decl_sym_tab_count() {
 
 #[test]
 fn test_let_add_expr() {
-    let mut p = Parser::new("let var a : int := 1 + 3 + 1 in end".to_string());
+    let mut p = Parser::new("let var a : int := 1 + 3 + 1 in a end".to_string());
     let b = p.run().unwrap();
     match *b.expr.unwrap(){
         LetExpr(ref v, ref o) => {
             assert_eq!(v.len(), 1);
-            assert_eq!(o.is_some(), false);
+            assert_eq!(o.is_some(), true);
             match v[0]{
                 VarDec(ref id, ref ty, ref e) => {
                     assert_eq!(*id, "a".to_string());
@@ -820,7 +857,7 @@ fn test_let_add_expr() {
 
 #[test]
 fn test_parse_2_vars_in_let() {
-    let mut p = Parser::new("let var a : int := 1\nvar b : int:=2\n in end".to_string());
+    let mut p = Parser::new("let var a : int := 1\nvar b : int:=2\n in b end".to_string());
     let b = p.run().unwrap();
     match *b.expr.unwrap(){
         LetExpr(ref v, ref o) => {
