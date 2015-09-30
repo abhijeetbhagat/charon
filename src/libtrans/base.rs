@@ -26,7 +26,8 @@ pub struct Context{
     context : LLVMContextRef,
     module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    named_values : HashMap<String, LLVMValueRef>
+    sym_tab : HashMap<String, LLVMValueRef>,
+    bb_stack : Vec<*mut llvm::LLVMBasicBlock>
 }
 
 impl Context{
@@ -36,13 +37,15 @@ impl Context{
             let llvm_module = LLVMModuleCreateWithNameInContext(c_str_ptr!(module_name),
                                                                 llvm_context);
             let builder = LLVMCreateBuilderInContext(llvm_context);
-            let named_values = HashMap::new();
+            let sym_tab = HashMap::new();
+            let bb_stack = Vec::new();
 
             Context {
                 context : llvm_context,
                 module : llvm_module,
                 builder : builder,
-                named_values : named_values
+                sym_tab : sym_tab,
+                bb_stack : bb_stack
             }
         }
     }
@@ -135,9 +138,25 @@ impl IRBuilder for Expr{
                     Ok(LLVMBuildFAdd(ctxt.builder, ev1, ev2, "add_tmp".as_ptr() as *const i8))
                 },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
+                    //FIXME instead of directly passing to the factory
+                    //fn_name can be checked in a map that records names of std functions
                     match std_functions_call_factory(&*fn_name, optional_args, ctxt) {
                         Some(call) => Ok(call),
-                        _ => {Err("Should handle non std functions".to_string())}
+                        _ => {
+                            //user defined function call
+                            let mut pf_args = Vec::new();
+                            //FIXME pass args if present in the call
+                            if optional_args.is_some() {
+
+                            }
+                            //pf_args.push(gstr);
+                            let _fn = ctxt.sym_tab[&*fn_name];
+                            Ok(LLVMBuildCall(ctxt.builder,
+                                            _fn,
+                                            pf_args.as_mut_ptr(),
+                                            0,
+                                            c_str_ptr!("")))
+                        }
                     }
                 },
                 &Expr::LetExpr(ref decls, ref expr) => {
@@ -154,15 +173,20 @@ impl IRBuilder for Expr{
                                 let bb = LLVMAppendBasicBlockInContext(ctxt.context,
                                                                        function,
                                                                        c_str_ptr!("entry"));
+                                ctxt.sym_tab.insert(name.clone(), function);
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 body.codegen(ctxt);
+                                LLVMBuildRetVoid(ctxt.builder);
                             },
                             _ => panic!("More decl types should be covered")
                         }
 
                     }
                     //trans_expr(&*expr.unwrap(), &mut ctxt);
+                    //FIXME should the previous bb be popped here?
+                    let bb = ctxt.bb_stack.pop().unwrap();
+                    LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                     let e = &expr.as_ref().unwrap();
                     let v = try!(e.codegen(ctxt));
                     Ok(v)
@@ -186,6 +210,7 @@ pub fn translate(expr : &Expr) -> Option<Context>{
                                                function,
                                                c_str_ptr!("entry"));
         LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+        ctxt.bb_stack.push(bb);
         trans_expr(expr, &mut ctxt);
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
