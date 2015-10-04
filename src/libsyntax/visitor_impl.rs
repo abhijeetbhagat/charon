@@ -158,7 +158,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                 if self.ty != *ret_type{
                     panic!("Return type doesn't match with the type of the last expression.");
                 }
-                self.sym_tab.push((id.clone(), Some(B(Binding::FuncBinding(self.ty.clone())))));
+                self.sym_tab.push((id.clone(), Some(B(Binding::FuncBinding(ret_type.clone())))));
             },
             &Decl::TypeDec(ref id, ref ty) => {
                 self.sym_tab.push((id.clone(), Some(B(Binding::TypeBinding(self.ty.clone())))));
