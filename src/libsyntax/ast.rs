@@ -35,6 +35,7 @@ pub enum TType{
     TVoid
 }
 
+///FIXME remove this
 pub enum TypeValue{
     TInt32(i32),
     TString(String),
@@ -53,6 +54,13 @@ impl fmt::Display for TType{
             TType::TVoid => f.write_str("Void")
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Binding{
+    TypeBinding(TType),
+    VarBinding(TType),
+    FuncBinding(TType)
 }
 
 pub trait Statement{
@@ -161,13 +169,14 @@ pub struct FieldDec{
 
 pub enum Decl{
     //type tyId = ty
-    TyDec(String, TType),
+    TypeDec(String, TType),
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
     //function id ( fieldDec; ) : tyId = exp
     FunDec(String, OptionalParamInfoList, TType, B<Expr>)
 }
 
+//FIXME remove this
 pub struct Local{
     pub ident : String,
     pub ty : TType,
@@ -180,6 +189,7 @@ impl Local{
     }
 }
 
+//FIXME remove this
 pub enum Stmt{
      VarDeclStmt(Local),
      ExprStmt(B<Expr>)

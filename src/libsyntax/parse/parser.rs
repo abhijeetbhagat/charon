@@ -226,9 +226,9 @@ impl Parser{
                 match self.lexer.get_token(){
                     Token::Equals => {
                         match self.lexer.get_token(){
-                            Token::Int => decls.push(TyDec(id, TInt32)),
-                            Token::TokString => decls.push(TyDec(id, TString)),
-                            Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
+                            Token::Int => decls.push(TypeDec(id, TInt32)),
+                            Token::TokString => decls.push(TypeDec(id, TString)),
+                            Token::Ident => decls.push(TypeDec(id, TCustom(self.lexer.curr_string.clone()))),
                             Token::Array => {
                                 match self.lexer.get_token() {
                                     Token::Of => {
