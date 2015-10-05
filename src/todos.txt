@@ -45,3 +45,11 @@ end
 
 **Use expr() instead of evaluable_expr()
 **Allow underscores in idents
+
+type-checking scenarios:
+-type mismatch in assignments, func-decs, var-decs
+-while expr type must be int, body type must be void
+-var declared with type annotation but left hand expr type is different
+-function call return type is different from left hand var type
+-function return type is different from type of the last expression
+-type mismatch in math expressions - plus, minus, etc

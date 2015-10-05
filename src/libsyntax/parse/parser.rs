@@ -161,6 +161,9 @@ impl Parser{
                 let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
                 Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
+            Token::While => {
+                return self.parse_while_expr()
+            },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
             //         panic!("Mismatched parenthesis");
@@ -485,6 +488,17 @@ impl Parser{
     fn get_nxt_and_parse(&mut self) -> (TType, B<Expr>){
         self.lexer.get_token();
         self.expr().unwrap()
+    }
+
+    fn parse_while_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let opt_tup = self.expr();
+        match self.lexer.get_token() {
+            Token::Do => {
+                let (ty, body) = self.expr().unwrap();
+                Some((ty, B(WhileExpr(opt_tup.unwrap().1, body))))
+            },
+            _ => panic!("Expected 'do' after the while expression")
+        }
     }
 }
 
