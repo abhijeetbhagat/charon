@@ -500,6 +500,24 @@ impl Parser{
             _ => panic!("Expected 'do' after the while expression")
         }
     }
+
+    fn parse_if_then_else_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let opt_tup = self.expr().unwrap();
+        match self.lexer.get_token() {
+            Token::Then => {
+                let (_, then_expr) = self.expr().unwrap();
+                match self.lexer.get_token() {
+                    Token::Else => {
+                        let (_, else_body) = self.expr().unwrap();
+                        return Some((TVoid, B(IfThenElseExpr(opt_tup.1, then_expr, else_body))))
+                    }
+                    _ => {} //this isn't an if-then-else expr
+                }
+                Some((TVoid, B(IfThenExpr(opt_tup.1, then_expr))))
+            },
+            _ => panic!("Expected then after the if expression")
+        }
+    }
 }
 
 #[test]
