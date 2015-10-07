@@ -156,6 +156,7 @@ pub enum Expr{
    IfThenExpr(B<Expr>, B<Expr>),
    IfThenElseExpr(B<Expr>, B<Expr>, B<Expr>),
    WhileExpr(B<Expr>, B<Expr>),
+   ForExpr(String, B<Expr>, B<Expr>, B<Expr>),
    AssignExpr(String, B<Expr>),
    LabelExpr(String),
    GotoExpr(String)

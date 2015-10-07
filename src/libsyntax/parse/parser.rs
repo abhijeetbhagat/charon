@@ -164,6 +164,9 @@ impl Parser{
             Token::While => {
                 return self.parse_while_expr()
             },
+            Token::For => {
+               return self.parse_for_expr()
+            },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
             //         panic!("Mismatched parenthesis");
@@ -518,6 +521,36 @@ impl Parser{
             _ => panic!("Expected then after the if expression")
         }
     }
+
+    fn parse_for_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        match self.lexer.get_token(){
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token(){
+                   Token::ColonEquals => {
+                       let (_, id_expr) = self.expr().unwrap();
+                       match self.lexer.get_token(){
+                           Token::To => {
+                               let (_, to_expr) = self.expr().unwrap();
+                               match self.lexer.get_token(){
+                                   Token::Do => {
+                                       let (_, do_expr) = self.expr().unwrap();
+                                       return Some((TVoid, B(ForExpr(id, id_expr, to_expr, do_expr))))
+                                   },
+                                   _ => panic!("Expected 'do' after expression")
+                               }
+                           },
+                           _ => panic!("Expected 'to' after expression")
+                       }
+
+                   },
+                   _ => panic!("Expected := after ident in a for construct")
+                }
+            },
+            _ => panic!("Expected an ident after 'for'")
+        }
+    }
+        
 }
 
 #[test]
