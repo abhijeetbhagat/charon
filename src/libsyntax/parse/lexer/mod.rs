@@ -202,6 +202,7 @@ impl Lexer{
            "nil"     => Token::Nil,
            "int"    => Token::Int,
            "string" => Token::TokString,
+           "to" => Token::To,
             _ => Token::Ident
         }
     }

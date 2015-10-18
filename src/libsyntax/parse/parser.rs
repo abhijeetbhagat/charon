@@ -161,6 +161,12 @@ impl Parser{
                 let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
                 Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
+            Token::While => {
+                return self.parse_while_expr()
+            },
+            Token::For => {
+               return self.parse_for_expr()
+            },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
             //         panic!("Mismatched parenthesis");
@@ -226,9 +232,9 @@ impl Parser{
                 match self.lexer.get_token(){
                     Token::Equals => {
                         match self.lexer.get_token(){
-                            Token::Int => decls.push(TyDec(id, TInt32)),
-                            Token::TokString => decls.push(TyDec(id, TString)),
-                            Token::Ident => decls.push(TyDec(id, TCustom(self.lexer.curr_string.clone()))),
+                            Token::Int => decls.push(TypeDec(id, TInt32)),
+                            Token::TokString => decls.push(TypeDec(id, TString)),
+                            Token::Ident => decls.push(TypeDec(id, TCustom(self.lexer.curr_string.clone()))),
                             Token::Array => {
                                 match self.lexer.get_token() {
                                     Token::Of => {
@@ -486,6 +492,65 @@ impl Parser{
         self.lexer.get_token();
         self.expr().unwrap()
     }
+
+    fn parse_while_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let opt_tup = self.expr();
+        match self.lexer.get_token() {
+            Token::Do => {
+                let (ty, body) = self.expr().unwrap();
+                Some((ty, B(WhileExpr(opt_tup.unwrap().1, body))))
+            },
+            _ => panic!("Expected 'do' after the while expression")
+        }
+    }
+
+    fn parse_if_then_else_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        let opt_tup = self.expr().unwrap();
+        match self.lexer.get_token() {
+            Token::Then => {
+                let (_, then_expr) = self.expr().unwrap();
+                match self.lexer.get_token() {
+                    Token::Else => {
+                        let (_, else_body) = self.expr().unwrap();
+                        return Some((TVoid, B(IfThenElseExpr(opt_tup.1, then_expr, else_body))))
+                    }
+                    _ => {} //this isn't an if-then-else expr
+                }
+                Some((TVoid, B(IfThenExpr(opt_tup.1, then_expr))))
+            },
+            _ => panic!("Expected then after the if expression")
+        }
+    }
+
+    fn parse_for_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        match self.lexer.get_token(){
+            Token::Ident => {
+                let id = self.lexer.curr_string.clone();
+                match self.lexer.get_token(){
+                   Token::ColonEquals => {
+                       let (_, id_expr) = self.expr().unwrap();
+                       match self.lexer.get_token(){
+                           Token::To => {
+                               let (_, to_expr) = self.expr().unwrap();
+                               match self.lexer.get_token(){
+                                   Token::Do => {
+                                       let (_, do_expr) = self.expr().unwrap();
+                                       return Some((TVoid, B(ForExpr(id, id_expr, to_expr, do_expr))))
+                                   },
+                                   _ => panic!("Expected 'do' after expression")
+                               }
+                           },
+                           _ => panic!("Expected 'to' after expression")
+                       }
+
+                   },
+                   _ => panic!("Expected := after ident in a for construct")
+                }
+            },
+            _ => panic!("Expected an ident after 'for'")
+        }
+    }
+        
 }
 
 #[test]
