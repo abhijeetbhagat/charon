@@ -145,23 +145,28 @@ impl<'a> Visitor<'a> for TypeChecker{
     }
 
     fn visit_decl(&mut self, decl : &'a Decl){
+        macro_rules! store_into_sym_tab {
+            ($self_ : ident, $i : ident, $p : path) => {
+                $self_.sym_tab.push(($i.clone(), Some(B($p($self_.ty.clone())))));
+            }
+        }
         match decl{
             &Decl::VarDec(ref id, ref ty, ref expr) => {
                 self.visit_expr(expr);
                 if *ty != self.ty{
                     panic!("Types mismatch");
                 }
-                self.sym_tab.push((id.clone(), Some(B(Binding::VarBinding(self.ty.clone())))));
+                store_into_sym_tab!(self, id, Binding::VarBinding);
             },
             &Decl::FunDec(ref id, ref params, ref ret_type, ref body) => {
                 self.visit_expr(&body);
                 if self.ty != *ret_type{
                     panic!("Return type doesn't match with the type of the last expression.");
                 }
-                self.sym_tab.push((id.clone(), Some(B(Binding::FuncBinding(ret_type.clone())))));
+                store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
             &Decl::TypeDec(ref id, ref ty) => {
-                self.sym_tab.push((id.clone(), Some(B(Binding::TypeBinding(self.ty.clone())))));
+                store_into_sym_tab!(self, id, Binding::TypeBinding);
             }
         }
     }
