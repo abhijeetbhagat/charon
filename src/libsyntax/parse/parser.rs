@@ -384,7 +384,7 @@ impl Parser{
                 debug_assert!(e.is_some() == true, "Function body cannot be empty");
                 let body = e.unwrap().1;
 
-                //function id ( fieldDec; ) : tyId = exp
+                //function id ( fieldDec; ) : tyId = exp
                 decls.push(FunDec(id, field_decs, ret_type, body));
             },
             _ => panic!("Expected an id after 'function'")

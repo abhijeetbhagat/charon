@@ -34,12 +34,17 @@ impl Lexer{
     pub fn get_token(&mut self) -> Token{
         //do not loop over the match
         //this will cause a problem for ident storing (curr_string.clear())
+        macro_rules! get_cur_tok_and_eat{
+            //without the double curly braces, compiler complains saying everything after the
+            //first statement will be ignored. So we tell it to treat the body as a block
+            ($e : path) => {{self.curr_token = $e; self.get_char(); return self.curr_token;}}
+        }
         match self.curr_char{
-            '+' => { self.curr_token = Token::Plus; self.get_char(); return self.curr_token},
-            '-' => { self.curr_token = Token::Minus; self.get_char(); return self.curr_token},
-            '*' => { self.curr_token = Token::Mul; self.get_char(); return self.curr_token},
-            '&' => { self.curr_token = Token::LogAnd; self.get_char(); return self.curr_token},
-            '|' => { self.curr_token = Token::LogOr; self.get_char(); return self.curr_token},
+            '+' => { get_cur_tok_and_eat!(Token::Plus)},
+            '-' => { get_cur_tok_and_eat!(Token::Minus)},
+            '*' => { get_cur_tok_and_eat!(Token::Mul)},
+            '&' => { get_cur_tok_and_eat!(Token::LogAnd)},
+            '|' => { get_cur_tok_and_eat!(Token::LogOr)},
             '>' => {
                 self.curr_token =
                 if self.curr_char == '=' {
@@ -75,13 +80,13 @@ impl Lexer{
                 self.curr_token = Token::Equals;
                 return self.curr_token
             },
-            '{' => { self.curr_token = Token::LeftCurly; self.get_char(); return self.curr_token},
-            '}' => { self.curr_token = Token::RightCurly; self.get_char(); return self.curr_token},
-            '[' => { self.curr_token = Token::LeftSquare; self.get_char(); return self.curr_token},
-            ']' => { self.curr_token = Token::RightSquare; self.get_char(); return self.curr_token},
-            '(' => { self.curr_token = Token::LeftParen; self.get_char(); return self.curr_token},
-            ')' => { self.curr_token = Token::RightParen; self.get_char(); return self.curr_token},
-            ',' => { self.curr_token = Token::Comma; self.get_char(); return self.curr_token},
+            '{' => { get_cur_tok_and_eat!(Token::LeftCurly)}, 
+            '}' => { get_cur_tok_and_eat!(Token::RightCurly)},
+            '[' => { get_cur_tok_and_eat!(Token::LeftSquare)},
+            ']' => { get_cur_tok_and_eat!(Token::RightSquare)},
+            '(' => { get_cur_tok_and_eat!(Token::LeftParen)},
+            ')' => { get_cur_tok_and_eat!(Token::RightParen)},
+            ',' => { get_cur_tok_and_eat!(Token::Comma)},
             ':' => {
                 self.get_char();
                 self.curr_token =
