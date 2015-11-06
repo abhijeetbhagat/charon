@@ -414,4 +414,26 @@ mod tests {
         l.get_token();
         assert_eq!(l.curr_string, "ab\\".to_string());
     }
+
+    #[test]
+    fn test_if_then(){
+        let mut l = Lexer::new("if 1 then 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::If);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Then);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test]
+    fn test_if_then_else(){
+        let mut l = Lexer::new("if 1 then 1 else 0".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::If);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Then);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Else);
+        assert_eq!(l.get_token(), Token::Number);
+    }
 }

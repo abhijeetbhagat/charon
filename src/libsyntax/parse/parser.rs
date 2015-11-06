@@ -161,6 +161,9 @@ impl Parser{
                 let expr_list = mem::replace(&mut self.seq_expr_list, Vec::new());
                 Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
+            Token::If => {
+                return self.parse_if_then_else_expr()
+            },
             Token::While => {
                 return self.parse_while_expr()
             },
@@ -505,16 +508,21 @@ impl Parser{
     }
 
     fn parse_if_then_else_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        //eat 'if'
+        self.lexer.get_token();
+        //parse the conditional expr
         let opt_tup = self.expr().unwrap();
-        match self.lexer.get_token() {
+        match self.lexer.curr_token {
             Token::Then => {
+                self.lexer.get_token(); //advance to the next token
                 let (_, then_expr) = self.expr().unwrap();
-                match self.lexer.get_token() {
+                match self.lexer.curr_token {
                     Token::Else => {
+                        self.lexer.get_token(); //advance to the next token
                         let (_, else_body) = self.expr().unwrap();
                         return Some((TVoid, B(IfThenElseExpr(opt_tup.1, then_expr, else_body))))
                     }
-                    _ => {} //this isn't an if-then-else expr
+                    _ => {} //FIXME this isn't an if-then-else expr. should we do something here?
                 }
                 Some((TVoid, B(IfThenExpr(opt_tup.1, then_expr))))
             },
@@ -1021,4 +1029,61 @@ fn test_get_ty(){
     assert_eq!(Parser::get_ty_from_string("int"), TInt32);
     assert_eq!(Parser::get_ty_from_string("string"), TString);
     assert_eq!(Parser::get_ty_from_string("index_type"), TCustom("index_type".to_string()));
+}
+
+#[test]
+fn test_if_then_expr(){
+    let mut p = Parser::new("if 1 then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, ref then_expr) => {
+            match(**conditional_expr){
+                NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => {}
+            }
+        },
+        _ => {}
+    } 
+}
+
+#[test]
+fn test_if_then_else_expr(){
+    let mut p = Parser::new("if 1 then 1 else 0".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+            match(**conditional_expr){
+                NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => {}
+            }
+            match(**else_expr){
+                NumExpr(ref n) => assert_eq!(*n, 0),
+                _ => {}
+            }
+        },
+        _ => {}
+    } 
+
+}
+
+#[test]
+#[should_panic(expected="Type mismatch between the then and else expressions")]
+fn test_if_then_else_expr_fail_string_return(){
+    let mut p = Parser::new("if 1 then 1 else \"abhi\"".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenElseExpr(_, _, ref else_expr) => {
+            match(**else_expr){
+                StringExpr(_) => panic!("Type mismatch between the then and else expressions"),
+                _ =>  panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
 }
