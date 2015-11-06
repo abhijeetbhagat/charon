@@ -538,12 +538,15 @@ impl Parser{
                 let id = self.lexer.curr_string.clone();
                 match self.lexer.get_token(){
                    Token::ColonEquals => {
+                       self.lexer.get_token();
                        let (_, id_expr) = self.expr().unwrap();
-                       match self.lexer.get_token(){
+                       match self.lexer.curr_token{
                            Token::To => {
+                               self.lexer.get_token();
                                let (_, to_expr) = self.expr().unwrap();
-                               match self.lexer.get_token(){
+                               match self.lexer.curr_token{
                                    Token::Do => {
+                                       self.lexer.get_token();
                                        let (_, do_expr) = self.expr().unwrap();
                                        return Some((TVoid, B(ForExpr(id, id_expr, to_expr, do_expr))))
                                    },
@@ -1103,6 +1106,36 @@ fn test_while_expr(){
             }
             match(**do_expr){
                 NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_for_expr(){
+    let mut p = Parser::new("for id:= 1 to 10 do 1+1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        ForExpr(ref id, ref from_expr, ref to_expr, ref do_expr) => {
+            assert_eq!(*id, String::from("id"));
+            match(**from_expr){
+                NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => panic!("This will not execute")
+            }
+            match(**to_expr){
+                NumExpr(ref n) => assert_eq!(*n, 10),
+                _ => panic!("This will not execute")
+            }
+            match(**do_expr){
+                AddExpr(ref l, ref r) => {
+                    match(**l){
+                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        _ => {}
+                    }
+                },
                 _ => panic!("This will not execute")
             }
         },

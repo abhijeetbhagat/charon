@@ -53,3 +53,5 @@ type-checking scenarios:
 -function call return type is different from left hand var type
 -function return type is different from type of the last expression
 -type mismatch in math expressions - plus, minus, etc
+
+Macroize stuff in parse_for_expr

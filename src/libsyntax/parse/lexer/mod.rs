@@ -448,4 +448,18 @@ mod tests {
         assert_eq!(l.get_token(), Token::Plus);
         assert_eq!(l.get_token(), Token::Number);
     }
+
+    #[test] 
+    fn test_for_loop(){
+        let mut l = Lexer::new("for id := 1 to 9 do 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::For);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::ColonEquals);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::To);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Do);
+        assert_eq!(l.get_token(), Token::Number);
+    }
 }
