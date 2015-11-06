@@ -436,4 +436,16 @@ mod tests {
         assert_eq!(l.get_token(), Token::Else);
         assert_eq!(l.get_token(), Token::Number);
     }
+
+    #[test]
+    fn test_while_block(){
+        let mut l = Lexer::new("while 1 do 1+1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::While);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Do);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Plus);
+        assert_eq!(l.get_token(), Token::Number);
+    }
 }

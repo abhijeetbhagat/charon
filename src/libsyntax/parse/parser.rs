@@ -497,9 +497,11 @@ impl Parser{
     }
 
     fn parse_while_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        self.lexer.get_token();
         let opt_tup = self.expr();
-        match self.lexer.get_token() {
+        match self.lexer.curr_token {
             Token::Do => {
+                self.lexer.get_token();
                 let (ty, body) = self.expr().unwrap();
                 Some((ty, B(WhileExpr(opt_tup.unwrap().1, body))))
             },
@@ -1082,6 +1084,26 @@ fn test_if_then_else_expr_fail_string_return(){
             match(**else_expr){
                 StringExpr(_) => panic!("Type mismatch between the then and else expressions"),
                 _ =>  panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_while_expr(){
+    let mut p = Parser::new("while 1 do 1".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        WhileExpr(ref conditional_expr, ref do_expr) => {
+            match(**conditional_expr){
+                NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => panic!("This will not execute")
+            }
+            match(**do_expr){
+                NumExpr(ref n) => assert_eq!(*n, 1),
+                _ => panic!("This will not execute")
             }
         },
         _ => panic!("This will not execute")
