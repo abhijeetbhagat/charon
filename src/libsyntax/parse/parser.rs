@@ -498,12 +498,15 @@ impl Parser{
 
     fn parse_while_expr(&mut self) -> Option<(TType, B<Expr>)>{
         self.lexer.get_token();
-        let opt_tup = self.expr();
+        let opt_tup = self.expr().unwrap();
+        if opt_tup.0 != TInt32{
+            self.lexer.get_token();
+        }
         match self.lexer.curr_token {
             Token::Do => {
                 self.lexer.get_token();
                 let (ty, body) = self.expr().unwrap();
-                Some((ty, B(WhileExpr(opt_tup.unwrap().1, body))))
+                Some((ty, B(WhileExpr(opt_tup.1, body))))
             },
             _ => panic!("Expected 'do' after the while expression")
         }
@@ -1157,6 +1160,42 @@ fn test_while_expr(){
     } 
 }
 
+#[test]
+fn test_while_expr_with_string_as_conditional_expr(){
+    let mut p = Parser::new("while \"abhi\" do 1".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        WhileExpr(ref conditional_expr, ref do_expr) => {
+            match(**conditional_expr){
+                StringExpr(ref s) => assert_eq!(*s, "abhi"),
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_while_expr_with_addexpr_as_conditional_expr(){
+    let mut p = Parser::new("while 1+1 do 1".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        WhileExpr(ref conditional_expr, ref do_expr) => {
+            match(**conditional_expr){
+                AddExpr(ref l, ref r) => {
+                    match **l{
+                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        _ => {}
+                    }
+                },
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
 #[test]
 fn test_for_expr(){
     let mut p = Parser::new("for id:= 1 to 10 do 1+1".to_string()); 
