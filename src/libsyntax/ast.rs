@@ -146,7 +146,6 @@ pub enum Expr{
    //( exp*; )
    SeqExpr(OptionalExprList),
 
-   IdentExpr(String),
    AddExpr(B<Expr>, B<Expr>),
    SubExpr(B<Expr>, B<Expr>),
    MulExpr(B<Expr>, B<Expr>),

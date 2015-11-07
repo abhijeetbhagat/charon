@@ -86,7 +86,7 @@ impl<'a> Visitor<'a> for TypeChecker{
             &Expr::NilExpr => self.ty = TType::TString,
             &Expr::NumExpr(_) => self.ty = TType::TInt32,
             &Expr::StringExpr(_) => self.ty = TType::TString,
-            &Expr::IdentExpr(ref id) =>{
+            &Expr::IdExpr(ref id) =>{
                 //search in the symtab for id's existence and get the type
                 let mut found = false;
                 for &(ref _id, ref _binding) in &self.sym_tab{ //iterator returns a ref to tuple while iterating; so &(_,_) has to be used
@@ -193,7 +193,7 @@ impl<'a> Visitor<'a> for PrettyPrintVisitor{
             &Expr::NumExpr(value) => {
                 println!(" Num({}) ", value);
             },
-            &Expr::IdentExpr(ref value) => {
+            &Expr::IdExpr(ref value) => {
                 println!(" Ident({}) ", value);
             },
             _ => {}
@@ -293,7 +293,7 @@ fn test_ty_set_for_num() {
 fn test_ty_set_for_int_id() {
     let mut v = TypeChecker::new();
     v.sym_tab.push(("a".to_string(), Some(B(Binding::VarBinding(TType::TInt32)))));
-    v.visit_expr(&Expr::IdentExpr("a".to_string()));
+    v.visit_expr(&Expr::IdExpr("a".to_string()));
     assert_eq!(TType::TInt32, v.ty);
 }
 
