@@ -1054,6 +1054,27 @@ fn test_if_then_expr(){
 }
 
 #[test]
+fn test_if_then_with_add_as_conditional_expr(){
+    let mut p = Parser::new("if 1+1 then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, ref then_expr) => {
+            match(**conditional_expr){
+                AddExpr(ref l, ref r) => {
+                    match **l{
+                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    } 
+}
+#[test]
 fn test_if_then_else_expr(){
     let mut p = Parser::new("if 1 then 1 else 0".to_string());
     p.start_lexer();
