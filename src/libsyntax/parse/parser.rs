@@ -314,7 +314,6 @@ impl Parser{
                     IdExpr(ref fn_name) => return Some((TVoid, B(CallExpr(fn_name.clone(), args_list)))),
                     _ => {}
                 };
-
             },
             Token::Plus => {
                 let (t, op2) = self.get_nxt_and_parse();
@@ -329,10 +328,10 @@ impl Parser{
             },
             _ => {
                 //TVoid because we dont know the type of the identifier yet.
-                return Some((TVoid, B(IdExpr(self.lexer.curr_string.clone()))))
+                return Some((TVoid, op1))
             }
         }
-        Some((TVoid, B(IdentExpr(self.lexer.curr_string.clone()))))
+        Some((TVoid, op1)) 
     }
 
     fn parse_string_expr(&mut self) -> Option<(TType, B<Expr>)>{
@@ -499,7 +498,10 @@ impl Parser{
     fn parse_while_expr(&mut self) -> Option<(TType, B<Expr>)>{
         self.lexer.get_token();
         let opt_tup = self.expr().unwrap();
-        if opt_tup.0 != TInt32{
+        //Because ident-expr parsing advances to the next token
+        //and returns a TVoid, there is an extra check on the
+        //curr_token
+        if opt_tup.0 != TInt32 && self.lexer.curr_token != Token::Do{
             self.lexer.get_token();
         }
         match self.lexer.curr_token {
@@ -1189,6 +1191,24 @@ fn test_while_expr_with_addexpr_as_conditional_expr(){
                         NumExpr(ref n) => assert_eq!(*n, 1),
                         _ => {}
                     }
+                },
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_while_expr_with_ident_as_conditional_expr(){
+    let mut p = Parser::new("while a do 1".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        WhileExpr(ref conditional_expr, ref do_expr) => {
+            match(**conditional_expr){
+                IdExpr(ref id) => {
+                    assert_eq!(*id, String::from("a"));
                 },
                 _ => panic!("This will not execute")
             }
