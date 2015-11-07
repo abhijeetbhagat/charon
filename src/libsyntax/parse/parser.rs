@@ -514,6 +514,12 @@ impl Parser{
         self.lexer.get_token();
         //parse the conditional expr
         let opt_tup = self.expr().unwrap();
+        //since only arithmetic expr parsing advances to point to the next token,
+        //we do a typecheck in order to determine if we match on the curr_token
+        //or call get_token()
+        if opt_tup.0 != TInt32{
+            self.lexer.get_token();
+        }
         match self.lexer.curr_token {
             Token::Then => {
                 self.lexer.get_token(); //advance to the next token
@@ -1068,6 +1074,23 @@ fn test_if_then_with_add_as_conditional_expr(){
                         _ => {}
                     }
                 },
+                _ => {}
+            }
+        },
+        _ => {}
+    } 
+}
+
+#[test]
+fn test_if_then_with_string_as_conditional_expr(){
+    let mut p = Parser::new("if \"abhi\" then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, ref then_expr) => {
+            match(**conditional_expr){
+                StringExpr(ref s) => assert_eq!(*s, String::from("abhi")),
                 _ => {}
             }
         },
