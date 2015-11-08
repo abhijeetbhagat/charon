@@ -623,7 +623,7 @@ fn test_parse_call_expr_num_expr(){
                     let (ref ty, ref b_expr) = l[0usize];
                     assert_eq!(*ty, TInt32);
                     match &**b_expr {
-                        &NumExpr(ref n) => assert_eq!(*n, 1),
+                        &NumExpr(n) => assert_eq!(n, 1),
                         _ => {}
                     }
                 },
@@ -748,11 +748,11 @@ fn test_parse_call_expr_add_expr(){
                     match &**b_expr {
                         &AddExpr(ref op1, ref op2) => {
                             match &**op1 {
-                                &NumExpr(ref n) => assert_eq!(*n, 1),
+                                &NumExpr(n) => assert_eq!(n, 1),
                                 _ => {}
                             }
                             match &**op2 {
-                                &NumExpr(ref n) => assert_eq!(*n, 2),
+                                &NumExpr(n) => assert_eq!(n, 2),
                                 _ => {}
                             }
                         },
@@ -882,7 +882,7 @@ fn test_let_var_decl_returns_let_expr() {
                 VarDec(ref id, ref ty, ref e) => {
                     assert_eq!(*id, "a".to_string());
                     match **e{ //**e means deref deref B<T> which results in T
-                        NumExpr(ref n) => assert_eq!(1, *n),
+                        NumExpr(n) => assert_eq!(1, n),
                         _ => {}
                     }
                 },
@@ -915,19 +915,19 @@ fn test_let_add_expr() {
                     match **e{ //**e means deref deref B<T> which results in T
                         AddExpr(ref e1, ref e2) => {
                             match **e1{
-                                NumExpr(ref n) => assert_eq!(*n, 1),
+                                NumExpr(n) => assert_eq!(n, 1),
                                 _ => panic!("num expr expected")
                             }
 
                             match **e2{
                                 AddExpr(ref e1, ref e2) => {
                                     match **e1{
-                                        NumExpr(ref n) => assert_eq!(*n, 3),
+                                        NumExpr(n) => assert_eq!(n, 3),
                                         _ => panic!("num expr expected")
                                     }
 
                                     match **e2{
-                                        NumExpr(ref n) => assert_eq!(*n, 1),
+                                        NumExpr(n) => assert_eq!(n, 1),
                                         _ => panic!("num expr expected")
                                     }
                                 },
@@ -972,8 +972,8 @@ fn test_1_seq_expr_last_type_int() {
         SeqExpr(ref o) => {
             assert_eq!(o.as_ref().unwrap().len(), 1);
             match *o.as_ref().unwrap()[0]{
-                NumExpr(ref n) => {
-                    assert_eq!(*n, 1);
+                NumExpr(n) => {
+                    assert_eq!(n, 1);
                 },
                 _ => {}
             }
@@ -1025,11 +1025,11 @@ fn test_1_seq_expr_add_expr() {
             match *o.as_ref().unwrap()[0]{
                 AddExpr(ref e1, ref e2) => {
                     match **e1 {
-                        NumExpr(ref n) => assert_eq!(*n, 5),
+                        NumExpr(n) => assert_eq!(n, 5),
                         _ => {}
                     }
                     match **e2 {
-                        NumExpr(ref n) => assert_eq!(*n, 16),
+                        NumExpr(n) => assert_eq!(n, 16),
                         _ => {}
                     }
                 },
@@ -1056,7 +1056,7 @@ fn test_if_then_expr(){
     match(*expr){
         IfThenExpr(ref conditional_expr, ref then_expr) => {
             match(**conditional_expr){
-                NumExpr(ref n) => assert_eq!(*n, 1),
+                NumExpr(n) => assert_eq!(n, 1),
                 _ => {}
             }
         },
@@ -1092,7 +1092,7 @@ fn test_if_then_with_add_as_conditional_expr(){
             match(**conditional_expr){
                 AddExpr(ref l, ref r) => {
                     match **l{
-                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        NumExpr(n) => assert_eq!(n, 1),
                         _ => {}
                     }
                 },
@@ -1128,11 +1128,11 @@ fn test_if_then_else_expr(){
     match(*expr){
         IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
             match(**conditional_expr){
-                NumExpr(ref n) => assert_eq!(*n, 1),
+                NumExpr(n) => assert_eq!(n, 1),
                 _ => {}
             }
             match(**else_expr){
-                NumExpr(ref n) => assert_eq!(*n, 0),
+                NumExpr(n) => assert_eq!(n, 0),
                 _ => {}
             }
         },
@@ -1181,11 +1181,11 @@ fn test_while_expr(){
     match(*expr){
         WhileExpr(ref conditional_expr, ref do_expr) => {
             match(**conditional_expr){
-                NumExpr(ref n) => assert_eq!(*n, 1),
+                NumExpr(n) => assert_eq!(n, 1),
                 _ => panic!("This will not execute")
             }
             match(**do_expr){
-                NumExpr(ref n) => assert_eq!(*n, 1),
+                NumExpr(n) => assert_eq!(n, 1),
                 _ => panic!("This will not execute")
             }
         },
@@ -1219,7 +1219,7 @@ fn test_while_expr_with_addexpr_as_conditional_expr(){
             match(**conditional_expr){
                 AddExpr(ref l, ref r) => {
                     match **l{
-                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        NumExpr(n) => assert_eq!(n, 1),
                         _ => {}
                     }
                 },
@@ -1256,17 +1256,17 @@ fn test_for_expr(){
         ForExpr(ref id, ref from_expr, ref to_expr, ref do_expr) => {
             assert_eq!(*id, String::from("id"));
             match(**from_expr){
-                NumExpr(ref n) => assert_eq!(*n, 1),
+                NumExpr(n) => assert_eq!(n, 1),
                 _ => panic!("This will not execute")
             }
             match(**to_expr){
-                NumExpr(ref n) => assert_eq!(*n, 10),
+                NumExpr(n) => assert_eq!(n, 10),
                 _ => panic!("This will not execute")
             }
             match(**do_expr){
                 AddExpr(ref l, ref r) => {
                     match(**l){
-                        NumExpr(ref n) => assert_eq!(*n, 1),
+                        NumExpr(n) => assert_eq!(n, 1),
                         _ => {}
                     }
                 },
@@ -1311,4 +1311,19 @@ fn test_for_expr_with_ident_as_to_and_from_expr(){
         },
         _ => panic!("This will not execute")
     } 
+    match(*expr){
+        ForExpr(ref id, ref from_expr, ref to_expr, _) => {
+            match(**to_expr){
+                IdExpr(ref i) => assert_eq!(*i, String::from("b")),
+                _ => panic!("This will not execute")
+            }
+            match(**from_expr){
+                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+
+
 }
