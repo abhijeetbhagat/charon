@@ -522,7 +522,7 @@ impl Parser{
         //since only arithmetic expr parsing advances to point to the next token,
         //we do a typecheck in order to determine if we match on the curr_token
         //or call get_token()
-        if opt_tup.0 != TInt32{
+        if opt_tup.0 != TInt32 && self.lexer.curr_token != Token::Then{
             self.lexer.get_token();
         }
         match self.lexer.curr_token {
@@ -1065,6 +1065,23 @@ fn test_if_then_expr(){
 }
 
 #[test]
+fn test_if_then_with_ident_as_conditional_expr(){
+    let mut p = Parser::new("if a then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, _) => {
+            match(**conditional_expr){
+               IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                _ => {}
+            }
+        },
+        _ => {}
+    } 
+}
+
+#[test]
 fn test_if_then_with_add_as_conditional_expr(){
     let mut p = Parser::new("if 1+1 then 1".to_string());
     p.start_lexer();
@@ -1124,6 +1141,20 @@ fn test_if_then_else_expr(){
 
 }
 
+#[test]
+fn test_if_expr_with_string_expr_as_conditional_expr(){
+    let mut p = Parser::new("if \"abhi\" then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, _) => match(**conditional_expr) {
+                StringExpr(ref s) => assert_eq!(*s, "abhi"),
+                _ =>  panic!("This will not exhecute")
+        },
+        _ => panic!("This will not execute")
+    } 
+}
 #[test]
 #[should_panic(expected="Type mismatch between the then and else expressions")]
 fn test_if_then_else_expr_fail_string_return(){
