@@ -1276,3 +1276,39 @@ fn test_for_expr(){
         _ => panic!("This will not execute")
     } 
 }
+
+#[test]
+fn test_for_expr_with_ident_as_from_expr(){
+    let mut p = Parser::new("for id:= a to 10 do 1+1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        ForExpr(ref id, ref from_expr, _, _) => {
+            match(**from_expr){
+                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_for_expr_with_ident_as_to_and_from_expr(){
+    let mut p = Parser::new("for id:= a to b do 1+1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        ForExpr(ref id, ref from_expr, ref to_expr, _) => {
+            match(**to_expr){
+                IdExpr(ref i) => assert_eq!(*i, String::from("b")),
+                _ => panic!("This will not execute")
+            }
+            match(**from_expr){
+                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
