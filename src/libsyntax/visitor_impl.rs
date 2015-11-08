@@ -5,35 +5,7 @@ use visit::{Visitor};
 use std::cell::RefCell;
 use ptr::*;
 
-
 pub type OptionalBinding = Option<B<Binding>>;
-/*impl<T> Visitor<T> for CodeGenVisitor where T: std::fmt::Display {
-    fn visit(&self, t: T) {
-        println!("{}", t);
-    }
-}*/
-
-/*struct CodeGenVisitor;
-struct ExpVisitor{
-    result : i32
-}
-
-impl<'a> Visitor<&'a NumExpression> for ExpVisitor {
-    fn visit(&mut self, n: &'a NumExpression) {
-        self.result = n.value;
-    }
-}
-
-impl<'a> Visitor<&'a AddExpression> for ExpVisitor {
-    fn visit(&mut self, add: &'a AddExpression) {
-        let b1 = *(add.e1);
-        b1.accept(self);
-        let r1 = self.result;
-        add.e2.accept(self);
-        let r2 = self.result;
-        self.result = r1 + r2;
-    }
-}*/
 
 struct ExpEvaluator{
     value : i32
@@ -118,6 +90,12 @@ impl<'a> Visitor<'a> for TypeChecker{
             &Expr::SeqExpr(ref opt_expr_list) => {
                 for b_expr in opt_expr_list.as_ref().unwrap() {
                     self.visit_expr(&*b_expr);
+                }
+            },
+            &Expr::IfThenExpr(ref conditional_expr, _) => {
+                self.visit_expr(conditional_expr);
+                if self.ty != TType::TInt32{
+                    panic!("Expected conditional expression of int type");
                 }
             },
             &Expr::LetExpr(ref decls, ref opt_expr) => {
@@ -362,4 +340,18 @@ fn test_func_decl_correct_return_type() {
 fn test_func_decl_incorrect_return_type() {
     let mut v = TypeChecker::new();
     v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4))));
+}
+
+#[test]
+#[should_panic(expected="Expected conditional expression of int type")]
+fn test_if_expr_with_incorrect_conditional_type() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::IfThenExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
+}
+
+#[test]
+fn test_if_expr_with_int_type() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+    assert_eq!(v.ty, TType::TInt32);
 }
