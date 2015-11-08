@@ -98,6 +98,12 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected conditional expression of int type");
                 }
             },
+            &Expr::WhileExpr(ref conditional_expr, _) => {
+                self.visit_expr(conditional_expr);
+                if self.ty != TType::TInt32{
+                    panic!("Expected conditional expression of int type");
+                }
+            },
             &Expr::LetExpr(ref decls, ref opt_expr) => {
                 self.sym_tab.push(("<marker>".to_string(), None));
 
@@ -353,5 +359,19 @@ fn test_if_expr_with_incorrect_conditional_type() {
 fn test_if_expr_with_int_type() {
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+    assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+#[should_panic(expected="Expected conditional expression of int type")]
+fn test_while_expr_with_incorrect_conditional_type() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::Expr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
+}
+
+#[test]
+fn test_while_expr_with_int_type() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::WhileExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
     assert_eq!(v.ty, TType::TInt32);
 }
