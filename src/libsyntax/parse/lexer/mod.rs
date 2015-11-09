@@ -46,28 +46,28 @@ impl Lexer{
             '&' => { get_cur_tok_and_eat!(Token::LogAnd)},
             '|' => { get_cur_tok_and_eat!(Token::LogOr)},
             '>' => {
-                self.curr_token =
-                if self.curr_char == '=' {
-                    Token::GreaterEquals
-                }
-                else{
-                    Token::GreaterThan
-                };
                 self.get_char();
+                self.curr_token = Token::GreaterThan;
+                if self.curr_char == '=' {
+                    self.get_char();
+                    self.curr_token = Token::GreaterEquals;
+                }
                 return self.curr_token
              },
             '<' => {
+                self.get_char();
                 self.curr_token =
                 if self.curr_char == '>' {
+                    self.get_char();
                     Token::LessThanGreaterThan
                 }
                 else if self.curr_char == '=' {
+                    self.get_char();
                     Token::LessEquals
                 }
                 else{
                     Token::LessThan
                 };
-                self.get_char();
                 return self.curr_token
             },
             '.' =>{
@@ -460,6 +460,51 @@ mod tests {
         assert_eq!(l.get_token(), Token::To);
         assert_eq!(l.get_token(), Token::Number);
         assert_eq!(l.get_token(), Token::Do);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test] 
+    fn test_less_than_expr(){
+        let mut l = Lexer::new("1 <1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::LessThan);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test] 
+    fn test_less_than_equals_expr(){
+        let mut l = Lexer::new("1 <=1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::LessEquals);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+    
+    #[test] 
+    fn test_greater_than_equals_expr(){
+        let mut l = Lexer::new("1 >=1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::GreaterEquals);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test] 
+    fn test_greater_than_expr(){
+        let mut l = Lexer::new("1 >1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::GreaterThan);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test] 
+    fn test_not_equals_expr(){
+        let mut l = Lexer::new("1 <> 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::LessThanGreaterThan);
         assert_eq!(l.get_token(), Token::Number);
     }
 }
