@@ -254,8 +254,6 @@ fn test_pp_visit_add_expr(){
 fn test_pp_visit_block(){
     let mut p = PrettyPrintVisitor;
     let mut b = Block::new();
-    // let l = Local::new("a".to_string(), LuaType::LNil, B(Expr::NumExpr(1)));
-    // b.statements.push(B(Stmt::VarDeclStmt(l)));
     p.visit_block(&b);
 }
 

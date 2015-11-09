@@ -252,6 +252,15 @@ fn test_prsr_bcknd_intgrtion_prnt_call() {
 }
 
 #[test]
+fn test_translate_add_expr(){
+    let mut p = Parser::new(String::from("1+3"));
+    p.start_lexer();
+    let tup = p.expr();
+    let (_ , b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    ctxt.unwrap().dump();
+}
+#[test]
 fn test_prsr_bcknd_intgrtion_let_blk() {
     let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
     p.start_lexer();
