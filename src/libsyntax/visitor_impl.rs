@@ -364,7 +364,7 @@ fn test_if_expr_with_int_type() {
 #[should_panic(expected="Expected conditional expression of int type")]
 fn test_while_expr_with_incorrect_conditional_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::Expr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&Expr::WhileExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
