@@ -179,7 +179,7 @@ impl Parser{
             //     Some(B(SeqExpr(None)))
             // },
             Token::End => panic!("Unexpected 'end'. Expected an expr."),
-            _ =>panic!("FIXME: handle more patterns")
+            t =>{ println!("{:?}", t); panic!("FIXME: handle more patterns")}
         }
     }
 
@@ -470,7 +470,14 @@ impl Parser{
                 match self.lexer.get_token() {
                     Token::Int |
                     Token::TokString |
-                    Token::Ident => Self::get_ty_from_string(self.lexer.curr_string.as_str()),
+                    Token::Ident => {
+                        let ty = Self::get_ty_from_string(self.lexer.curr_string.as_str()); 
+                        match self.lexer.get_token(){
+                            Token::Equals => {self.lexer.get_token();},
+                            _ => panic!("Expected '=' after the return type")
+                        }
+                        return ty                     
+                    },
                     _ => panic!("Expected a type after ':'")
                 }
             }
