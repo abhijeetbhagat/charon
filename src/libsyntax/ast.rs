@@ -8,17 +8,6 @@ use std::cell::RefCell;
 
 struct ExpressionEvaluator;
 
-/*
-impl SymbolVisitor for ExpressionEvaluator{
-	pub fn visit_num(&self, num_exp : &NumExpression){
-
-	}
-
-	pub fn visit_ident(&self, num_exp : &IdentExpr){
-
-	}
-}
-*/
 pub type OptionalExprList = Option<Vec<B<Expr>>>;
 pub type OptionalExpr = Option<B<Expr>>;
 pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
@@ -33,13 +22,6 @@ pub enum TType{
     TCustom(String),
     TNil,
     TVoid
-}
-
-///FIXME remove this
-pub enum TypeValue{
-    TInt32(i32),
-    TString(String),
-    TIdent(String)
 }
 
 impl fmt::Display for TType{
@@ -112,7 +94,7 @@ impl Block{
 }
 
 pub enum Expr{
-   //let dec+ in exp*; end
+   //let dec+ in exp*; end
    //note: instead of making a list of exprs as the grammar suggests,
    //use a seq-expr. This will make parsing easier.
    //i.e. we don't want this:
@@ -139,11 +121,11 @@ pub enum Expr{
    StringExpr(String),
    //break
    BreakExpr,
-   //id ( exp*, )
+   //id ( exp*, )
    CallExpr(String, OptionalTypeExprTupleList),
    //intLit
    NumExpr(i32),
-   //( exp*; )
+   //( exp*; )
    SeqExpr(OptionalExprList),
 
    AddExpr(B<Expr>, B<Expr>),
@@ -175,7 +157,7 @@ pub enum Decl{
     TypeDec(String, TType),
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
-    //function id ( fieldDec; ) : tyId = exp
+    //function id ( fieldDec; ) : tyId = exp
     FunDec(String, OptionalParamInfoList, TType, B<Expr>)
 }
 
