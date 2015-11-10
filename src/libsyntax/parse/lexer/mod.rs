@@ -31,6 +31,19 @@ impl Lexer{
         }
     }
 
+    pub fn peek_next(&mut self) -> Token{
+        //save context
+        let old_pos = self.char_pos.clone();
+        let old_tok = self.curr_token.clone();
+        let old_string = self.curr_string.clone(); 
+        let t = self.get_token();
+        //load saved context
+        self.char_pos = old_pos;
+        self.curr_token = old_tok;
+        self.curr_string = old_string;
+        t
+    }
+
     pub fn get_token(&mut self) -> Token{
         //do not loop over the match
         //this will cause a problem for ident storing (curr_string.clear())
@@ -504,6 +517,17 @@ mod tests {
         let mut l = Lexer::new("1 <> 1".to_string());
         l.get_char();
         assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::LessThanGreaterThan);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+
+    #[test] 
+    fn test_peek(){
+        let mut l = Lexer::new("1 <> 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.peek_next(), Token::LessThanGreaterThan);
+        assert_eq!(l.peek_next(), Token::LessThanGreaterThan);
         assert_eq!(l.get_token(), Token::LessThanGreaterThan);
         assert_eq!(l.get_token(), Token::Number);
     }
