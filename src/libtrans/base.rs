@@ -126,6 +126,13 @@ fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
 
 impl IRBuilder for Expr{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult{
+        macro_rules! build_binary_instrs{
+            ($fun : ident, $e1:ident, $e2:ident, $s : expr) => {{
+                let ev1 = try!($e1.codegen(ctxt));
+                let ev2 = try!($e2.codegen(ctxt));
+                Ok($fun(ctxt.builder, ev1, ev2, $s.as_ptr() as *const i8))
+            }}
+        }
         unsafe{
             match self{
                 &Expr::NumExpr(ref i) => {
@@ -133,14 +140,10 @@ impl IRBuilder for Expr{
                     Ok(LLVMConstInt(ty, *i as u64, 0))
                 },
                 &Expr::AddExpr(ref e1, ref e2) => {
-                    let ev1 = try!(e1.codegen(ctxt));
-                    let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildFAdd(ctxt.builder, ev1, ev2, "add_tmp".as_ptr() as *const i8))
+                    build_binary_instrs!(LLVMBuildFAdd, e1, e2, "add_tmp")
                 },
                 &Expr::SubExpr(ref e1, ref e2) => {
-                    let ev1 = try!(e1.codegen(ctxt));
-                    let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildFSub(ctxt.builder, ev1, ev2, "sub_tmp".as_ptr() as *const i8))
+                    build_binary_instrs!(LLVMBuildFSub, e1, e2, "sub_tmp")
                 },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
