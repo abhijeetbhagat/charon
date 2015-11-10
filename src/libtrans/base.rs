@@ -137,6 +137,11 @@ impl IRBuilder for Expr{
                     let ev2 = try!(e2.codegen(ctxt));
                     Ok(LLVMBuildFAdd(ctxt.builder, ev1, ev2, "add_tmp".as_ptr() as *const i8))
                 },
+                &Expr::SubExpr(ref e1, ref e2) => {
+                    let ev1 = try!(e1.codegen(ctxt));
+                    let ev2 = try!(e2.codegen(ctxt));
+                    Ok(LLVMBuildFSub(ctxt.builder, ev1, ev2, "sub_tmp".as_ptr() as *const i8))
+                },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
                     //fn_name can be checked in a map that records names of std functions
@@ -165,8 +170,8 @@ impl IRBuilder for Expr{
                     for decl in &*decls {
                         match decl {
                             &Decl::FunDec(ref name, ref params, ref ty, ref body) => {
-                                let ty = get_llvm_type_for_ttype(ty, ctxt);
-                                let proto = LLVMFunctionType(ty, ptr::null_mut(), 0, 0);
+                                let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
+                                let proto = LLVMFunctionType(llvm_ty, ptr::null_mut(), 0, 0);
                                 let function = LLVMAddFunction(ctxt.module,
                                                                c_str_ptr!(&(*name.clone())),
                                                                proto);
@@ -176,8 +181,13 @@ impl IRBuilder for Expr{
                                 ctxt.sym_tab.insert(name.clone(), function);
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
-                                body.codegen(ctxt);
-                                LLVMBuildRetVoid(ctxt.builder);
+                                let value_ref = try!(body.codegen(ctxt));
+                                if *ty == TType::TVoid{
+                                    LLVMBuildRetVoid(ctxt.builder);
+                                }
+                                else{
+                                    LLVMBuildRet(ctxt.builder, value_ref);
+                                }
                             },
                             _ => panic!("More decl types should be covered")
                         }
@@ -253,7 +263,7 @@ fn test_prsr_bcknd_intgrtion_prnt_call() {
 
 #[test]
 fn test_translate_add_expr(){
-    let mut p = Parser::new(String::from("1+3"));
+    let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
     p.start_lexer();
     let tup = p.expr();
     let (_ , b_expr) = tup.unwrap();
