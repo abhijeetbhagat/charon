@@ -134,7 +134,7 @@ impl Parser{
 
                 while self.lexer.get_token() != Token::RightParen {
                     if self.lexer.curr_token == Token::SemiColon { continue; }
-                    if self.lexer.curr_token == Token::Eof {break;}
+                    if self.lexer.curr_token == Token::Eof { panic!("Unexpected eof encountered") }
                     let optional_expr = self.expr();
                     if optional_expr.is_some() {
                         let (ty, e) = optional_expr.unwrap();
@@ -146,10 +146,6 @@ impl Parser{
                     if self.lexer.curr_token == Token::RightParen{
                         break;
                     }
-                }
-
-                if self.lexer.curr_token == Token::Eof {
-                    panic!("Unexpected eof encountered");
                 }
 
                 self.paren_stack.pop();
