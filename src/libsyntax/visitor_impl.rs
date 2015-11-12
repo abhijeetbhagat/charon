@@ -106,10 +106,15 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected if-body of void type")
                 }
             },
-            &Expr::WhileExpr(ref conditional_expr, _) => {
+            &Expr::WhileExpr(ref conditional_expr, ref body) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
                     panic!("Expected conditional expression of int type");
+                }
+
+                self.visit_expr(body);
+                if self.ty != TType::TVoid{
+                    panic!("Expected while-body of void type")
                 }
             },
             &Expr::LetExpr(ref decls, ref opt_expr) => {
@@ -385,6 +390,7 @@ fn test_while_expr_with_incorrect_conditional_type() {
 }
 
 #[test]
+#[should_panic(expected="Expected while-body of void type")]
 fn test_while_expr_with_int_type() {
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::WhileExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
