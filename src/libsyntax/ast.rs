@@ -49,6 +49,7 @@ pub trait Statement{
     fn generate_code(&self)->Vec<String>;
 }
 
+#[derive(Debug)]
 pub struct Block{
     pub sym_tab : RefCell<HashMap<String, TType>>,
     pub statements : Vec<B<Stmt>>, //trait is boxed because it has no size known at compile-time. this is a trait object.
@@ -93,6 +94,7 @@ impl Block{
     }
 }
 
+#[derive(Debug)]
 pub enum Expr{
    //let dec+ in exp*; end
    //note: instead of making a list of exprs as the grammar suggests,
@@ -152,6 +154,7 @@ pub struct FieldDec{
 
 //lst.where(move |x|{x.id == "id"}).first()
 
+#[derive(Debug)]
 pub enum Decl{
     //type tyId = ty
     TypeDec(String, TType),
@@ -162,6 +165,7 @@ pub enum Decl{
 }
 
 //FIXME remove this
+#[derive(Debug)]
 pub struct Local{
     pub ident : String,
     pub ty : TType,
@@ -175,6 +179,7 @@ impl Local{
 }
 
 //FIXME remove this
+#[derive(Debug)]
 pub enum Stmt{
      VarDeclStmt(Local),
      ExprStmt(B<Expr>)
