@@ -88,6 +88,10 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
             },
             &Expr::SeqExpr(ref opt_expr_list) => {
+                if opt_expr_list.is_none(){
+                    self.ty = TType::TVoid;
+                    return
+                }
                 for b_expr in opt_expr_list.as_ref().unwrap() {
                     self.visit_expr(&*b_expr);
                 }
@@ -98,7 +102,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected conditional expression of int type");
                 }
                 self.visit_expr(then_expr);
-                if self.ty != TType::Void{
+                if self.ty != TType::TVoid{
                     panic!("Expected if-body of void type")
                 }
             },
@@ -361,7 +365,15 @@ fn test_if_expr_with_incorrect_conditional_type() {
 #[test]
 fn test_if_expr_with_int_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::SeqExpr(None))));
+    assert_eq!(v.ty, TType::TVoid);
+}
+
+#[test]
+#[should_panic(expected="Expected if-body of void type")]
+fn test_if_expr_with_int_type_conditional_and_int_type_as_body_type() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
 }
 
