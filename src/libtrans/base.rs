@@ -145,6 +145,36 @@ impl IRBuilder for Expr{
                 &Expr::SubExpr(ref e1, ref e2) => {
                     build_binary_instrs!(LLVMBuildFSub, e1, e2, "sub_tmp")
                 },
+                &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+                    let cond_code = try!(conditional_expr.codegen(ctxt));
+                    let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
+                    let if_cond = LLVMBuildFCmp(ctxt.builder, llvm::LLVMRealPredicate::LLVMRealONE, cond_code, zero, "ifcond".as_ptr() as *const i8);
+                    let bb = LLVMGetInsertBlock(ctxt.builder);
+                    let function = LLVMGetBasicBlockParent(bb);
+                    let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, "thencond".as_ptr() as *const i8);
+                    let else_block = LLVMAppendBasicBlockInContext(ctxt.context, function, "elsecond".as_ptr() as *const i8);
+                    let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, "ifcont".as_ptr() as *const i8);
+                    LLVMBuildCondBr(ctxt.builder, if_cond, then_block, else_block); 
+
+                    LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
+                    let then_code = try!(then_expr.codegen(ctxt));
+                    LLVMBuildBr(ctxt.builder, ifcont_block);
+                    let then_end = LLVMGetInsertBlock(ctxt.builder);
+
+                    LLVMPositionBuilderAtEnd(ctxt.builder, else_block);
+                    let else_code = try!(else_expr.codegen(ctxt));
+                    LLVMBuildBr(ctxt.builder, ifcont_block);
+                    let else_end = LLVMGetInsertBlock(ctxt.builder);
+
+                    LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
+
+                    let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), "ifphi".as_ptr() as *const i8);
+                    LLVMAddIncoming(phi_node, then_code as *mut LLVMValueRef, then_end as *mut *mut llvm::LLVMBasicBlock, 1);
+                    panic!("asdad");
+                    LLVMAddIncoming(phi_node, else_code as *mut LLVMValueRef, else_end as *mut *mut llvm::LLVMBasicBlock, 1);
+                    Ok(phi_node)
+
+                },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
                     //fn_name can be checked in a map that records names of std functions
@@ -204,7 +234,7 @@ impl IRBuilder for Expr{
                     let v = try!(e.codegen(ctxt));
                     Ok(v)
                 }
-                _ => Err("error".to_string())
+                t => Err(format!("error: {:?}", t))
             }
         }
     }
@@ -276,6 +306,17 @@ fn test_translate_add_expr(){
 #[test]
 fn test_prsr_bcknd_intgrtion_let_blk() {
     let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_if_then_expr() {
+    let mut p = Parser::new("let function foo() :int = if 1 then 1 else 1 in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
