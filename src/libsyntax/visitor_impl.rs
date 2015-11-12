@@ -80,7 +80,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                 self.visit_expr(left);
                 let left_ty = self.ty.clone();
                 if left_ty != TType::TInt32{
-                    panic!("Expected left operand of int type");
+                    panic!("Expected left operand of int type")
                 }
                 self.visit_expr(right);
                 if self.ty != TType::TInt32{
@@ -92,10 +92,14 @@ impl<'a> Visitor<'a> for TypeChecker{
                     self.visit_expr(&*b_expr);
                 }
             },
-            &Expr::IfThenExpr(ref conditional_expr, _) => {
+            &Expr::IfThenExpr(ref conditional_expr, ref then_expr) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
                     panic!("Expected conditional expression of int type");
+                }
+                self.visit_expr(then_expr);
+                if self.ty != TType::Void{
+                    panic!("Expected if-body of void type")
                 }
             },
             &Expr::WhileExpr(ref conditional_expr, _) => {
@@ -138,14 +142,15 @@ impl<'a> Visitor<'a> for TypeChecker{
             &Decl::VarDec(ref id, ref ty, ref expr) => {
                 self.visit_expr(expr);
                 if *ty != self.ty{
-                    panic!("Types mismatch");
+                    panic!("Types mismatch")
                 }
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
-            &Decl::FunDec(ref id, ref params, ref ret_type, ref body) => {
-                self.visit_expr(&body);
-                if self.ty != *ret_type{
-                    panic!("Return type doesn't match with the type of the last expression.");
+            &Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
+                //self.visit_expr(&body);
+                //if self.ty != *ret_type{
+                if ret_type != body_type {
+                    panic!("Return type doesn't match with the type of the last expression.")
                 }
                 store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
@@ -336,14 +341,14 @@ fn test_var_hiding() {
 #[test]
 fn test_func_decl_correct_return_type() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TInt32, B(Expr::NumExpr(4))));
+    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TInt32, B(Expr::NumExpr(4)), TType::TInt32));
 }
 
 #[test]
 #[should_panic(expected="Return type doesn't match with the type of the last expression.")]
 fn test_func_decl_incorrect_return_type() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4))));
+    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4)), TType::TInt32));
 }
 
 #[test]

@@ -161,7 +161,8 @@ pub enum Decl{
     //var a : int := 1
     VarDec(String, TType, B<Expr>),
     //function id ( fieldDec; ) : tyId = exp
-    FunDec(String, OptionalParamInfoList, TType, B<Expr>)
+    //last TType is the body's return type
+    FunDec(String, OptionalParamInfoList, TType, B<Expr>, TType)
 }
 
 //FIXME remove this

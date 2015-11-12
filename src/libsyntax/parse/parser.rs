@@ -133,6 +133,8 @@ impl Parser{
                 self.paren_stack.push('(');
 
                 while self.lexer.get_token() != Token::RightParen {
+                    //Be careful when you set value of self.lexer.curr_token between here and self.expr()
+                    //since logic in expr() assumes that self.lexer.curr_token will already be set
                     if self.lexer.curr_token == Token::SemiColon { continue; }
                     if self.lexer.curr_token == Token::Eof { panic!("Unexpected eof encountered") }
                     let optional_expr = self.expr();
@@ -380,10 +382,10 @@ impl Parser{
                 //parse body here
                 let e = self.expr();
                 debug_assert!(e.is_some() == true, "Function body cannot be empty");
-                let body = e.unwrap().1;
+                let body = e.unwrap();
 
                 //function id ( fieldDec; ) : tyId = exp
-                decls.push(FunDec(id, field_decs, ret_type, body));
+                decls.push(FunDec(id, field_decs, ret_type, body.1, body.0));
             },
             _ => panic!("Expected an id after 'function'")
         }
@@ -588,7 +590,7 @@ fn test_func_decl_no_params() {
     p.parse_function_decl(&mut decls);
     assert_eq!(decls.len(), 1);
     match &decls[0]{
-        &FunDec(ref name, _, ref ty, ref b_expr) => {
+        &FunDec(ref name, _, ref ty, ref b_expr, ref b_type) => {
             assert_eq!(String::from("foo"), *name);
             assert_eq!(TVoid, *ty);
             match &**b_expr {

@@ -207,7 +207,7 @@ impl IRBuilder for Expr{
                     debug_assert!(expr.is_some(), "Expr in a let block can't be empty");
                     for decl in &*decls {
                         match decl {
-                            &Decl::FunDec(ref name, ref params, ref ty, ref body) => {
+                            &Decl::FunDec(ref name, ref params, ref ty, ref body, ref body_ty) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let proto = LLVMFunctionType(llvm_ty, ptr::null_mut(), 0, 0);
                                 let function = LLVMAddFunction(ctxt.module,
@@ -329,3 +329,14 @@ fn test_prsr_bcknd_intgrtion_if_then_expr() {
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }
+
+//#[test]
+//fn test_prsr_bcknd_intgrtion_for_expr() {
+//    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
+//    p.start_lexer();
+//    let tup = p.expr();
+//    let (ty, b_expr) = tup.unwrap();
+//    let ctxt = translate(&*b_expr);
+//    assert_eq!(ctxt.is_some(), true);
+//    ctxt.unwrap().dump();
+//}
