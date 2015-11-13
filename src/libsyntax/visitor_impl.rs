@@ -38,7 +38,12 @@ pub struct TypeChecker{
     pub sym_tab : Vec<(String, OptionalBinding)>,
     //decl_cnt : u32,
     //decl_cnt_stack : Vec<u32>,
-    pub ty : TType
+    pub ty : TType,
+    pub if_conditional_ty : TType,
+    pub if_body_ty : TType,
+    pub while_conditional_ty : TType,
+    pub while_body_ty : TType,
+
 }
 
 impl TypeChecker{
