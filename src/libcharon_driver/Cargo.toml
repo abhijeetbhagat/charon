@@ -12,3 +12,8 @@ test = true
 name = "syntax"
 path = "../libsyntax"
 test = true
+
+[dependencies.trans]
+name = "trans"
+path = "../libtrans"
+test = true

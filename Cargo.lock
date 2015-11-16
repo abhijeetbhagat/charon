@@ -26,6 +26,7 @@ name = "charon_driver"
 version = "0.1.0"
 dependencies = [
  "syntax 0.1.0",
+ "trans 0.1.0",
 ]
 
 [[package]]
