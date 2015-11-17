@@ -1,7 +1,7 @@
 #![feature(libc)]
 extern crate syntax;
 
-pub mod base;
-pub mod link;
+#[macro_use]
 pub mod helpers;
-
+pub mod base;
+pub mod link; 

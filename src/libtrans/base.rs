@@ -11,7 +11,6 @@ use self::llvm::target_machine::*;
 
 use std::collections::{HashMap};
 use std::mem;
-use std::process::Command;
 
 use syntax::ast::{Block, Expr, Decl, TType, OptionalTypeExprTupleList};
 use syntax::ptr::{B};
@@ -23,7 +22,7 @@ use helpers::*;
 
 pub struct Context{
     context : LLVMContextRef,
-    module : LLVMModuleRef,
+    pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
     sym_tab : HashMap<String, LLVMValueRef>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>
