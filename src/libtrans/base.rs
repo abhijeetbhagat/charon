@@ -281,7 +281,7 @@ pub fn translate(expr : &Expr) -> Option<Context>{
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
         //add translated code as part of the block
-
+        link(&ctxt);
     }
     Some(ctxt)
 }
