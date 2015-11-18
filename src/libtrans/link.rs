@@ -29,15 +29,10 @@ pub fn link(ctxt: &Context){
                                     LLVMCodeGenFileType::LLVMObjectFile,
                                     c_str_mut_ptr!("") as *mut *mut libc::c_char);
 
-        let out = Command::new("ld")
-            .arg("--dynamic-linker")
-            .arg("/lib64/ld-linux-x86-64.so.2") 
+        let out = Command::new("gcc")
             .arg("tmp.o")
             .arg("-o")
             .arg("first")
-            .arg("-lc")
-            .arg("--entry")
-            .arg("main")
             .output()
             .unwrap_or_else(|e|{
                 panic!("failed to compile - {}", e);

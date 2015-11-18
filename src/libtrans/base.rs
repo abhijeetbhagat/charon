@@ -274,20 +274,20 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         trans_expr(expr, &mut ctxt);
         
         //exit function
-        let exit_ty = LLVMVoidTypeInContext(ctxt.context);
-        let mut exit_type_args_vec = Vec::new();
-        exit_type_args_vec.push(LLVMIntTypeInContext(ctxt.context, 32));
-        let exit_proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
-        let exit_function = LLVMAddFunction(ctxt.module,
-                                                      ffi::CString::new("exit").unwrap().as_ptr(),
-                                                      exit_proto);
-        let mut exit_args = Vec::new();
-        exit_args.push(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
-        LLVMBuildCall(ctxt.builder, 
-                                  exit_function, 
-                                  exit_args.as_mut_ptr(), 
-                                  1, 
-                                  ffi::CString::new("call").unwrap().as_ptr());
+        //let exit_ty = LLVMVoidTypeInContext(ctxt.context);
+        //let mut exit_type_args_vec = Vec::new();
+        //exit_type_args_vec.push(LLVMIntTypeInContext(ctxt.context, 32));
+        //let exit_proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
+        //let exit_function = LLVMAddFunction(ctxt.module,
+        //                                              ffi::CString::new("exit").unwrap().as_ptr(),
+        //                                              exit_proto);
+        //let mut exit_args = Vec::new();
+        //exit_args.push(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
+        //LLVMBuildCall(ctxt.builder, 
+        //                          exit_function, 
+        //                          exit_args.as_mut_ptr(), 
+        //                          1, 
+        //                          ffi::CString::new("call").unwrap().as_ptr());
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
