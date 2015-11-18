@@ -204,7 +204,7 @@ impl Parser{
                 Token::Eof => break,
                 //FIXME End occurrence is an error
                 Token::End => break,
-                _ => panic!("Unexpected token. Expected a declaration or 'in'")
+                t => {println!("{:?}", t);panic!("Unexpected token. Expected a declaration or 'in'") }
             }
 
             //this is needed because a var decl parse can set the curr_token to 'in'
@@ -459,6 +459,7 @@ impl Parser{
                 break
             }
         }
+        self.lexer.get_token(); //eat ')'
         return if args_list.is_empty() {None} else {Some(args_list)}
     }
 
@@ -540,7 +541,7 @@ impl Parser{
                         let (_, else_body) = self.expr().unwrap();
                         return Some((TVoid, B(IfThenElseExpr(opt_tup.1, then_expr, else_body))))
                     }
-                    _ => {} //FIXME this isn't an if-then-else expr. should we do something here?
+                    t => {} //FIXME this isn't an if-then-else expr. should we do something here?
                 }
                 Some((TVoid, B(IfThenExpr(opt_tup.1, then_expr))))
             },
@@ -1126,7 +1127,7 @@ fn test_if_then_with_string_as_conditional_expr(){
 }
 #[test]
 fn test_if_then_else_expr(){
-    let mut p = Parser::new("if 1 then 1 else 0".to_string());
+    let mut p = Parser::new("if 1 then foo() else foo()".to_string());
     p.start_lexer();
     
     let (ty, expr) = p.expr().unwrap();
@@ -1137,15 +1138,36 @@ fn test_if_then_else_expr(){
                 _ => {}
             }
             match(**else_expr){
-                NumExpr(n) => assert_eq!(n, 0),
-                _ => {}
+                CallExpr(ref fn_name, _) => assert_eq!(*fn_name, String::from("foo")),
+                _ => panic!("not covered")
             }
         },
-        _ => {}
+        _ => {panic!("bingo!")}
     } 
 
 }
 
+#[test]
+fn test_if_then_else_expr_with_num_expressions(){
+    let mut p = Parser::new("if 1 then 1 else 0".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+            match(**conditional_expr){
+                NumExpr(n) => assert_eq!(n, 1),
+                _ => {panic!("Unexpected expression")}
+            }
+            match(**else_expr){
+                NumExpr(n) => assert_eq!(n, 0),
+                _ => panic!("not covered")
+            }
+        },
+        _ => {panic!("bingo!")}
+    } 
+
+}
 #[test]
 fn test_if_expr_with_string_expr_as_conditional_expr(){
     let mut p = Parser::new("if \"abhi\" then 1".to_string());

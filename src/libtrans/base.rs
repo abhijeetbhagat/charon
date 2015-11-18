@@ -317,7 +317,7 @@ fn test_prsr_bcknd_intgrtion_prnt_call() {
     ctxt.unwrap().dump();
 }
 
-#[test]
+//#[test]
 fn test_translate_add_expr(){
     let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
     p.start_lexer();
@@ -326,7 +326,7 @@ fn test_translate_add_expr(){
     let ctxt = translate(&*b_expr);
     ctxt.unwrap().dump();
 }
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_let_blk() {
     let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
     p.start_lexer();
@@ -339,7 +339,7 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr() {
-    let mut p = Parser::new("let function foo() :int = if 1+1 then 1 else 5 in foo() end".to_string());
+    let mut p = Parser::new("let function foo()  = if 8 then print(\"rust\") else print(\"c++\") in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
