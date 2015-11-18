@@ -20,15 +20,16 @@ use syntax::parse::parser::{Parser};
 use link::link;
 use helpers::*;
 
-pub struct Context{
+pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
     sym_tab : HashMap<String, LLVMValueRef>,
-    bb_stack : Vec<*mut llvm::LLVMBasicBlock>
+    bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
+    proto_map : HashMap<&'a str, bool>
 }
 
-impl Context{
+impl<'a> Context<'a>{
     fn new(module_name : &str) -> Self{
         unsafe{
             let llvm_context =  LLVMContextCreate();
@@ -37,13 +38,15 @@ impl Context{
             let builder = LLVMCreateBuilderInContext(llvm_context);
             let sym_tab = HashMap::new();
             let bb_stack = Vec::new();
+            let proto_map = HashMap::new();
 
             Context {
                 context : llvm_context,
                 module : llvm_module,
                 builder : builder,
                 sym_tab : sym_tab,
-                bb_stack : bb_stack
+                bb_stack : bb_stack,
+                proto_map : proto_map
             }
         }
     }
@@ -55,7 +58,7 @@ impl Context{
     }
 }
 
-impl Drop for Context{
+impl<'a> Drop for Context<'a>{
     fn drop(&mut self){
         unsafe{
             LLVMDisposeBuilder(self.builder);
@@ -87,14 +90,22 @@ fn std_functions_call_factory(fn_name : &str,
                     _ => panic!("Expected a string expr")
                 };
 
-                let print_ty = LLVMIntTypeInContext(ctxt.context, 32);
-                let mut pf_type_args_vec = Vec::new();
-                pf_type_args_vec.push(LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8),
-                                                      0));
-                let proto = LLVMFunctionType(print_ty, pf_type_args_vec.as_mut_ptr(), 1, 1);
-                let print_function = LLVMAddFunction(ctxt.module,
-                                                     c_str_ptr!("printf"),
-                                                     proto);
+                let print_function : LLVMValueRef;
+                if !ctxt.proto_map.contains_key("printf"){
+                    let print_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                    let mut pf_type_args_vec = Vec::new();
+                    pf_type_args_vec.push(LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8),
+                    0));
+                    let proto = LLVMFunctionType(print_ty, pf_type_args_vec.as_mut_ptr(), 1, 1);
+                    print_function = LLVMAddFunction(ctxt.module,
+                                                         c_str_ptr!("printf"),
+                                                         proto);
+                    ctxt.proto_map.insert("printf", true);
+                }
+                else{
+                    print_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf"));
+                }
+
                 let gstr = LLVMBuildGlobalStringPtr(ctxt.builder,
                                                     str_arg,
                                                     c_str_ptr!(".str"));
@@ -296,9 +307,10 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
 
 //#[test]
 fn test_translate_std_print_call() {
-    let ctxt = translate(&Expr::CallExpr("print".to_string(),
+    let expr = &Expr::CallExpr("print".to_string(),
                                   Some(vec![(TType::TString,
-                                             B(Expr::StringExpr("abhi".to_string())))])));
+                                             B(Expr::StringExpr("abhi".to_string())))]));
+    let ctxt = translate(expr);
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }

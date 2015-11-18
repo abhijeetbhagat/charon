@@ -5,7 +5,6 @@
 extern crate syntax;
 extern crate trans;
 
-use syntax::ast;
 use syntax::parse::parser::{Parser};
 use trans::base::translate;
 pub fn run(args: Vec<String>) -> i32{
@@ -21,9 +20,6 @@ fn run_compiler(){
     }
    
 	//TODO extract the expr and call pass it to trans to get the llvm context
-    translate(&*optional_blk.unwrap().expr.unwrap());
-}
-
-#[test]
-fn test_mate(){
-}
+    let expr = &*optional_blk.unwrap().expr.unwrap();
+    translate(expr);
+} 
