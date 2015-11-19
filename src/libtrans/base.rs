@@ -150,16 +150,16 @@ impl IRBuilder for Expr{
                     Ok(LLVMConstInt(ty, *i as u64, 0))
                 },
                 &Expr::AddExpr(ref e1, ref e2) => {
-                    build_binary_instrs!(LLVMBuildFAdd, e1, e2, "add_tmp")
+                    build_binary_instrs!(LLVMBuildAdd, e1, e2, "add_tmp")
                 },
                 &Expr::SubExpr(ref e1, ref e2) => {
-                    build_binary_instrs!(LLVMBuildFSub, e1, e2, "sub_tmp")
+                    build_binary_instrs!(LLVMBuildSub, e1, e2, "sub_tmp")
                 },
                 &Expr::MulExpr(ref e1, ref e2) => {
-                    build_binary_instrs!(LLVMBuildFMul, e1, e2, "mul_tmp")
+                    build_binary_instrs!(LLVMBuildMul, e1, e2, "mul_tmp")
                 },
                 &Expr::DivExpr(ref e1, ref e2) => {
-                    build_binary_instrs!(LLVMBuildFDiv, e1, e2, "div_tmp")
+                    build_binary_instrs!(LLVMBuildSDiv, e1, e2, "div_tmp")
                 },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
@@ -352,7 +352,7 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr() {
-    let mut p = Parser::new("let function foo()  = if 8 then print(\"rust\") else print(\"c++\") in foo() end".to_string());
+    let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
