@@ -91,6 +91,7 @@ fn std_functions_call_factory(fn_name : &str,
                 };
 
                 let print_function : LLVMValueRef;
+                //check if we already have a prototype defined
                 if !ctxt.proto_map.contains_key("printf"){
                     let print_ty = LLVMIntTypeInContext(ctxt.context, 32);
                     let mut pf_type_args_vec = Vec::new();
