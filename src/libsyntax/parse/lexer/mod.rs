@@ -56,6 +56,7 @@ impl Lexer{
             '+' => { get_cur_tok_and_eat!(Token::Plus)},
             '-' => { get_cur_tok_and_eat!(Token::Minus)},
             '*' => { get_cur_tok_and_eat!(Token::Mul)},
+            '/' => { get_cur_tok_and_eat!(Token::Div)},
             '&' => { get_cur_tok_and_eat!(Token::LogAnd)},
             '|' => { get_cur_tok_and_eat!(Token::LogOr)},
             '>' => {
@@ -529,6 +530,22 @@ mod tests {
         assert_eq!(l.peek_next(), Token::LessThanGreaterThan);
         assert_eq!(l.peek_next(), Token::LessThanGreaterThan);
         assert_eq!(l.get_token(), Token::LessThanGreaterThan);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+    #[test] 
+    fn test_div_expr(){
+        let mut l = Lexer::new("1 / 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Div);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+    #[test] 
+    fn test_div_expr_without_spaces(){
+        let mut l = Lexer::new("1/1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Div);
         assert_eq!(l.get_token(), Token::Number);
     }
 }

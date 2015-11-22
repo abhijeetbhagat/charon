@@ -87,6 +87,22 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected right operand of int type")
                 }
             },
+            &Expr::DivExpr(ref left, ref right) => {
+                self.visit_expr(left);
+                let left_ty = self.ty.clone();
+                if left_ty != TType::TInt32{
+                    panic!("Expected left operand of int type")
+                }
+                self.visit_expr(right);
+                if self.ty != TType::TInt32{
+                    panic!("Expected right operand of int type")
+                }
+
+                match **right{
+                    Expr::NumExpr(n) => if n == 0 {panic!("Denominator cannot be 0")},
+                    _ => {}
+                }
+            },
             &Expr::SeqExpr(ref opt_expr_list) => {
                 if opt_expr_list.is_none(){
                     self.ty = TType::TVoid;
@@ -394,5 +410,18 @@ fn test_while_expr_with_incorrect_conditional_type() {
 fn test_while_expr_with_int_type() {
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::WhileExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+}
+
+#[test]
+#[should_panic(expected="Denominator cannot be 0")]
+fn test_div_expr_with_0_as_denominator(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(0))));
+}
+
+#[test]
+fn test_div_expr_with_1_as_denominator(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
 }

@@ -350,9 +350,20 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
     ctxt.unwrap().dump();
 }
 
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr() {
     let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
+    let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();

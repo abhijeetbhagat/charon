@@ -361,6 +361,26 @@ impl Parser{
                     panic!("Expected i32 as the type of rhs expression");
                 }
             },
+            Token::Mul => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(MulExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            Token::Div => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(DivExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
             //FIXME ';', ')' can be a encountered as well. deal with it.
             _ => {
                 return Some((TInt32, op1))
@@ -1319,6 +1339,7 @@ fn test_for_expr_with_ident_as_from_expr(){
         _ => panic!("This will not execute")
     } 
 }
+
 
 #[test]
 fn test_for_expr_with_ident_as_to_and_from_expr(){
