@@ -15,4 +15,3 @@ pub mod syntax {
 
 pub mod visit;
 pub mod visitor_impl;
-pub mod symbol;

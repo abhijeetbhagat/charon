@@ -11,7 +11,7 @@ use self::llvm::target_machine::*;
 
 use std::collections::{HashMap};
 use std::mem;
-
+use std::any::{Any};
 use syntax::ast::{Block, Expr, Decl, TType, OptionalTypeExprTupleList};
 use syntax::ptr::{B};
 //FIXME this import is for integration testing purposes
@@ -19,12 +19,13 @@ use syntax::parse::*;//{Parser};
 use syntax::parse::parser::{Parser};
 use link::link;
 use helpers::*;
+use symbol::*;
 
 pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    sym_tab : HashMap<String, LLVMValueRef>,
+    sym_tab : HashMap<String, Box<Symbol>>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
 }
@@ -203,7 +204,9 @@ impl IRBuilder for Expr{
 
                             }
                             //pf_args.push(gstr);
-                            let _fn = ctxt.sym_tab[&*fn_name];
+                            let sym = ctxt.sym_tab[&*fn_name];
+                            let a = &*sym as &Any;
+                            let _fn = a.downcast_ref::<&FunctionSymbol>().unwrap().value_ref();
                             Ok(LLVMBuildCall(ctxt.builder,
                                             _fn,
                                             pf_args.as_mut_ptr(),
@@ -220,13 +223,16 @@ impl IRBuilder for Expr{
                             &Decl::FunDec(ref name, ref params, ref ty, ref body, ref body_ty) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let proto = LLVMFunctionType(llvm_ty, ptr::null_mut(), 0, 0);
+                                let cloned_name = name.clone();
                                 let function = LLVMAddFunction(ctxt.module,
-                                                               c_str_ptr!(&(*name.clone())),
+                                                               c_str_ptr!(&(*cloned_name)),
                                                                proto);
                                 let bb = LLVMAppendBasicBlockInContext(ctxt.context,
                                                                        function,
                                                                        c_str_ptr!("entry"));
-                                ctxt.sym_tab.insert(name.clone(), function);
+
+                                let func = Function::new(cloned_name, function);
+                                ctxt.sym_tab.insert(cloned_name, Box::new(func));
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 let value_ref = try!(body.codegen(ctxt));
