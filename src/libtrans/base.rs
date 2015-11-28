@@ -25,7 +25,7 @@ pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    sym_tab : HashMap<String, Box<Symbol>>,
+    sym_tab : HashMap<String, Box<Any>>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
 }
@@ -203,10 +203,11 @@ impl IRBuilder for Expr{
                             if optional_args.is_some() {
 
                             }
-                            //pf_args.push(gstr);
-                            let sym = ctxt.sym_tab[&*fn_name];
-                            let a = &*sym as &Any;
-                            let _fn = a.downcast_ref::<&FunctionSymbol>().unwrap().value_ref();
+
+                            //use get() instead of [] to prevent a move out of the map
+                            //and as a result for the type conversion to Any to work
+                            let sym = ctxt.sym_tab.get(&*fn_name).unwrap();
+                            let _fn = sym.downcast_ref::<Function>().unwrap().value_ref();
                             Ok(LLVMBuildCall(ctxt.builder,
                                             _fn,
                                             pf_args.as_mut_ptr(),
@@ -231,8 +232,8 @@ impl IRBuilder for Expr{
                                                                        function,
                                                                        c_str_ptr!("entry"));
 
-                                let func = Function::new(cloned_name, function);
-                                ctxt.sym_tab.insert(cloned_name, Box::new(func));
+                                let func = Function::new(cloned_name.clone(), function);
+                                ctxt.sym_tab.insert(cloned_name.clone(), Box::new(func));
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 let value_ref = try!(body.codegen(ctxt));

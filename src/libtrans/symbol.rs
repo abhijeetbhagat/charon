@@ -3,7 +3,7 @@ use self::llvm::prelude::{LLVMValueRef};
 use syntax::ast::TType;
 
 #[derive(Clone, Debug)]
-enum SymbolKind{
+pub enum SymbolKind{
     Variable,
     Function,
     Parameter,
@@ -24,7 +24,7 @@ pub trait FunctionSymbol : Symbol{
     fn value_ref(&self) -> LLVMValueRef;
 }
 
-struct Var{
+pub struct Var{
     id : String,
     var_type : TType,
     alloca_ref : LLVMValueRef
