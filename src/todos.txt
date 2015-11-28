@@ -55,3 +55,10 @@ type-checking scenarios:
 -type mismatch in math expressions - plus, minus, etc
 
 Macroize stuff in parse_for_expr
+
+bluss	abhi: you can only downcast to the exact type inside the &Any / Box<Any>
+abhi	bluss: which is Symbol in this case?
+bluss	abhi: yeah
+bluss	abhi: so for example something like this would work http://is.gd/ErqVWk
+bluss	or the Symbol trait would need to have its own downcasting methods
+bluss	(just like trait Error has)
