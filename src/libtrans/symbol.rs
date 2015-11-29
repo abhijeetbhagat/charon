@@ -31,7 +31,7 @@ pub struct Var{
 }
 
 impl Var{
-    fn new(id : String, ty : TType, alloca_ref : LLVMValueRef) -> Self{
+    pub fn new(id : String, ty : TType, alloca_ref : LLVMValueRef) -> Self{
         Var {
             id : id,
             var_type : ty,

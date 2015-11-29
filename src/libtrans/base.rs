@@ -244,6 +244,16 @@ impl IRBuilder for Expr{
                                     LLVMBuildRet(ctxt.builder, value_ref);
                                 }
                             },
+
+                            &Decl::VarDec(ref name, ref ty, ref rhs) => {
+                                let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
+                                let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
+                                let rhs_value_ref = try!(rhs.codegen(ctxt));
+                                let store = LLVMBuildStore(ctxt.builder,
+                                                           rhs_value_ref,
+                                                           alloca);
+                                ctxt.sym_tab.insert(name.clone(), Box::new(Var::new(name.clone(), ty.clone(), alloca)));
+                            },
                             _ => panic!("More decl types should be covered")
                         }
 
@@ -379,7 +389,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
     ctxt.unwrap().dump();
 }
 
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     let mut p = Parser::new("let function foo()  = if 1*1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -390,6 +400,16 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     ctxt.unwrap().dump();
 }
 
+#[test]
+fn test_prsr_bcknd_intgrtion_var_decl() {
+    let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
 //    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
