@@ -191,6 +191,39 @@ impl IRBuilder for Expr{
                     Ok(phi_node)
 
                 },
+                &Expr::ForExpr(ref id, ref from, ref to, ref do_expr) => {
+                    assert!(!id.is_empty(), "id cannot be empty");
+                    let from_code = try!(from.codegen(ctxt));
+                    let bb = LLVMGetInsertBlock(ctxt.builder);
+                    let function = LLVMGetBasicBlockParent(bb);
+
+                    let preloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("preloop"));
+                    LLVMBuildBr(ctxt.builder, preloop_block);
+                    LLVMPositionBuilderAtEnd(ctxt.builder, preloop_block);
+
+                    let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
+                    LLVMAddIncoming(phi_node, vec![from_code].as_mut_ptr(), vec![bb].as_mut_ptr(), 1);
+
+                    let to_code = try!(to.codegen(ctxt));
+                    let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0);
+                    let end_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, to_code, zero, c_str_ptr!("loopcond"));
+
+                    let afterloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("afterloop"));
+                    let loop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("loop"));
+                    LLVMBuildCondBr(ctxt.builder, end_cond, loop_block, afterloop_block);
+                    
+                    LLVMPositionBuilderAtEnd(ctxt.builder, loop_block);
+                    let do_expr_code = try!(do_expr.codegen(ctxt));
+                    let next_value = LLVMBuildAdd(ctxt.builder, phi_node, LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), c_str_ptr!("nextvar"));
+
+                    let loop_end_block = LLVMGetInsertBlock(ctxt.builder);
+                    LLVMAddIncoming(phi_node, vec![next_value].as_mut_ptr(), vec![loop_end_block].as_mut_ptr(), 1);
+                    LLVMBuildBr(ctxt.builder, preloop_block);
+                    LLVMPositionBuilderAtEnd(ctxt.builder, afterloop_block);
+
+                    //FIXME remove this 
+                    Ok(phi_node)
+                },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
                     //fn_name can be checked in a map that records names of std functions
@@ -385,9 +418,19 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     ctxt.unwrap().dump();
 }
 
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_var_decl() {
     let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
+#[test]
+fn test_prsr_bcknd_intgrtion_for_loop() {
+    let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
