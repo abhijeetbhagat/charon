@@ -85,7 +85,7 @@ fn std_functions_call_factory(fn_name : &str,
                 debug_assert!(args.is_some(), "No args passed to print()");
                 let lst = args.as_ref().unwrap();
                 debug_assert!(lst.len() == 1, "One arg should be passed to print()");
-                debug_assert!(lst[0].0 == TType::TString);
+                debug_assert!(lst[0].0 == TType::TString || lst[0].0 == TType::TInt32);
                 let str_arg = match &*lst[0].1 {
                     &Expr::StringExpr(ref value) => c_str_ptr!(&*(value.clone())),
                     _ => panic!("Expected a string expr")
@@ -291,21 +291,6 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         ctxt.bb_stack.push(bb);
         trans_expr(expr, &mut ctxt);
         
-        //exit function
-        //let exit_ty = LLVMVoidTypeInContext(ctxt.context);
-        //let mut exit_type_args_vec = Vec::new();
-        //exit_type_args_vec.push(LLVMIntTypeInContext(ctxt.context, 32));
-        //let exit_proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
-        //let exit_function = LLVMAddFunction(ctxt.module,
-        //                                              ffi::CString::new("exit").unwrap().as_ptr(),
-        //                                              exit_proto);
-        //let mut exit_args = Vec::new();
-        //exit_args.push(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
-        //LLVMBuildCall(ctxt.builder, 
-        //                          exit_function, 
-        //                          exit_args.as_mut_ptr(), 
-        //                          1, 
-        //                          ffi::CString::new("call").unwrap().as_ptr());
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
