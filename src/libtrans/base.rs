@@ -162,6 +162,11 @@ impl IRBuilder for Expr{
                 &Expr::DivExpr(ref e1, ref e2) => {
                     build_binary_instrs!(LLVMBuildSDiv, e1, e2, "div_tmp")
                 },
+                &Expr::LessThanExpr(ref e1, ref e2) => {
+                    let ev1 = try!(e1.codegen(ctxt));
+                    let ev2 = try!(e2.codegen(ctxt));
+                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSLT, ev1, ev2, c_str_ptr!("cmp_tmp")))
+                },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
                     let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
@@ -431,6 +436,16 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     ctxt.unwrap().dump();
 }
 
+#[test]
+fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
+    let mut p = Parser::new("let function foo()  = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    ctxt.unwrap().dump();
+}
 //#[test]
 fn test_prsr_bcknd_intgrtion_var_decl() {
     let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
@@ -441,7 +456,7 @@ fn test_prsr_bcknd_intgrtion_var_decl() {
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_for_loop() {
     let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
