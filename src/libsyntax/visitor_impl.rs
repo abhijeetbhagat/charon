@@ -133,6 +133,17 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected while-body of void type")
                 }
             },
+            &Expr::ForExpr(ref id, ref from, ref to, ref body) => {
+                self.visit_expr(from);
+                if self.ty != TType::TInt32{
+                    panic!("Initializing expression type should be int in a for loop");
+                }
+
+                self.visit_expr(to);
+                if self.ty != TType::TInt32{
+                    panic!("To expression type should be int in a for loop");
+                }
+            },
             &Expr::LetExpr(ref decls, ref opt_expr) => {
                 self.sym_tab.push(("<marker>".to_string(), None));
 
@@ -424,4 +435,14 @@ fn test_div_expr_with_1_as_denominator(){
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+#[should_panic(expected="Initializing expression type should be int in a for loop")]
+fn test_for_loop_expr_init_type(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::ForExpr(String::from("i"),
+                                B(Expr::StringExpr(String::from("adsd"))),
+                                B(Expr::NumExpr(1)),
+                                B(Expr::NumExpr(2))));
 }
