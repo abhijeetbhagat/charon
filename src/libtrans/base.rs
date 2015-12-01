@@ -197,16 +197,25 @@ impl IRBuilder for Expr{
                     let bb = LLVMGetInsertBlock(ctxt.builder);
                     let function = LLVMGetBasicBlockParent(bb);
 
+                    //i := ...
+                    let from_var = LLVMBuildAlloca(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
+                    let store = LLVMBuildStore(ctxt.builder, from_code, from_var);
+
+
                     let preloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("preloop"));
                     LLVMBuildBr(ctxt.builder, preloop_block);
                     LLVMPositionBuilderAtEnd(ctxt.builder, preloop_block);
 
-                    let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
-                    LLVMAddIncoming(phi_node, vec![from_code].as_mut_ptr(), vec![bb].as_mut_ptr(), 1);
+                    //let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
+                    //LLVMAddIncoming(phi_node, vec![from_code].as_mut_ptr(), vec![bb].as_mut_ptr(), 1);
 
                     let to_code = try!(to.codegen(ctxt));
                     let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0);
-                    let end_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, to_code, zero, c_str_ptr!("loopcond"));
+                    let end_cond = LLVMBuildICmp(ctxt.builder,
+                                                 llvm::LLVMIntPredicate::LLVMIntNE,
+                                                 LLVMBuildLoad(ctxt.builder, from_var, c_str_ptr!(&*id.clone())),
+                                                 to_code,
+                                                 c_str_ptr!("loopcond"));
 
                     let afterloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("afterloop"));
                     let loop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("loop"));
@@ -214,15 +223,19 @@ impl IRBuilder for Expr{
                     
                     LLVMPositionBuilderAtEnd(ctxt.builder, loop_block);
                     let do_expr_code = try!(do_expr.codegen(ctxt));
-                    let next_value = LLVMBuildAdd(ctxt.builder, phi_node, LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), c_str_ptr!("nextvar"));
 
-                    let loop_end_block = LLVMGetInsertBlock(ctxt.builder);
-                    LLVMAddIncoming(phi_node, vec![next_value].as_mut_ptr(), vec![loop_end_block].as_mut_ptr(), 1);
+                    //stepping
+                    let cur_value = LLVMBuildLoad(ctxt.builder, from_var, c_str_ptr!(&*id.clone()));
+                    let next_value = LLVMBuildAdd(ctxt.builder, cur_value, LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), c_str_ptr!("nextvar"));
+                    LLVMBuildStore(ctxt.builder, next_value, from_var);
+
+                    //let loop_end_block = LLVMGetInsertBlock(ctxt.builder);
+                    //LLVMAddIncoming(phi_node, vec![next_value].as_mut_ptr(), vec![loop_end_block].as_mut_ptr(), 1);
                     LLVMBuildBr(ctxt.builder, preloop_block);
                     LLVMPositionBuilderAtEnd(ctxt.builder, afterloop_block);
 
                     //FIXME remove this 
-                    Ok(phi_node)
+                    Ok(zero)
                 },
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
