@@ -1295,7 +1295,7 @@ fn test_while_expr_with_less_than_cmp_as_conditional_expr(){
     match(*expr){
         WhileExpr(ref conditional_expr, ref do_expr) => {
             match(**conditional_expr){
-                AddExpr(ref l, ref r) => {
+                LessThanExpr(ref l, ref r) => {
                     match **l{
                         NumExpr(n) => assert_eq!(n, 1),
                         _ => {}
@@ -1363,14 +1363,12 @@ fn test_for_expr_with_ident_as_from_expr(){
         ForExpr(ref id, ref from_expr, _, _) => {
             match(**from_expr){
                 IdExpr(ref i) => assert_eq!(*i, String::from("a")),
-                _ => panic!("This will not execute")
+                _ => panic!("this will not execute")
             }
         },
-        _ => panic!("This will not execute")
+        _ => panic!("this will not execute")
     } 
 }
-
-
 #[test]
 fn test_for_expr_with_ident_as_to_and_from_expr(){
     let mut p = Parser::new("for id:= a to b do 1+1".to_string()); 
@@ -1402,6 +1400,5 @@ fn test_for_expr_with_ident_as_to_and_from_expr(){
         },
         _ => panic!("This will not execute")
     } 
-
-
 }
+
