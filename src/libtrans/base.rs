@@ -165,7 +165,17 @@ impl IRBuilder for Expr{
                 &Expr::LessThanExpr(ref e1, ref e2) => {
                     let ev1 = try!(e1.codegen(ctxt));
                     let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSLT, ev1, ev2, c_str_ptr!("cmp_tmp")))
+                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSLT, ev1, ev2, c_str_ptr!("lecmp_tmp")))
+                },
+                &Expr::GreaterThanExpr(ref e1, ref e2) => {
+                    let ev1 = try!(e1.codegen(ctxt));
+                    let ev2 = try!(e2.codegen(ctxt));
+                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, ev1, ev2, c_str_ptr!("gtcmp_tmp")))
+                },
+                &Expr::NotEqualsExpr(ref e1, ref e2) => {
+                    let ev1 = try!(e1.codegen(ctxt));
+                    let ev2 = try!(e2.codegen(ctxt));
+                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, ev1, ev2, c_str_ptr!("necmp_tmp")))
                 },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
@@ -438,7 +448,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
-    let mut p = Parser::new("let function foo()  = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+    let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();

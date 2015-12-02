@@ -391,6 +391,26 @@ impl Parser{
                     panic!("Expected i32 as the type of rhs expression");
                 }
             },
+            Token::GreaterThan => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(GreaterThanExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
+            Token::LessThanGreaterThan => {
+                let (t, op2) = self.get_nxt_and_parse();
+                //FIXME it's better to use a type-checker
+                if t == TInt32{
+                    return Some((TInt32, B(NotEqualsExpr(op1, op2))))
+                }
+                else{
+                    panic!("Expected i32 as the type of rhs expression");
+                }
+            },
             //FIXME ';', ')' can be a encountered as well. deal with it.
             _ => {
                 return Some((TInt32, op1))
@@ -1296,6 +1316,27 @@ fn test_while_expr_with_less_than_cmp_as_conditional_expr(){
         WhileExpr(ref conditional_expr, ref do_expr) => {
             match(**conditional_expr){
                 LessThanExpr(ref l, ref r) => {
+                    match **l{
+                        NumExpr(n) => assert_eq!(n, 1),
+                        _ => {}
+                    }
+                },
+                _ => panic!("This will not execute")
+            }
+        },
+        _ => panic!("This will not execute")
+    } 
+}
+
+#[test]
+fn test_while_expr_with_greater_than_cmp_as_conditional_expr(){
+    let mut p = Parser::new("while 1>1 do 1".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        WhileExpr(ref conditional_expr, ref do_expr) => {
+            match(**conditional_expr){
+                GreaterThanExpr(ref l, ref r) => {
                     match **l{
                         NumExpr(n) => assert_eq!(n, 1),
                         _ => {}

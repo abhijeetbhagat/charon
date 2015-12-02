@@ -136,6 +136,7 @@ pub enum Expr{
    DivExpr(B<Expr>, B<Expr>),
    LessThanExpr(B<Expr>, B<Expr>),
    GreaterThanExpr(B<Expr>, B<Expr>),
+   NotEqualsExpr(B<Expr>, B<Expr>),
    ModExpr(B<Expr>, B<Expr>),
    BlockExpr(B<Block>),
    IfThenExpr(B<Expr>, B<Expr>),
