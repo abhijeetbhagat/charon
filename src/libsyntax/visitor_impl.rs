@@ -112,6 +112,18 @@ impl<'a> Visitor<'a> for TypeChecker{
                     self.visit_expr(&*b_expr);
                 }
             },
+            &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+                self.visit_expr(conditional_expr);
+                if self.ty != TType::TInt32{
+                    panic!("Expected conditional expression of int type");
+                }
+                self.visit_expr(then_expr);
+                let then_ty = self.ty.clone();
+                self.visit_expr(else_expr);
+                if then_ty != self.ty{
+                    panic!("Expected then expr and else expr types to be same");
+                }
+            },
             &Expr::IfThenExpr(ref conditional_expr, ref then_expr) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
@@ -407,6 +419,20 @@ fn test_if_expr_with_int_type_conditional_and_int_type_as_body_type() {
     let mut v = TypeChecker::new();
     v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+fn test_if_else_expr_with_matching_types() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
+    assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+#[should_panic(expected="Expected then expr and else expr types to be same")]
+fn test_if_else_expr_with_non_matching_types() {
+    let mut v = TypeChecker::new();
+    v.visit_expr(&Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
