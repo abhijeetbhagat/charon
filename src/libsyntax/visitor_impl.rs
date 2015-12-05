@@ -7,32 +7,6 @@ use ptr::*;
 
 pub type OptionalBinding = Option<B<Binding>>;
 
-struct ExpEvaluator{
-    value : i32
-}
-
-impl ExpEvaluator{
-    fn get_value(&mut self, expr : & Expr)->i32{
-        match expr{
-            &Expr::NumExpr(value) => value,
-            _ => 1
-        }
-    }
-}
-
-impl<'a> Visitor<'a> for ExpEvaluator{
-    fn visit_expr(&mut self, expr: &'a Expr){
-        match expr{
-            &Expr::AddExpr(ref left, ref right) => {
-                let v1 = self.get_value(left);
-                let v2 = self.get_value(right);
-                self.value = v1 + v2;
-            },
-            _ => {}
-        }
-    }
-}
-
 pub struct TypeChecker{
     //block_stack : Vec<RefCell<&'a  Block>>,
     pub sym_tab : Vec<(String, OptionalBinding)>,

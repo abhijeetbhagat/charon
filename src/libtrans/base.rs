@@ -1,4 +1,3 @@
-#![feature(rustc_private)]
 extern crate llvm_sys as llvm;
 extern crate libc;
 use std::ptr;

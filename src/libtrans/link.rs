@@ -1,14 +1,9 @@
-#![feature(rustc_private)]
 extern crate llvm_sys as llvm;
 extern crate libc;
 use std::ptr;
 use std::ffi;
 
-use self::llvm::prelude::{LLVMContextRef, LLVMModuleRef, LLVMBuilderRef, LLVMValueRef, LLVMTypeRef};
-use self::llvm::core::*;
-use self::llvm::target::*;
 use self::llvm::target_machine::*;
-use helpers::*;
 use std::process::Command;
 use base::Context;
 
