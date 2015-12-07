@@ -220,9 +220,6 @@ impl IRBuilder for Expr{
                     LLVMBuildBr(ctxt.builder, preloop_block);
                     LLVMPositionBuilderAtEnd(ctxt.builder, preloop_block);
 
-                    //let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
-                    //LLVMAddIncoming(phi_node, vec![from_code].as_mut_ptr(), vec![bb].as_mut_ptr(), 1);
-
                     let to_code = try!(to.codegen(ctxt));
                     let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0);
                     let end_cond = LLVMBuildICmp(ctxt.builder,
@@ -240,17 +237,21 @@ impl IRBuilder for Expr{
 
                     //stepping
                     let cur_value = LLVMBuildLoad(ctxt.builder, from_var, c_str_ptr!(&*id.clone()));
-                    let next_value = LLVMBuildAdd(ctxt.builder, cur_value, LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), c_str_ptr!("nextvar"));
+                    let next_value = LLVMBuildAdd(ctxt.builder, cur_value, 
+                                                  LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), 
+                                                  c_str_ptr!("nextvar"));
                     LLVMBuildStore(ctxt.builder, next_value, from_var);
 
-                    //let loop_end_block = LLVMGetInsertBlock(ctxt.builder);
-                    //LLVMAddIncoming(phi_node, vec![next_value].as_mut_ptr(), vec![loop_end_block].as_mut_ptr(), 1);
                     LLVMBuildBr(ctxt.builder, preloop_block);
                     LLVMPositionBuilderAtEnd(ctxt.builder, afterloop_block);
 
                     //FIXME remove this 
                     Ok(zero)
                 },
+                //&Expr::WhileExpr(ref conditional_expr, ref body) => {
+                    //let cond_code = try!(conditional_expr.codegen(ctxt));
+
+                ////},
                 &Expr::CallExpr(ref fn_name, ref optional_args) => {
                     //FIXME instead of directly passing to the factory
                     //fn_name can be checked in a map that records names of std functions
@@ -445,7 +446,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     ctxt.unwrap().dump();
 }
 
-#[test]
+//#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -465,7 +466,8 @@ fn test_prsr_bcknd_intgrtion_var_decl() {
     assert_eq!(ctxt.is_some(), true);
     ctxt.unwrap().dump();
 }
-//#[test]
+
+#[test]
 fn test_prsr_bcknd_intgrtion_for_loop() {
     let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
