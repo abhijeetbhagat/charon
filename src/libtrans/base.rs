@@ -20,11 +20,13 @@ use link::link;
 use helpers::*;
 use symbol::*;
 
+type OptionalSymbolInfo = Option<Box<Any>>;
+
 pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    sym_tab : HashMap<String, Box<Any>>,
+    sym_tab : Vec<(String, OptionalSymbolInfo)>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
 }
@@ -36,7 +38,7 @@ impl<'a> Context<'a>{
             let llvm_module = LLVMModuleCreateWithNameInContext(c_str_ptr!(module_name),
                                                                 llvm_context);
             let builder = LLVMCreateBuilderInContext(llvm_context);
-            let sym_tab = HashMap::new();
+            let sym_tab = Vec::new();
             let bb_stack = Vec::new();
             let proto_map = HashMap::new();
 
@@ -215,7 +217,6 @@ impl IRBuilder for Expr{
                     let from_var = LLVMBuildAlloca(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
                     let store = LLVMBuildStore(ctxt.builder, from_code, from_var);
 
-
                     let preloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("preloop"));
                     LLVMBuildBr(ctxt.builder, preloop_block);
                     LLVMPositionBuilderAtEnd(ctxt.builder, preloop_block);
@@ -256,19 +257,32 @@ impl IRBuilder for Expr{
                     //FIXME instead of directly passing to the factory
                     //fn_name can be checked in a map that records names of std functions
                     match std_functions_call_factory(&*fn_name, optional_args, ctxt) {
-                        Some(call) => Ok(call),
-                        _ => {
+                        Some(call) => Ok(call), //intrinsic function
+                        _ => { //user-defined function
                             //user defined function call
                             let mut pf_args = Vec::new();
                             //FIXME pass args if present in the call
                             if optional_args.is_some() {
 
                             }
+                            
+                            let mut sym = &None;
+                            let mut found = false;
+                            for &(ref id, ref info) in ctxt.sym_tab.iter().rev(){
+                                if *id == *fn_name{
+                                    sym = info;
+                                    break;
+                                }
+                            }
+
+                            if !found{
+                                panic!(format!("Call to {0} not found", fn_name));
+                            }
 
                             //use get() instead of [] to prevent a move out of the map
                             //and as a result for the type conversion to Any to work
-                            let sym = ctxt.sym_tab.get(&*fn_name).unwrap();
-                            let _fn = sym.downcast_ref::<Function>().unwrap().value_ref();
+                            //let sym = ctxt.sym_tab.get(&*fn_name).unwrap();
+                            let _fn = sym.as_ref().unwrap().downcast_ref::<Function>().unwrap().value_ref();
                             Ok(LLVMBuildCall(ctxt.builder,
                                             _fn,
                                             pf_args.as_mut_ptr(),
@@ -294,7 +308,7 @@ impl IRBuilder for Expr{
                                                                        c_str_ptr!("entry"));
 
                                 let func = Function::new(cloned_name.clone(), function);
-                                ctxt.sym_tab.insert(cloned_name.clone(), Box::new(func));
+                                ctxt.sym_tab.push((cloned_name.clone(), Some(Box::new(func))));
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 let value_ref = try!(body.codegen(ctxt));
@@ -313,18 +327,22 @@ impl IRBuilder for Expr{
                                 let store = LLVMBuildStore(ctxt.builder,
                                                            rhs_value_ref,
                                                            alloca);
-                                ctxt.sym_tab.insert(name.clone(), Box::new(Var::new(name.clone(), ty.clone(), alloca)));
+                                ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
                             },
                             _ => panic!("More decl types should be covered")
                         }
 
                     }
+                    
+                    //translation of the 'in' expr
+                    
                     //trans_expr(&*expr.unwrap(), &mut ctxt);
                     //FIXME should the previous bb be popped here?
                     let bb = ctxt.bb_stack.pop().unwrap();
                     LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                     let e = &expr.as_ref().unwrap();
                     let v = try!(e.codegen(ctxt));
+                    //pop all the symbols declared in the current let block
                     Ok(v)
                 }
                 t => Err(format!("error: {:?}", t))
