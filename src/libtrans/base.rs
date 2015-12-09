@@ -198,7 +198,7 @@ impl IRBuilder for Expr{
                         Ok(_optional.unwrap().alloca_ref())
                     }
                     else{
-                        panic!(format!("Invalid reference to variable '{0}'", *id));
+                        panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id));
                     }
                 },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
@@ -542,6 +542,15 @@ fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
     let ctxt = translate(&*b_expr);
 }
 
+#[test]
+#[should_panic(expected="Invalid reference to variable 'foo'. Different binding found.")]
+fn test_prsr_bcknd_intgrtion_invalid_reference_to_var_defined_as_function() {
+    let mut p = Parser::new("let function foo() = print(\"b\")\nvar i : int := foo\n in print(\"\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+}
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
 //    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
