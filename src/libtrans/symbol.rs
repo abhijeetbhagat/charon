@@ -15,7 +15,7 @@ pub trait Symbol{
     fn id(&self) -> String; 
 }
 
-trait VarSymbol : Symbol{
+pub trait VarSymbol : Symbol{
     fn var_type(&self) -> &TType;
     fn alloca_ref(&self) ->  LLVMValueRef;
 }

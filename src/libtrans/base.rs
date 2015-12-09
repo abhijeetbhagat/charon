@@ -178,6 +178,29 @@ impl IRBuilder for Expr{
                     let ev2 = try!(e2.codegen(ctxt));
                     Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, ev1, ev2, c_str_ptr!("necmp_tmp")))
                 },
+                &Expr::IdExpr(ref id) => {
+                    let mut sym = &None;
+                    let mut found = false;
+                    for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+                        if *_id == *id  {
+                            sym = info;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if !found{
+                        panic!(format!("Invalid reference to variable '{0}'", *id));
+                    }
+
+                    let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+                    if _optional.is_some(){
+                        Ok(_optional.unwrap().alloca_ref())
+                    }
+                    else{
+                        panic!(format!("Invalid reference to variable '{0}'", *id));
+                    }
+                },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
                     let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
@@ -499,6 +522,25 @@ fn test_prsr_bcknd_intgrtion_invalid_call() {
     let ctxt = translate(&*b_expr);
 }
 
+
+#[test]
+#[should_panic(expected="Invalid reference to variable 'i'")]
+fn test_prsr_bcknd_intgrtion_invalid_reference_to_var() {
+    let mut p = Parser::new("let var a : int :=i in foo()".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
+    let mut p = Parser::new("let var i : int := 1\nvar a : int :=i in print(\"\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+}
 
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
