@@ -488,6 +488,18 @@ fn test_prsr_bcknd_intgrtion_for_loop() {
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
+
+#[test]
+#[should_panic(expected="Call to 'foo' not found")]
+fn test_prsr_bcknd_intgrtion_invalid_call() {
+    let mut p = Parser::new("foo()".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+}
+
+
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
 //    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
