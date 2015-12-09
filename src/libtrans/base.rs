@@ -271,12 +271,13 @@ impl IRBuilder for Expr{
                             for &(ref id, ref info) in ctxt.sym_tab.iter().rev(){
                                 if *id == *fn_name{
                                     sym = info;
+                                    found = true;
                                     break;
                                 }
                             }
 
                             if !found{
-                                panic!(format!("Call to {0} not found", fn_name));
+                                panic!(format!("Call to '{0}' not found", fn_name));
                             }
 
                             //use get() instead of [] to prevent a move out of the map
@@ -373,10 +374,12 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
-        //add translated code as part of the block
-        link(&ctxt);
     }
     Some(ctxt)
+}
+
+fn link_object_code(ctxt : &Context){
+    link(ctxt);
 }
 
 fn trans_expr(expr: &Expr, ctxt : &mut Context){
@@ -387,17 +390,16 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
     }
 }
 
-//#[test]
+#[test]
 fn test_translate_std_print_call() {
     let expr = &Expr::CallExpr("print".to_string(),
                                   Some(vec![(TType::TString,
                                              B(Expr::StringExpr("abhi".to_string())))]));
     let ctxt = translate(expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_prnt_call() {
     let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
     p.start_lexer();
@@ -408,19 +410,17 @@ fn test_prsr_bcknd_intgrtion_prnt_call() {
     //                               Some(vec![(TType::TString,
     //                                          B(Expr::StringExpr("abhi".to_string())))])));
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_translate_add_expr(){
     let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
     p.start_lexer();
     let tup = p.expr();
     let (_ , b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
-    ctxt.unwrap().dump();
 }
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_let_blk() {
     let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
     p.start_lexer();
@@ -428,10 +428,9 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr() {
     let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -439,10 +438,9 @@ fn test_prsr_bcknd_intgrtion_if_then_expr() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
     let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -450,10 +448,9 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     let mut p = Parser::new("let function foo()  = if 1*1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -461,10 +458,9 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
@@ -472,9 +468,8 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
-//#[test]
+#[test]
 fn test_prsr_bcknd_intgrtion_var_decl() {
     let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
@@ -482,7 +477,6 @@ fn test_prsr_bcknd_intgrtion_var_decl() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 
 #[test]
@@ -493,7 +487,6 @@ fn test_prsr_bcknd_intgrtion_for_loop() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    ctxt.unwrap().dump();
 }
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
