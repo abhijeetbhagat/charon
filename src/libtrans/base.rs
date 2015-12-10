@@ -20,13 +20,15 @@ use link::link;
 use helpers::*;
 use symbol::*;
 
-type OptionalSymbolInfo = Option<Box<Any>>;
+//FIXME this is only of unit testing
+pub type OptionalSymbolInfo = Option<Box<Any>>;
 
 pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    sym_tab : Vec<(String, OptionalSymbolInfo)>,
+    //FIXME this is only for unit testing
+    pub sym_tab : Vec<(String, OptionalSymbolInfo)>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
 }
@@ -540,6 +542,7 @@ fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
 }
 
 #[test]
