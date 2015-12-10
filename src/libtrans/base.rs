@@ -305,15 +305,17 @@ impl IRBuilder for Expr{
                                 panic!(format!("Call to '{0}' not found", fn_name));
                             }
 
-                            //use get() instead of [] to prevent a move out of the map
-                            //and as a result for the type conversion to Any to work
-                            //let sym = ctxt.sym_tab.get(&*fn_name).unwrap();
-                            let _fn = sym.as_ref().unwrap().downcast_ref::<Function>().unwrap().value_ref();
-                            Ok(LLVMBuildCall(ctxt.builder,
-                                            _fn,
+                            let _optional = sym.as_ref().unwrap().downcast_ref::<Function>();
+                            if _optional.is_some(){
+                                Ok(LLVMBuildCall(ctxt.builder,
+                                            _optional.as_ref().unwrap().value_ref(),
                                             pf_args.as_mut_ptr(),
                                             0,
                                             c_str_ptr!("")))
+                            }
+                            else{
+                                panic!(format!("Invalid reference to function '{0}'. Different binding found.", *fn_name));
+                            }
                         }
                     }
                 },
@@ -549,6 +551,16 @@ fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
 #[should_panic(expected="Invalid reference to variable 'foo'. Different binding found.")]
 fn test_prsr_bcknd_intgrtion_invalid_reference_to_var_defined_as_function() {
     let mut p = Parser::new("let function foo() = print(\"b\")\nvar i : int := foo\n in print(\"\")".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+}
+
+#[test]
+#[should_panic(expected="Invalid reference to function 'foo'. Different binding found.")]
+fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
+    let mut p = Parser::new("let var foo : int := 1\n in foo()".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
