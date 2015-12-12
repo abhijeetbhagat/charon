@@ -229,8 +229,7 @@ impl IRBuilder for Expr{
                     let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
                     LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
                     LLVMAddIncoming(phi_node, vec![else_code].as_mut_ptr(), vec![else_end].as_mut_ptr(), 1);
-                    Ok(phi_node)
-
+                    Ok(phi_node) 
                 },
                 &Expr::ForExpr(ref id, ref from, ref to, ref do_expr) => {
                     assert!(!id.is_empty(), "id cannot be empty");

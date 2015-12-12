@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::collections::{HashMap};
 use ast::*;
 use visit::{Visitor};
 use std::cell::RefCell;
@@ -169,6 +170,13 @@ impl<'a> Visitor<'a> for TypeChecker{
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
             &Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
+                let mut map = HashMap::new();
+                for p in params.as_ref().unwrap(){
+                    if map.contains_key(&p.0){
+                        panic!(format!("Duplicate param '{0}' found", p.0));
+                    }
+                    map.insert(&p.0, true);
+                }
                 //self.visit_expr(&body);
                 //if self.ty != *ret_type{
                 if ret_type != body_type {
@@ -445,4 +453,16 @@ fn test_for_loop_expr_init_type(){
                                 B(Expr::StringExpr(String::from("adsd"))),
                                 B(Expr::NumExpr(1)),
                                 B(Expr::NumExpr(2))));
+}
+
+#[test]
+#[should_panic(expected="Duplicate param 'a' found")]
+fn test_func_dec_with_duplicate_param(){
+    let mut v = TypeChecker::new();
+    v.visit_decl(&Decl::FunDec(String::from("foo"), 
+                               Some(vec![(String::from("a"), TType::TInt32),
+                                         (String::from("a"), TType::TInt32) ]),
+                               TType::TString,
+                               B(Expr::NumExpr(4)),
+                               TType::TInt32));
 }
