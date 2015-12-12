@@ -457,11 +457,23 @@ fn test_for_loop_expr_init_type(){
 
 #[test]
 #[should_panic(expected="Duplicate param 'a' found")]
-fn test_func_dec_with_duplicate_param(){
+fn test_func_dec_with_duplicate_param_with_same_type(){
     let mut v = TypeChecker::new();
     v.visit_decl(&Decl::FunDec(String::from("foo"), 
                                Some(vec![(String::from("a"), TType::TInt32),
                                          (String::from("a"), TType::TInt32) ]),
+                               TType::TString,
+                               B(Expr::NumExpr(4)),
+                               TType::TInt32));
+}
+
+#[test]
+#[should_panic(expected="Duplicate param 'a' found")]
+fn test_func_dec_with_duplicate_param_with_different_types(){
+    let mut v = TypeChecker::new();
+    v.visit_decl(&Decl::FunDec(String::from("foo"), 
+                               Some(vec![(String::from("a"), TType::TInt32),
+                                         (String::from("a"), TType::TString) ]),
                                TType::TString,
                                B(Expr::NumExpr(4)),
                                TType::TInt32));
