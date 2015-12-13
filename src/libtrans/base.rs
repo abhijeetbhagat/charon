@@ -325,7 +325,17 @@ impl IRBuilder for Expr{
                         match decl {
                             &Decl::FunDec(ref name, ref params, ref ty, ref body, ref body_ty) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
-                                let proto = LLVMFunctionType(llvm_ty, ptr::null_mut(), 0, 0);
+                                let mut type_args = Vec::new();
+                                if params.as_ref().unwrap().len() > 0{
+                                    for p in params.as_ref().unwrap(){
+                                        let param_llvm_type = get_llvm_type_for_ttype(&p.1, ctxt);
+                                        type_args.push(param_llvm_type);
+                                    }
+                                }
+                                let proto = LLVMFunctionType(llvm_ty, 
+                                                             type_args.as_mut_ptr(),
+                                                             0,
+                                                             0);
                                 let cloned_name = name.clone();
                                 let function = LLVMAddFunction(ctxt.module,
                                                                c_str_ptr!(&(*cloned_name)),
@@ -338,6 +348,21 @@ impl IRBuilder for Expr{
                                 ctxt.sym_tab.push((cloned_name.clone(), Some(Box::new(func))));
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
+                                
+                                //build allocas for params
+                                if params.as_ref().unwrap().len() > 0{
+                                    let mut params_vec = Vec::new();
+                                    LLVMGetParams(function, params_vec.as_mut_ptr());
+                                    for (value_ref, param) in params_vec.iter().zip(params.as_ref().unwrap()){
+                                        let alloca = LLVMBuildAlloca(ctxt.builder,
+                                                                     get_llvm_type_for_ttype(&param.1, ctxt),
+                                                                     c_str_ptr!(&*param.0));
+                                        LLVMBuildStore(ctxt.builder,
+                                                       *value_ref,
+                                                       alloca);
+
+                                    }
+                                }
                                 let value_ref = try!(body.codegen(ctxt));
                                 if *ty == TType::TVoid{
                                     LLVMBuildRetVoid(ctxt.builder);
