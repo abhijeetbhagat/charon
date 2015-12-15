@@ -349,6 +349,8 @@ impl IRBuilder for Expr{
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 
+                                ctxt.sym_tab.push((String::from("<marker>"),
+                                                   None));
                                 //build allocas for params
                                 if params.as_ref().unwrap().len() > 0{
                                     let mut params_vec = Vec::new();
@@ -370,8 +372,13 @@ impl IRBuilder for Expr{
                                 else{
                                     LLVMBuildRet(ctxt.builder, value_ref);
                                 }
-                            },
 
+                                //pop all local symbols belonging to the current function
+                                while !ctxt.sym_tab.last().unwrap().1.is_none(){
+                                    ctxt.sym_tab.pop();
+                                }
+                                ctxt.sym_tab.pop(); 
+                            }, 
                             &Decl::VarDec(ref name, ref ty, ref rhs) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
@@ -590,6 +597,17 @@ fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
 }
+
+#[test]
+fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
+    let mut p = Parser::new("let var a : int := 1\nfunction foo(a:int, b:int) = print(\"abhi\")\n in foo()".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
+}
+
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
 //    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
