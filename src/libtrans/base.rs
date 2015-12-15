@@ -239,7 +239,7 @@ impl IRBuilder for Expr{
 
                     //i := ...
                     let from_var = LLVMBuildAlloca(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!(&*id.clone()));
-                    let store = LLVMBuildStore(ctxt.builder, from_code, from_var);
+                    LLVMBuildStore(ctxt.builder, from_code, from_var);
 
                     let preloop_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("preloop"));
                     LLVMBuildBr(ctxt.builder, preloop_block);
@@ -326,8 +326,9 @@ impl IRBuilder for Expr{
                             &Decl::FunDec(ref name, ref params, ref ty, ref body, ref body_ty) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let mut type_args = Vec::new();
-                                if params.as_ref().unwrap().len() > 0{
-                                    for p in params.as_ref().unwrap(){
+                                let optional_params = params.as_ref();
+                                if optional_params.is_some() && optional_params.unwrap().len() > 0{
+                                    for p in optional_params.unwrap(){
                                         let param_llvm_type = get_llvm_type_for_ttype(&p.1, ctxt);
                                         type_args.push(param_llvm_type);
                                     }
@@ -352,16 +353,19 @@ impl IRBuilder for Expr{
                                 ctxt.sym_tab.push((String::from("<marker>"),
                                                    None));
                                 //build allocas for params
-                                if params.as_ref().unwrap().len() > 0{
+                                if optional_params.is_some() && optional_params.unwrap().len() > 0{
                                     let mut params_vec = Vec::new();
                                     LLVMGetParams(function, params_vec.as_mut_ptr());
-                                    for (value_ref, param) in params_vec.iter().zip(params.as_ref().unwrap()){
+                                    for (value_ref, param) in params_vec.iter().zip(optional_params.unwrap()){
                                         let alloca = LLVMBuildAlloca(ctxt.builder,
                                                                      get_llvm_type_for_ttype(&param.1, ctxt),
                                                                      c_str_ptr!(&*param.0));
                                         LLVMBuildStore(ctxt.builder,
                                                        *value_ref,
                                                        alloca);
+                                        println!("Pushing '{}'", param.0);
+                                        ctxt.sym_tab.push((param.0.clone(), 
+                                                           Some(Box::new(alloca))));
 
                                     }
                                 }
@@ -383,9 +387,9 @@ impl IRBuilder for Expr{
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
                                 let rhs_value_ref = try!(rhs.codegen(ctxt));
-                                let store = LLVMBuildStore(ctxt.builder,
-                                                           rhs_value_ref,
-                                                           alloca);
+                                LLVMBuildStore(ctxt.builder,
+                                               rhs_value_ref,
+                                               alloca);
                                 ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
                             },
                             _ => panic!("More decl types should be covered")
@@ -601,6 +605,16 @@ fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
 #[test]
 fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
     let mut p = Parser::new("let var a : int := 1\nfunction foo(a:int, b:int) = print(\"abhi\")\n in foo()".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
+    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in add(1, 2)".to_string());
     p.start_lexer();
     let tup = p.expr();
     let (ty, b_expr) = tup.unwrap();
