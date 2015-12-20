@@ -147,6 +147,14 @@ impl IRBuilder for Expr{
                 Ok($fun(ctxt.builder, ev1, ev2, $s.as_ptr() as *const i8))
             }}
         }
+
+        macro_rules! build_relational_instrs{
+            ($fun : ident, $pred : path, $e1:ident, $e2:ident, $s : expr) => {{
+                let ev1 = try!($e1.codegen(ctxt));
+                let ev2 = try!($e2.codegen(ctxt));
+                Ok($fun(ctxt.builder, $pred, ev1, ev2, $s.as_ptr() as *const i8))
+            }}
+        }
         unsafe{
             match self{
                 &Expr::NumExpr(ref i) => {
@@ -166,19 +174,13 @@ impl IRBuilder for Expr{
                     build_binary_instrs!(LLVMBuildSDiv, e1, e2, "div_tmp")
                 },
                 &Expr::LessThanExpr(ref e1, ref e2) => {
-                    let ev1 = try!(e1.codegen(ctxt));
-                    let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSLT, ev1, ev2, c_str_ptr!("lecmp_tmp")))
+                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntSLT, e1, e2, "lecmp_tmp")
                 },
                 &Expr::GreaterThanExpr(ref e1, ref e2) => {
-                    let ev1 = try!(e1.codegen(ctxt));
-                    let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, ev1, ev2, c_str_ptr!("gtcmp_tmp")))
+                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntSGT, e1, e2, "gtcmp_tmp")
                 },
                 &Expr::NotEqualsExpr(ref e1, ref e2) => {
-                    let ev1 = try!(e1.codegen(ctxt));
-                    let ev2 = try!(e2.codegen(ctxt));
-                    Ok(LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, ev1, ev2, c_str_ptr!("necmp_tmp")))
+                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntNE, e1, e2, "necmp_tmp")
                 },
                 &Expr::IdExpr(ref id) => {
                     let mut sym = &None;
