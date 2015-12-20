@@ -79,6 +79,11 @@ trait IRBuilder{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult;
 }
 
+//fn get_result(e : &Expr, ctxt : &mut Context) -> Result<LLVMValueRef, String>{
+//    let r = try!(e.codegen(ctxt));
+//    r
+//}
+
 fn std_functions_call_factory(fn_name : &str,
                               args : &OptionalTypeExprTupleList,
                               ctxt : &mut Context) -> Option<LLVMValueRef>{
@@ -88,11 +93,8 @@ fn std_functions_call_factory(fn_name : &str,
                 debug_assert!(args.is_some(), "No args passed to print()");
                 let lst = args.as_ref().unwrap();
                 debug_assert!(lst.len() == 1, "One arg should be passed to print()");
-                debug_assert!(lst[0].0 == TType::TString || lst[0].0 == TType::TInt32);
-                let str_arg = match &*lst[0].1 {
-                    &Expr::StringExpr(ref value) => c_str_ptr!(&*(value.clone())),
-                    _ => panic!("Expected a string expr")
-                };
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32);
 
                 let print_function : LLVMValueRef;
                 //check if we already have a prototype defined
@@ -111,16 +113,30 @@ fn std_functions_call_factory(fn_name : &str,
                     print_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf"));
                 }
 
-                let gstr = LLVMBuildGlobalStringPtr(ctxt.builder,
-                                                    str_arg,
-                                                    c_str_ptr!(".str"));
                 let mut pf_args = Vec::new();
-                pf_args.push(gstr);
+                let mut args_count = 1;
+                if *arg_type == TType::TString {
+                    let gstr = arg_expr.codegen(ctxt);
+                    pf_args.push(gstr.unwrap());
+                }
+
+                if *arg_type == TType::TInt32{
+                    args_count = 2;
+                    let gstr = LLVMBuildGlobalStringPtr(ctxt.builder, 
+                                                        c_str_ptr!("%d\n"), 
+                                                        c_str_ptr!(".str"));
+                    pf_args.push(gstr);
+                    let l = match &arg_expr.codegen(ctxt){
+                        &Ok(val) => val,
+                        &Err(ref err) => panic!("Error occurred")
+                    };
+                    pf_args.push(l);
+                }
 
                 Some(LLVMBuildCall(ctxt.builder,
                                    print_function,
                                    pf_args.as_mut_ptr(),
-                                   1,
+                                   args_count,
                                    c_str_ptr!("call")))
             },
             _ => {None}
@@ -160,6 +176,11 @@ impl IRBuilder for Expr{
                 &Expr::NumExpr(ref i) => {
                     let ty = LLVMIntTypeInContext(ctxt.context, 32);
                     Ok(LLVMConstInt(ty, *i as u64, 0))
+                },
+                &Expr::StringExpr(ref s) => {
+                    Ok(LLVMBuildGlobalStringPtr(ctxt.builder, 
+                                             c_str_ptr!(&*(s.clone())),
+                                             c_str_ptr!(".str")))
                 },
                 &Expr::AddExpr(ref e1, ref e2) => {
                     build_binary_instrs!(LLVMBuildAdd, e1, e2, "add_tmp")
@@ -568,6 +589,15 @@ fn test_prsr_bcknd_intgrtion_for_loop() {
 }
 
 #[test]
+fn test_prsr_bcknd_intgrtion_print_num() {
+    let mut p = Parser::new("print(1)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+}
+#[test]
 #[should_panic(expected="Call to 'foo' not found")]
 fn test_prsr_bcknd_intgrtion_invalid_call() {
     let mut p = Parser::new("foo()".to_string());
@@ -639,6 +669,16 @@ fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
     ctxt.unwrap().dump();
 }
 
+#[test]
+fn test_prsr_bcknd_intgrtion_print_addition_call_result() {
+    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(1+2)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    let (ty, b_expr) = tup.unwrap();
+    let ctxt = translate(&*b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+}
 //#[test]
 //fn test_prsr_bcknd_intgrtion_for_expr() {
 //    let mut p = Parser::new("let function foo() = for i:= 1 to 1 do 1 in foo() end".to_string());
