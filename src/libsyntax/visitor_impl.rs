@@ -170,18 +170,21 @@ impl<'a> Visitor<'a> for TypeChecker{
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
             Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
-                let mut map = HashMap::new();
-                for p in params.as_ref().unwrap(){
-                    if map.contains_key(&p.0){
-                        panic!(format!("Duplicate param '{0}' found", p.0));
-                    }
-                    map.insert(&p.0, true);
-                }
-                //self.visit_expr(&body);
-                //if self.ty != *ret_type{
                 if ret_type != body_type {
                     panic!("Return type doesn't match with the type of the last expression.")
                 }
+
+                if params.is_some() {
+                    let mut map = HashMap::new();
+                    for p in params.as_ref().unwrap(){
+                        if map.contains_key(&p.0){
+                            panic!(format!("Duplicate param '{0}' found", p.0));
+                        }
+                        map.insert(&p.0, true);
+                    }
+                }
+                //self.visit_expr(&body);
+                //if self.ty != *ret_type{
                 store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
             Decl::TypeDec(ref id, ref ty) => {
@@ -194,7 +197,7 @@ impl<'a> Visitor<'a> for TypeChecker{
 #[test]
 fn test_ty_set_for_num() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::NumExpr(23));
+    v.visit_expr(&mut Expr::NumExpr(23));
     assert_eq!(TType::TInt32, v.ty);
 }
 
@@ -202,14 +205,14 @@ fn test_ty_set_for_num() {
 fn test_ty_set_for_int_id() {
     let mut v = TypeChecker::new();
     v.sym_tab.push(("a".to_string(), Some(B(Binding::VarBinding(TType::TInt32)))));
-    v.visit_expr(&Expr::IdExpr("a".to_string()));
+    v.visit_expr(&mut Expr::IdExpr("a".to_string()));
     assert_eq!(TType::TInt32, v.ty);
 }
 
 #[test]
 fn test_type_match_int_for_var_dec() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NumExpr(4))));
+    v.visit_decl(&mut Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NumExpr(4))));
     assert_eq!(TType::TInt32, v.ty);
     assert_eq!(v.sym_tab.len(), 1);
     assert_eq!(v.sym_tab[0].0, "a".to_string());
@@ -219,7 +222,7 @@ fn test_type_match_int_for_var_dec() {
 #[test]
 fn test_type_match_string_for_var_dec() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TString, B(Expr::NilExpr)));
+    v.visit_decl(&mut Decl::VarDec("a".to_string(), TType::TString, B(Expr::NilExpr)));
     assert_eq!(TType::TString, v.ty);
     assert_eq!(v.sym_tab.len(), 1);
     assert_eq!(v.sym_tab[0].0, "a".to_string());
@@ -230,7 +233,7 @@ fn test_type_match_string_for_var_dec() {
 #[should_panic]
 fn test_type_check_for_var_dec_type_mismatch() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NilExpr)));
+    v.visit_decl(&mut Decl::VarDec("a".to_string(), TType::TInt32, B(Expr::NilExpr)));
     assert_eq!(TType::TInt32, v.ty);
 }
 
@@ -263,27 +266,27 @@ fn test_var_hiding() {
 #[test]
 fn test_func_decl_correct_return_type() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TInt32, B(Expr::NumExpr(4)), TType::TInt32));
+    v.visit_decl(&mut Decl::FunDec(String::from("foo"), None, TType::TInt32, B(Expr::NumExpr(4)), TType::TInt32));
 }
 
 #[test]
 #[should_panic(expected="Return type doesn't match with the type of the last expression.")]
 fn test_func_decl_incorrect_return_type() {
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4)), TType::TInt32));
+    v.visit_decl(&mut Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4)), TType::TInt32));
 }
 
 #[test]
 #[should_panic(expected="Expected conditional expression of int type")]
 fn test_if_expr_with_incorrect_conditional_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&mut Expr::IfThenExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
 fn test_if_expr_with_int_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::SeqExpr(None))));
+    v.visit_expr(&mut Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::SeqExpr(None))));
     assert_eq!(v.ty, TType::TVoid);
 }
 
@@ -291,14 +294,14 @@ fn test_if_expr_with_int_type() {
 #[should_panic(expected="Expected if-body of void type")]
 fn test_if_expr_with_int_type_conditional_and_int_type_as_body_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
+    v.visit_expr(&mut Expr::IfThenExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
 }
 
 #[test]
 fn test_if_else_expr_with_matching_types() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
+    v.visit_expr(&mut Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
 }
 
@@ -306,34 +309,34 @@ fn test_if_else_expr_with_matching_types() {
 #[should_panic(expected="Expected then expr and else expr types to be same")]
 fn test_if_else_expr_with_non_matching_types() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&mut Expr::IfThenElseExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
 #[should_panic(expected="Expected conditional expression of int type")]
 fn test_while_expr_with_incorrect_conditional_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::WhileExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&mut Expr::WhileExpr(B(Expr::StringExpr(String::from("a"))), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
 #[should_panic(expected="Expected while-body of void type")]
 fn test_while_expr_with_int_type() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::WhileExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
+    v.visit_expr(&mut Expr::WhileExpr(B(Expr::NumExpr(1)), B(Expr::StringExpr(String::from("a")))));
 }
 
 #[test]
 #[should_panic(expected="Denominator cannot be 0")]
 fn test_div_expr_with_0_as_denominator(){
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(0))));
+    v.visit_expr(&mut Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(0))));
 }
 
 #[test]
 fn test_div_expr_with_1_as_denominator(){
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
+    v.visit_expr(&mut Expr::DivExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(1))));
     assert_eq!(v.ty, TType::TInt32);
 }
 
@@ -341,7 +344,7 @@ fn test_div_expr_with_1_as_denominator(){
 #[should_panic(expected="Initializing expression type should be int in a for loop")]
 fn test_for_loop_expr_init_type(){
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::ForExpr(String::from("i"),
+    v.visit_expr(&mut Expr::ForExpr(String::from("i"),
                                 B(Expr::StringExpr(String::from("adsd"))),
                                 B(Expr::NumExpr(1)),
                                 B(Expr::NumExpr(2))));
@@ -351,10 +354,10 @@ fn test_for_loop_expr_init_type(){
 #[should_panic(expected="Duplicate param 'a' found")]
 fn test_func_dec_with_duplicate_param_with_same_type(){
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), 
+    v.visit_decl(&mut Decl::FunDec(String::from("foo"), 
                                Some(vec![(String::from("a"), TType::TInt32),
                                          (String::from("a"), TType::TInt32) ]),
-                               TType::TString,
+                               TType::TInt32,
                                B(Expr::NumExpr(4)),
                                TType::TInt32));
 }
@@ -363,10 +366,10 @@ fn test_func_dec_with_duplicate_param_with_same_type(){
 #[should_panic(expected="Duplicate param 'a' found")]
 fn test_func_dec_with_duplicate_param_with_different_types(){
     let mut v = TypeChecker::new();
-    v.visit_decl(&Decl::FunDec(String::from("foo"), 
+    v.visit_decl(&mut Decl::FunDec(String::from("foo"), 
                                Some(vec![(String::from("a"), TType::TInt32),
                                          (String::from("a"), TType::TString) ]),
-                               TType::TString,
+                               TType::TInt32,
                                B(Expr::NumExpr(4)),
                                TType::TInt32));
 }
