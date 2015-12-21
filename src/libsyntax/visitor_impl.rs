@@ -27,13 +27,13 @@ impl TypeChecker{
 }
 
 impl<'a> Visitor<'a> for TypeChecker{
-    fn visit_expr(&mut self, expr: &'a Expr){
-        match expr{
+    fn visit_expr(&mut self, expr: &'a mut Expr){
+        match *expr{
             //FIXME remove NilExpr; this is only for unit testing
-            &Expr::NilExpr => self.ty = TType::TString,
-            &Expr::NumExpr(_) => self.ty = TType::TInt32,
-            &Expr::StringExpr(_) => self.ty = TType::TString,
-            &Expr::IdExpr(ref id) =>{
+            Expr::NilExpr => self.ty = TType::TString,
+            Expr::NumExpr(_) => self.ty = TType::TInt32,
+            Expr::StringExpr(_) => self.ty = TType::TString,
+            Expr::IdExpr(ref mut id) =>{
                 //search in the symtab for id's existence and get the type
                 let mut found = false;
                 for &(ref _id, ref _binding) in &self.sym_tab{ //iterator returns a ref to tuple while iterating; so &(_,_) has to be used
@@ -51,7 +51,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("{} not found", id);
                 }
             },
-            &Expr::AddExpr(ref left, ref right) => {
+            Expr::AddExpr(ref mut left, ref mut right) => {
                 self.visit_expr(left);
                 let left_ty = self.ty.clone();
                 if left_ty != TType::TInt32{
@@ -62,7 +62,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected right operand of int type")
                 }
             },
-            &Expr::DivExpr(ref left, ref right) => {
+            Expr::DivExpr(ref mut left, ref mut  right) => {
                 self.visit_expr(left);
                 let left_ty = self.ty.clone();
                 if left_ty != TType::TInt32{
@@ -78,16 +78,16 @@ impl<'a> Visitor<'a> for TypeChecker{
                     _ => {}
                 }
             },
-            &Expr::SeqExpr(ref opt_expr_list) => {
+            Expr::SeqExpr(ref mut opt_expr_list) => {
                 if opt_expr_list.is_none(){
                     self.ty = TType::TVoid;
                     return
                 }
-                for b_expr in opt_expr_list.as_ref().unwrap() {
-                    self.visit_expr(&*b_expr);
+                for b_expr in opt_expr_list.as_mut().unwrap() {
+                    self.visit_expr(&mut *b_expr);
                 }
             },
-            &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+            Expr::IfThenElseExpr(ref mut conditional_expr, ref mut then_expr, ref mut else_expr) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
                     panic!("Expected conditional expression of int type");
@@ -99,7 +99,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected then expr and else expr types to be same");
                 }
             },
-            &Expr::IfThenExpr(ref conditional_expr, ref then_expr) => {
+            Expr::IfThenExpr(ref mut conditional_expr, ref mut then_expr) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
                     panic!("Expected conditional expression of int type");
@@ -109,7 +109,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected if-body of void type")
                 }
             },
-            &Expr::WhileExpr(ref conditional_expr, ref body) => {
+            Expr::WhileExpr(ref mut conditional_expr, ref mut body) => {
                 self.visit_expr(conditional_expr);
                 if self.ty != TType::TInt32{
                     panic!("Expected conditional expression of int type");
@@ -120,7 +120,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Expected while-body of void type")
                 }
             },
-            &Expr::ForExpr(ref id, ref from, ref to, ref body) => {
+            Expr::ForExpr(ref mut id, ref mut from, ref mut to, ref mut body) => {
                 self.visit_expr(from);
                 if self.ty != TType::TInt32{
                     panic!("Initializing expression type should be int in a for loop");
@@ -131,16 +131,16 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("To expression type should be int in a for loop");
                 }
             },
-            &Expr::LetExpr(ref decls, ref opt_expr) => {
+            Expr::LetExpr(ref mut decls, ref mut opt_expr) => {
                 self.sym_tab.push(("<marker>".to_string(), None));
 
                 for dec in decls{ //decls is a &
                     self.visit_decl(dec);
                 }
 
-                match opt_expr {
-                    &Some(ref b_expr) => {
-                        self.visit_expr(&*expr);
+                match *opt_expr {
+                    Some(ref mut b_expr) => {
+                        self.visit_expr(&mut *b_expr);
                     },
                     _ => {}
                 }
@@ -155,21 +155,21 @@ impl<'a> Visitor<'a> for TypeChecker{
         }
     }
 
-    fn visit_decl(&mut self, decl : &'a Decl){
+    fn visit_decl(&mut self, decl : &'a mut Decl){
         macro_rules! store_into_sym_tab {
             ($self_ : ident, $i : ident, $p : path) => {
                 $self_.sym_tab.push(($i.clone(), Some(B($p($self_.ty.clone())))));
             }
         }
-        match decl{
-            &Decl::VarDec(ref id, ref ty, ref expr) => {
+        match *decl{
+            Decl::VarDec(ref id, ref ty, ref mut expr) => {
                 self.visit_expr(expr);
                 if *ty != self.ty{
                     panic!("Types mismatch")
                 }
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
-            &Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
+            Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
                 let mut map = HashMap::new();
                 for p in params.as_ref().unwrap(){
                     if map.contains_key(&p.0){
@@ -184,119 +184,11 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
                 store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
-            &Decl::TypeDec(ref id, ref ty) => {
+            Decl::TypeDec(ref id, ref ty) => {
                 store_into_sym_tab!(self, id, Binding::TypeBinding);
             }
         }
     }
-}
-
-struct PrettyPrintVisitor;
-
-impl<'a> Visitor<'a> for PrettyPrintVisitor{
-    fn visit_expr(&mut self, expr:&'a Expr){
-        match expr{
-            &Expr::LetExpr(ref v, _) => {
-                println!("(let");
-                for d in v{
-                    println!("\t(");
-
-                }
-                println!(")");
-            },
-            &Expr::AddExpr(ref left, ref right) => {
-                self.visit_expr(left);
-                println!(" Plus ");
-                self.visit_expr(right);
-            },
-            &Expr::NumExpr(value) => {
-                println!(" Num({}) ", value);
-            },
-            &Expr::IdExpr(ref value) => {
-                println!(" Ident({}) ", value);
-            },
-            _ => {}
-        }
-    }
-
-    fn visit_block(&mut self, block: &'a Block){
-        for s in &block.statements{
-            self.visit_stmt(&*s);
-        }
-    }
-
-    fn visit_stmt(&mut self, stmt : &'a Stmt){
-        match stmt{
-            &Stmt::VarDeclStmt(ref local) => {
-                println!("(var {} type {} init ", local.ident, local.ty);
-                self.visit_expr(&*local.expr);
-                println!(")");
-            },
-            &Stmt::ExprStmt(ref expr) => {
-                self.visit_expr(expr);
-            }
-        }
-    }
-}
-
-//FIXME remove this struct
-struct SymbolTableBuilder<'a>{
-    block_stack : Vec<RefCell<&'a  Block>>
-}
-
-impl<'a> SymbolTableBuilder<'a>{
-    fn new()->Self{
-        SymbolTableBuilder {block_stack : Vec::new()}
-    }
-}
-
-impl<'a> Visitor<'a> for SymbolTableBuilder<'a>{
-    fn visit_block(&mut self, block : &'a Block){
-        self.block_stack.push(RefCell::new(block));
-        for s in &block.statements{
-            self.visit_stmt(s);
-        }
-        self.block_stack.pop();
-    }
-
-    fn visit_stmt(&mut self, stmt : &'a Stmt){
-        match stmt{
-            &Stmt::VarDeclStmt(ref local) => {
-                    //FIXME deduce the correct type
-                    let mut block = self.block_stack.last_mut().unwrap().borrow_mut();
-                    block.sym_tab.borrow_mut().insert(local.ident.clone(), TType::TInt32);
-                },
-            &Stmt::ExprStmt(ref expr) => {
-                let b =  &**expr; //*expr is deref B which is Box<T>; **expr is deref Box<T> which is T; &**expr is therefore &T
-                match b {
-                    &Expr::BlockExpr(ref block) => {
-                        self.visit_block(block);
-                    },
-                    _ => {}
-                }
-            }
-        }
-    }
-}
-
-#[test]
-fn test_pp_visit_add_expr(){
-    let mut p = PrettyPrintVisitor;
-    p.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(1)), B(Expr::NumExpr(2))));
-}
-
-#[test]
-fn test_pp_visit_block(){
-    let mut p = PrettyPrintVisitor;
-    let mut b = Block::new();
-    p.visit_block(&b);
-}
-
-//#[test]
-fn test_pp_visit_add(){
-    let mut p = PrettyPrintVisitor;
-    let mut b = Block::new();
-    p.visit_block(&b);
 }
 
 #[test]
@@ -345,7 +237,7 @@ fn test_type_check_for_var_dec_type_mismatch() {
 #[test]
 fn test_correct_types_for_add_expr() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NumExpr(4))));
+    v.visit_expr(&mut Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NumExpr(4))));
     assert_eq!(v.ty, TType::TInt32);
 }
 
@@ -353,14 +245,14 @@ fn test_correct_types_for_add_expr() {
 #[should_panic(expected="Expected left operand of int type")]
 fn test_left_type_invalid_for_add_expr() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::AddExpr(B(Expr::NilExpr), B(Expr::NumExpr(4))));
+    v.visit_expr(&mut Expr::AddExpr(B(Expr::NilExpr), B(Expr::NumExpr(4))));
 }
 
 #[test]
 #[should_panic(expected="Expected right operand of int type")]
 fn test_right_type_invalid_for_add_expr() {
     let mut v = TypeChecker::new();
-    v.visit_expr(&Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NilExpr)));
+    v.visit_expr(&mut Expr::AddExpr(B(Expr::NumExpr(4)), B(Expr::NilExpr)));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, PartialEq, Clone)] //this is necessary so that TType can be used in assert, compared, cloned
 pub struct B<T>{
@@ -16,4 +16,11 @@ impl<T> Deref for B<T>{ //allows & to be used for B<T>
     fn deref<'a>(&'a self) -> &'a T{
         &self.ptr
     }
+}
+
+impl<T> DerefMut for B<T>{
+
+   fn deref_mut<'a>(&'a mut self) -> &'a mut T{
+        &mut self.ptr
+   }
 }
