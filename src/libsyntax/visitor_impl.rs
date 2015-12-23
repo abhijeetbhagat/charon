@@ -140,9 +140,6 @@ impl<'a> Visitor<'a> for TypeChecker{
                                 if *id == *_id{
                                     match **binding.as_ref().unwrap(){
                                         Binding::FuncBinding(ref _ty) => {
-                                            println!("before ty : {0}", *ty);
-                                            println!("after ty : {0}", _ty);
-
                                             *ty = _ty.clone();
                                             break;
                                         } ,
