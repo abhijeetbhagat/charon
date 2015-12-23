@@ -131,6 +131,30 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("To expression type should be int in a for loop");
                 }
             },
+            Expr::CallExpr(ref id, ref mut optional_ty_expr_list) => {
+                //fix call expr return type by doing a sym-tab lookup
+                for &mut (ref mut ty, ref mut expr) in optional_ty_expr_list.as_mut().unwrap(){
+                    match **expr{
+                        Expr::CallExpr(ref id, _) => {
+                            for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
+                                if *id == *_id{
+                                    match **binding.as_ref().unwrap(){
+                                        Binding::FuncBinding(ref _ty) => {
+                                            println!("before ty : {0}", *ty);
+                                            println!("after ty : {0}", _ty);
+
+                                            *ty = _ty.clone();
+                                            break;
+                                        } ,
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            },
             Expr::LetExpr(ref mut decls, ref mut opt_expr) => {
                 self.sym_tab.push(("<marker>".to_string(), None));
 
@@ -185,6 +209,8 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
                 //self.visit_expr(&body);
                 //if self.ty != *ret_type{
+                println!("pushing {0}", id);
+                self.ty = ret_type.clone();
                 store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
             Decl::TypeDec(ref id, ref ty) => {
@@ -372,4 +398,45 @@ fn test_func_dec_with_duplicate_param_with_different_types(){
                                TType::TInt32,
                                B(Expr::NumExpr(4)),
                                TType::TInt32));
+}
+
+#[test]
+fn test_call_expr_ret_type_fix(){
+    let mut v = TypeChecker::new();
+    let e = &mut Expr::LetExpr(vec![Decl::FunDec(String::from("foo"), 
+                               Some(vec![(String::from("a"), TType::TInt32)]),
+                               TType::TInt32,
+                               B(Expr::NumExpr(4)),
+                               TType::TInt32)],
+                               Some(B(Expr::CallExpr(String::from("foo"),
+                                                     Some(vec![(TType::TVoid, B(Expr::CallExpr(String::from("foo"),
+                                                                                               Some(vec![(TType::TInt32, B(Expr::NumExpr(2)))])
+                                                                                              )
+                                                                               )
+                                                               )]
+                                                         )
+                                                    )
+                                     )
+                                   )
+                               );
+
+    v.visit_expr(e);
+    match *e{
+        Expr::LetExpr(_, ref e) => {
+            match **e.as_ref().unwrap(){
+                Expr::CallExpr(_, ref l) => {
+                    let ul = l.as_ref().unwrap();
+                    match ul[0]{
+                        (TType::TInt32, _) => {},
+                        ref t => {
+                            println!("{:?}", t);
+                            panic!("failed");
+                        }
+                    }
+                },
+                _ => panic!("failed2")
+            }
+        },
+        _ => panic!("failed3")
+    }
 }
