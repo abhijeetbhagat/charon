@@ -197,7 +197,7 @@ impl Parser{
                 Token::Function => { //functiondec
                     self.parse_function_decl(&mut decls);
                 },
-
+                Token::NewLine => continue,
                 //FIXME probably all these following guards are useless?
                 Token::In => break,
                 //FIXME Eof occurrence is an error
