@@ -147,7 +147,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                                     }
                                 }
                             }
-                        },
+                        }, 
                         _ => {}
                     }
                 }
@@ -190,10 +190,19 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
-            Decl::FunDec(ref id, ref params, ref ret_type, ref body, ref body_type) => {
-                if ret_type != body_type {
-                    panic!("Return type doesn't match with the type of the last expression.")
+            Decl::FunDec(ref id, ref params, ref ret_type, ref mut body, ref mut body_type) => {
+                self.sym_tab.push((String::from("<marker>"), None));
+                if params.is_some(){
+                    for p in params.as_ref().unwrap(){
+                        self.sym_tab.push((p.0.clone(), Some(B(Binding::VarBinding(p.1.clone())))));
+                    }
                 }
+                self.visit_expr(body);
+                if *ret_type != self.ty{
+                    panic!(format!("Return type '{0}' doesn't match with the type of the last expression '{1}'.", ret_type, body_type));
+                }
+                
+                *body_type = self.ty.clone();
 
                 if params.is_some() {
                     let mut map = HashMap::new();
@@ -206,7 +215,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
                 //self.visit_expr(&body);
                 //if self.ty != *ret_type{
-                println!("pushing {0}", id);
+                //println!("pushing {0}", id);
                 self.ty = ret_type.clone();
                 store_into_sym_tab!(self, id, Binding::FuncBinding);
             },
@@ -293,7 +302,7 @@ fn test_func_decl_correct_return_type() {
 }
 
 #[test]
-#[should_panic(expected="Return type doesn't match with the type of the last expression.")]
+#[should_panic(expected="Return type 'String' doesn't match with the type of the last expression 'Number'.")]
 fn test_func_decl_incorrect_return_type() {
     let mut v = TypeChecker::new();
     v.visit_decl(&mut Decl::FunDec(String::from("foo"), None, TType::TString, B(Expr::NumExpr(4)), TType::TInt32));
@@ -397,6 +406,21 @@ fn test_func_dec_with_duplicate_param_with_different_types(){
                                TType::TInt32));
 }
 
+#[test]
+fn test_type_fix_func_return_type(){
+    let mut v = TypeChecker::new();
+    let dec = &mut Decl::FunDec(String::from("foo"), 
+                               Some(vec![(String::from("a"), TType::TInt32)
+                                          ]),
+                               TType::TInt32,
+                               B(Expr::NumExpr(4)),
+                               TType::TVoid);
+    v.visit_decl(dec);
+    match *dec{
+        Decl::FunDec(_, _, _, _, ref ty) => assert_eq!(TType::TInt32, *ty),
+        _ => panic!("Expected FunDec")
+    }
+}
 #[test]
 fn test_call_expr_ret_type_fix(){
     let mut v = TypeChecker::new();

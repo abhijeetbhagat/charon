@@ -316,7 +316,7 @@ impl Parser{
             Token::Plus => {
                 let (t, op2) = self.get_nxt_and_parse();
 
-                return Some((TVoid, B(AddExpr(op1, op2))))
+                return Some((TInt32, B(AddExpr(op1, op2))))
 
                 //FIXME it's better to let the type-checker do the checking
                 //if t == TInt32{

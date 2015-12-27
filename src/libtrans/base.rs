@@ -13,6 +13,9 @@ use std::mem;
 use std::any::{Any};
 use syntax::ast::{Block, Expr, Decl, TType, OptionalTypeExprTupleList};
 use syntax::ptr::{B};
+//FIXME is this the appropriate place to call the TC?
+use syntax::visit::{Visitor};
+use syntax::visitor_impl::{TypeChecker};
 //FIXME this import is for integration testing purposes
 use syntax::parse::*;//{Parser};
 use syntax::parse::parser::{Parser};
@@ -220,7 +223,7 @@ impl IRBuilder for Expr{
 
                     let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
                     if _optional.is_some(){
-                        Ok(_optional.unwrap().alloca_ref())
+                        Ok(LLVMBuildLoad(ctxt.builder, _optional.as_ref().unwrap().alloca_ref(), c_str_ptr!(&*id.clone())))
                     }
                     else{
                         panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id));
@@ -367,8 +370,7 @@ impl IRBuilder for Expr{
                                                              }
                                                              else{
                                                                  0
-                                                             },
-
+                                                             }, 
                                                              0);
                                 let cloned_name = name.clone();
                                 let function = LLVMAddFunction(ctxt.module,
@@ -666,17 +668,19 @@ fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
     let (ty, b_expr) = tup.unwrap();
     let ctxt = translate(&*b_expr);
     //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-    ctxt.unwrap().dump();
 }
 
 #[test]
 fn test_prsr_bcknd_intgrtion_print_addition_call_result() {
-    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(1+2)".to_string());
+    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(add(1,2))".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
-    let ctxt = translate(&*b_expr);
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
     link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
     //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
 }
 //#[test]
