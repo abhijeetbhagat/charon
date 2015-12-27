@@ -152,6 +152,7 @@ fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
         match ty {
             &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
             &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
+            &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
             _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
         }
     }
@@ -673,6 +674,18 @@ fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
 #[test]
 fn test_prsr_bcknd_intgrtion_print_addition_call_result() {
     let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(add(1,2))".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_print_string_return_call_result() {
+    let mut p = Parser::new("let function add() : string = \"abhi\n\"\n in print(add())".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
