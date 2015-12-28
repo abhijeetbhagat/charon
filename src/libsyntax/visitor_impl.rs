@@ -48,7 +48,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                     }
                 }
                 if !found{
-                    panic!("{} not found", id);
+                    panic!("Invalid reference to variable '{0}'", id);
                 }
             },
             Expr::AddExpr(ref mut left, ref mut right) => {
