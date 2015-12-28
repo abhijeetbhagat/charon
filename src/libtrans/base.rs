@@ -646,8 +646,10 @@ fn test_prsr_bcknd_intgrtion_invalid_reference_to_var_defined_as_function() {
 fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
     let mut p = Parser::new("let var foo : int := 1\n in foo()".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
 }
 
@@ -655,8 +657,10 @@ fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
 fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
     let mut p = Parser::new("let var a : int := 1\nfunction foo(a:int, b:int) = print(\"abhi\")\n in foo()".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
 }
@@ -665,8 +669,10 @@ fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
 fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
     let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in add(1, 2)".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
 }
