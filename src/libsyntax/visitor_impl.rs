@@ -133,22 +133,24 @@ impl<'a> Visitor<'a> for TypeChecker{
             },
             Expr::CallExpr(ref id, ref mut optional_ty_expr_list) => {
                 //fix call expr return type by doing a sym-tab lookup
-                for &mut (ref mut ty, ref mut expr) in optional_ty_expr_list.as_mut().unwrap(){
-                    match **expr{
-                        Expr::CallExpr(ref id, _) => {
-                            for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
-                                if *id == *_id{
-                                    match **binding.as_ref().unwrap(){
-                                        Binding::FuncBinding(ref _ty) => {
-                                            *ty = _ty.clone();
-                                            break;
-                                        } ,
-                                        _ => {}
+                if optional_ty_expr_list.is_some(){
+                    for &mut (ref mut ty, ref mut expr) in optional_ty_expr_list.as_mut().unwrap(){
+                        match **expr{
+                            Expr::CallExpr(ref id, _) => {
+                                for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
+                                    if *id == *_id{
+                                        match **binding.as_ref().unwrap(){
+                                            Binding::FuncBinding(ref _ty) => {
+                                                *ty = _ty.clone();
+                                                break;
+                                            } ,
+                                            _ => {}
+                                        }
                                     }
                                 }
-                            }
-                        }, 
-                        _ => {}
+                            }, 
+                                _ => {}
+                        }
                     }
                 }
             },
