@@ -186,9 +186,27 @@ impl<'a> Visitor<'a> for TypeChecker{
         }
         match *decl{
             Decl::VarDec(ref id, ref ty, ref mut expr) => {
+                match **expr{
+                    Expr::IdExpr(ref id) => {
+                        for &(ref sym, ref binding) in self.sym_tab.iter().rev(){
+                            if *id == *sym{
+                                match **binding.as_ref().unwrap(){
+                                    Binding::VarBinding(_) => {},
+                                    _ => panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id))
+                                }
+                            }
+
+                        }
+                    },
+                    _ => {}
+                }
                 self.visit_expr(expr);
-                if *ty != self.ty{
-                    panic!("Types mismatch")
+                //self.ty can still remain Nil in scenarios
+                //where the body contains a call to an  
+                //intrinsic function which cannot be verified 
+                //by the type-checker
+                if self.ty != TType::TNil && *ty != self.ty{
+                    panic!(format!("Types mismatch. Variable type is {0} and expression type is '{1}'", *ty, self.ty));
                 }
                 store_into_sym_tab!(self, id, Binding::VarBinding);
             },
@@ -200,8 +218,12 @@ impl<'a> Visitor<'a> for TypeChecker{
                     }
                 }
                 self.visit_expr(body);
-                if *ret_type != self.ty{
-                    panic!(format!("Return type '{0}' doesn't match with the type of the last expression '{1}'.", ret_type, body_type));
+                //self.ty can still remain Nil in scenarios
+                //where the body contains a call to an  
+                //intrinsic function which cannot be verified 
+                //by the type-checker
+                if self.ty != TType::TNil && *ret_type != self.ty{
+                    panic!(format!("Return type '{0}' doesn't match with the type of the last expression '{1}'.", ret_type, self.ty));
                 }
                 
                 *body_type = self.ty.clone();
