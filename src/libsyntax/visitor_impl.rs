@@ -68,8 +68,14 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Invalid reference to variable '{0}'", id);
                 }
             },
-            Expr::LessThanExpr(ref mut e1, ref mut e2) => {
-                
+            Expr::LessThanExpr(ref mut e1, ref mut e2) |
+            Expr::GreaterThanExpr (ref mut e1, ref mut e2) => {
+                self.visit_expr(e1) ;
+                let lhs_ty = self.ty.clone();
+                self.visit_expr(e2);
+                if self.ty != lhs_ty && (self.ty != TType::TInt32 || self.ty != TType::TString){
+                    panic!("Both types of a relational operator must match and be of type int or string.");
+                }
             },
             Expr::AddExpr(ref mut left, ref mut right) => {
                 self.visit_expr(left);
@@ -151,18 +157,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("To expression type should be int in a for loop");
                 }
 
-                match **body{
-                    Expr::CallExpr(_, _) => {
-                        //FIXME Can we verify the type of atleast
-                        //user-defined functions based on whether it is found in the sym-tab or not?
-                        self.ty = TType::TVoid;
-                    },
-                    _ => {
-                        self.visit_expr(body);
-                        if self.ty != TType::TVoid{
-                            panic!("A for expression's body must be of type void");
-                        }
-                    }
+                self.visit_expr(body);
+                if self.ty != TType::TVoid{
+                    panic!("A for expression's body must be of type void");
                 }
             },
             Expr::CallExpr(ref id, ref mut optional_ty_expr_list) => {

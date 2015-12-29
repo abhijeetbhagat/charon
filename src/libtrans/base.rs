@@ -573,6 +573,19 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
+
+#[test]
+#[should_panic(expected="Both types of a relational operator must match and be of type int or string.")]
+fn test_prsr_bcknd_intgrtion_less_than_expr_with_mismatched_types() {
+    let mut p = Parser::new("let function foo() = if 1< \"abhi\" then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+}
 #[test]
 fn test_prsr_bcknd_intgrtion_var_decl() {
     let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
