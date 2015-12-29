@@ -493,15 +493,6 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
 }
 
 #[test]
-fn test_translate_std_print_call() {
-    let expr = &Expr::CallExpr("print".to_string(),
-                                  Some(vec![(TType::TString,
-                                             B(Expr::StringExpr("abhi".to_string())))]));
-    let ctxt = translate(expr);
-    assert_eq!(ctxt.is_some(), true);
-}
-
-#[test]
 fn test_prsr_bcknd_intgrtion_prnt_call() {
     let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
     p.start_lexer();
