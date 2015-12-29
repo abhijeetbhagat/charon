@@ -566,8 +566,10 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -575,8 +577,10 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
 fn test_prsr_bcknd_intgrtion_var_decl() {
     let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -605,7 +609,7 @@ fn test_prsr_bcknd_intgrtion_print_num() {
     assert_eq!(ctxt.is_some(), true);
 }
 #[test]
-#[should_panic(expected="Call to 'foo' not found")]
+#[should_panic(expected="Invalid call to 'foo'. Function not found.")]
 fn test_prsr_bcknd_intgrtion_invalid_call() {
     let mut p = Parser::new("foo()".to_string());
     p.start_lexer();

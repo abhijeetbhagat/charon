@@ -11,6 +11,7 @@ pub type OptionalBinding = Option<B<Binding>>;
 pub struct TypeChecker{
     //block_stack : Vec<RefCell<&'a  Block>>,
     pub sym_tab : Vec<(String, OptionalBinding)>,
+    std_functions : HashMap<String, Binding>,
     //decl_cnt : u32,
     //decl_cnt_stack : Vec<u32>,
     pub ty : TType 
@@ -18,7 +19,23 @@ pub struct TypeChecker{
 
 impl TypeChecker{
     pub fn new()->Self{
-        TypeChecker {sym_tab : Vec::new(), ty : TType::TNil}
+        let mut std_functions = HashMap::new();
+        std_functions.insert(String::from("print"), Binding::FuncBinding(TType::TVoid));
+        std_functions.insert(String::from("flush"), Binding::FuncBinding(TType::TVoid));
+        std_functions.insert(String::from("getchar"), Binding::FuncBinding(TType::TString));
+        std_functions.insert(String::from("ord"), Binding::FuncBinding(TType::TInt32));
+        std_functions.insert(String::from("chr"), Binding::FuncBinding(TType::TString));
+        std_functions.insert(String::from("size"), Binding::FuncBinding(TType::TInt32));
+        std_functions.insert(String::from("substring"), Binding::FuncBinding(TType::TString));
+        std_functions.insert(String::from("concat"), Binding::FuncBinding(TType::TString));
+        std_functions.insert(String::from("not"), Binding::FuncBinding(TType::TInt32));
+        std_functions.insert(String::from("exit"), Binding::FuncBinding(TType::TVoid));
+
+        TypeChecker {
+            sym_tab : Vec::new(),
+            ty : TType::TNil,
+            std_functions : std_functions,
+        }
     }
 
     fn get_type_for(&self){//}->&TType{
@@ -50,6 +67,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                 if !found{
                     panic!("Invalid reference to variable '{0}'", id);
                 }
+            },
+            Expr::LessThanExpr(ref mut e1, ref mut e2) => {
+                
             },
             Expr::AddExpr(ref mut left, ref mut right) => {
                 self.visit_expr(left);
@@ -146,7 +166,33 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
             },
             Expr::CallExpr(ref id, ref mut optional_ty_expr_list) => {
-                //fix call expr return type by doing a sym-tab lookup
+                //check if this is a built-in function
+                let mut found = false;
+                if self.std_functions.contains_key(id){
+                    found = true;
+                    self.ty = match *self.std_functions.get(id).unwrap(){
+                        Binding::FuncBinding(ref ty) => ty.clone(),
+                        _ => {TType::TNil}
+                    }
+                }
+                else{
+                    for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
+                        if *_id == *id{
+                            found = true;
+                            match **binding.as_ref().unwrap(){
+                                Binding::FuncBinding(ref _ty) => {
+                                    self.ty = _ty.clone();
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                if !found{
+                    panic!("Invalid call to '{0}'. Function not found.", *id);
+                }
+                //fix call expr return type by doing a sym-tab lookup 
                 if optional_ty_expr_list.is_some(){
                     for &mut (ref mut ty, ref mut expr) in optional_ty_expr_list.as_mut().unwrap(){
                         match **expr{
@@ -163,7 +209,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                                     }
                                 }
                             }, 
-                                _ => {}
+                            _ => {}
                         }
                     }
                 }
@@ -442,6 +488,29 @@ fn test_func_dec_with_duplicate_param_with_different_types(){
                                TType::TInt32,
                                B(Expr::NumExpr(4)),
                                TType::TInt32));
+}
+
+#[test]
+fn test_call_expr_call_print_with_params(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut Expr::CallExpr(String::from("print"),
+                                     Some(vec![(TType::TString, B(Expr::StringExpr(String::from("abhi"))))])));
+    assert_eq!(v.ty, TType::TVoid);
+}
+
+#[test]
+fn test_call_expr_call_not_with_params(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut Expr::CallExpr(String::from("not"),
+                                     Some(vec![(TType::TInt32, B(Expr::NumExpr(0)))])));
+    assert_eq!(v.ty, TType::TInt32);
+}
+
+#[test]
+#[should_panic(expected="Invalid call to 'foo'. Function not found.")]
+fn test_call_expr_call_undefined_function(){
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut Expr::CallExpr(String::from("foo"), None));
 }
 
 #[test]
