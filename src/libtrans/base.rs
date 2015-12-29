@@ -505,8 +505,10 @@ fn test_translate_std_print_call() {
 fn test_prsr_bcknd_intgrtion_prnt_call() {
     let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     // let ctxt = translate();&Expr::CallExpr("print".to_string(),
     //                               Some(vec![(TType::TString,
@@ -518,16 +520,20 @@ fn test_prsr_bcknd_intgrtion_prnt_call() {
 fn test_translate_add_expr(){
     let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
     p.start_lexer();
-    let tup = p.expr();
-    let (_ , b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
 }
 #[test]
 fn test_prsr_bcknd_intgrtion_let_blk() {
     let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -536,8 +542,10 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
 fn test_prsr_bcknd_intgrtion_if_then_expr() {
     let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -546,8 +554,10 @@ fn test_prsr_bcknd_intgrtion_if_then_expr() {
 fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
     let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
