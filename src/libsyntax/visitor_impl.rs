@@ -104,6 +104,17 @@ impl<'a> Visitor<'a> for TypeChecker{
                     _ => {}
                 }
             },
+            Expr::MulExpr(ref mut left, ref mut  right) => {
+                self.visit_expr(left);
+                let left_ty = self.ty.clone();
+                if left_ty != TType::TInt32{
+                    panic!("Expected left operand of int type")
+                }
+                self.visit_expr(right);
+                if self.ty != TType::TInt32{
+                    panic!("Expected right operand of int type")
+                }
+            },
             Expr::SeqExpr(ref mut opt_expr_list) => {
                 if opt_expr_list.is_none(){
                     self.ty = TType::TVoid;
