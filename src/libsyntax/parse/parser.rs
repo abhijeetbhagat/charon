@@ -385,33 +385,15 @@ impl Parser{
             },
             Token::LessThan => {
                 let (t, op2) = self.get_nxt_and_parse();
-                //FIXME it's better to use a type-checker
-                if t == TInt32{
-                    return Some((TInt32, B(LessThanExpr(op1, op2))))
-                }
-                else{
-                    panic!("Expected i32 as the type of rhs expression");
-                }
+                return Some((TVoid, B(LessThanExpr(op1, op2))))
             },
             Token::GreaterThan => {
                 let (t, op2) = self.get_nxt_and_parse();
-                //FIXME it's better to use a type-checker
-                if t == TInt32{
-                    return Some((TInt32, B(GreaterThanExpr(op1, op2))))
-                }
-                else{
-                    panic!("Expected i32 as the type of rhs expression");
-                }
+                return Some((TVoid, B(GreaterThanExpr(op1, op2))))
             },
             Token::LessThanGreaterThan => {
                 let (t, op2) = self.get_nxt_and_parse();
-                //FIXME it's better to use a type-checker
-                if t == TInt32{
-                    return Some((TInt32, B(NotEqualsExpr(op1, op2))))
-                }
-                else{
-                    panic!("Expected i32 as the type of rhs expression");
-                }
+                return Some((TVoid, B(NotEqualsExpr(op1, op2))))
             },
             //FIXME ';', ')' can be a encountered as well. deal with it.
             _ => {
