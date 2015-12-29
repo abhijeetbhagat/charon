@@ -585,8 +585,10 @@ fn test_prsr_bcknd_intgrtion_var_decl() {
 fn test_prsr_bcknd_intgrtion_for_loop() {
     let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -595,8 +597,10 @@ fn test_prsr_bcknd_intgrtion_for_loop() {
 fn test_prsr_bcknd_intgrtion_print_num() {
     let mut p = Parser::new("print(1)".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
 }
@@ -605,8 +609,10 @@ fn test_prsr_bcknd_intgrtion_print_num() {
 fn test_prsr_bcknd_intgrtion_invalid_call() {
     let mut p = Parser::new("foo()".to_string());
     p.start_lexer();
-    let tup = p.expr();
-    let (ty, b_expr) = tup.unwrap();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
 }
 

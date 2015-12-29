@@ -130,6 +130,20 @@ impl<'a> Visitor<'a> for TypeChecker{
                 if self.ty != TType::TInt32{
                     panic!("To expression type should be int in a for loop");
                 }
+
+                match **body{
+                    Expr::CallExpr(_, _) => {
+                        //FIXME Can we verify the type of atleast
+                        //user-defined functions based on whether it is found in the sym-tab or not?
+                        self.ty = TType::TVoid;
+                    },
+                    _ => {
+                        self.visit_expr(body);
+                        if self.ty != TType::TVoid{
+                            panic!("A for expression's body must be of type void");
+                        }
+                    }
+                }
             },
             Expr::CallExpr(ref id, ref mut optional_ty_expr_list) => {
                 //fix call expr return type by doing a sym-tab lookup
