@@ -314,7 +314,7 @@ impl Parser{
                 };
             },
             Token::Plus => {
-                let (t, op2) = self.get_nxt_and_parse();
+                let (_, op2) = self.get_nxt_and_parse();
 
                 return Some((TInt32, B(AddExpr(op1, op2))))
 
@@ -325,6 +325,10 @@ impl Parser{
                 //else{
                     //panic!("Expected i32 as the type of rhs expression");
                 //}
+            },
+            Token::Equals => {
+                let (_, op2) = self.get_nxt_and_parse();
+                return Some((TVoid, B(EqualsExpr(op1, op2))))
             },
             _ => {
                 //TVoid because we dont know the type of the identifier yet.
@@ -382,6 +386,10 @@ impl Parser{
                 else{
                     panic!("Expected i32 as the type of rhs expression");
                 }
+            },
+            Token::Equals => {
+                let (t, op2) = self.get_nxt_and_parse();
+                return Some((TVoid, B(EqualsExpr(op1, op2))))
             },
             Token::LessThan => {
                 let (t, op2) = self.get_nxt_and_parse();
@@ -1105,6 +1113,22 @@ fn test_if_then_expr(){
 }
 
 #[test]
+fn test_if_then_equality_as_conditional_expr(){
+    let mut p = Parser::new("if 1=1 then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, ref then_expr) => {
+            match(**conditional_expr){
+                EqualsExpr(ref e1, ref e2) => {},
+                _ => panic!("Expected an equals expr")
+            }
+        },
+        _ => panic!("Expected an if-then expr")
+    } 
+}
+#[test]
 fn test_if_then_with_ident_as_conditional_expr(){
     let mut p = Parser::new("if a then 1".to_string());
     p.start_lexer();
@@ -1121,6 +1145,22 @@ fn test_if_then_with_ident_as_conditional_expr(){
     } 
 }
 
+#[test]
+fn test_if_then_with_ident_involving_equality_test_conditional_expr(){
+    let mut p = Parser::new("if a=1 then 1".to_string());
+    p.start_lexer();
+    
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        IfThenExpr(ref conditional_expr, _) => {
+            match(**conditional_expr){
+               EqualsExpr(ref e1, ref e2) => {},
+                _ => panic!("Expected equality expression")
+            }
+        },
+        _ => panic!("Expected if-then expression")
+    } 
+}
 #[test]
 fn test_if_then_with_add_as_conditional_expr(){
     let mut p = Parser::new("if 1+1 then 1".to_string());
