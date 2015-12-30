@@ -523,6 +523,14 @@ mod tests {
     }
 
     #[test] 
+    fn test_equals_expr(){
+        let mut l = Lexer::new("1 = 1".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::Equals);
+        assert_eq!(l.get_token(), Token::Number);
+    }
+    #[test] 
     fn test_peek(){
         let mut l = Lexer::new("1 <> 1".to_string());
         l.get_char();
