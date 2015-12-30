@@ -49,6 +49,16 @@ impl TypeChecker{
 
 impl<'a> Visitor<'a> for TypeChecker{
     fn visit_expr(&mut self, expr: &'a mut Expr){
+        macro_rules! visit_verify_error{
+            ($e : expr, $ty : path, $s : expr) => {
+                {
+                    self.visit_expr($e);
+                    if self.ty != $ty{
+                        panic!($s);
+                    }
+                }
+            }
+        }
         match *expr{
             //FIXME remove NilExpr; this is only for unit testing
             NilExpr => self.ty = TString,
@@ -81,42 +91,17 @@ impl<'a> Visitor<'a> for TypeChecker{
                     panic!("Both types of a relational operator must match and be of type int or string.");
                 }
             },
-            AddExpr(ref mut left, ref mut right) => {
-                self.visit_expr(left);
-                let left_ty = self.ty.clone();
-                if left_ty != TInt32{
-                    panic!("Expected left operand of int type")
-                }
-                self.visit_expr(right);
-                if self.ty != TInt32{
-                    panic!("Expected right operand of int type")
-                }
+            AddExpr(ref mut left, ref mut right) |
+            MulExpr(ref mut left, ref mut  right) => {
+                visit_verify_error!(left, TInt32, "Expected left operand of int type");
+                visit_verify_error!(right, TInt32, "Expected right operand of int type");
             },
             DivExpr(ref mut left, ref mut  right) => {
-                self.visit_expr(left);
-                let left_ty = self.ty.clone();
-                if left_ty != TInt32{
-                    panic!("Expected left operand of int type")
-                }
-                self.visit_expr(right);
-                if self.ty != TInt32{
-                    panic!("Expected right operand of int type")
-                }
-
+                visit_verify_error!(left, TInt32, "Expected left operand of int type");
+                visit_verify_error!(right, TInt32, "Expected right operand of int type");
                 match **right{
                     Expr::NumExpr(n) => if n == 0 {panic!("Denominator cannot be 0")},
                     _ => {}
-                }
-            },
-            MulExpr(ref mut left, ref mut  right) => {
-                self.visit_expr(left);
-                let left_ty = self.ty.clone();
-                if left_ty != TInt32{
-                    panic!("Expected left operand of int type")
-                }
-                self.visit_expr(right);
-                if self.ty != TInt32{
-                    panic!("Expected right operand of int type")
                 }
             },
             SeqExpr(ref mut opt_expr_list) => {
@@ -129,10 +114,8 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
             },
             IfThenElseExpr(ref mut conditional_expr, ref mut then_expr, ref mut else_expr) => {
-                self.visit_expr(conditional_expr);
-                if self.ty != TInt32{
-                    panic!("Expected conditional expression of int type");
-                }
+                visit_verify_error!(conditional_expr, TInt32, "Expected conditional expression of int type");
+
                 self.visit_expr(then_expr);
                 let then_ty = self.ty.clone();
                 self.visit_expr(else_expr);
@@ -141,41 +124,17 @@ impl<'a> Visitor<'a> for TypeChecker{
                 }
             },
             IfThenExpr(ref mut conditional_expr, ref mut then_expr) => {
-                self.visit_expr(conditional_expr);
-                if self.ty != TInt32{
-                    panic!("Expected conditional expression of int type");
-                }
-                self.visit_expr(then_expr);
-                if self.ty != TVoid{
-                    panic!("Expected if-body of void type")
-                }
+                visit_verify_error!(conditional_expr, TInt32, "Expected conditional expression of int type");
+                visit_verify_error!(then_expr, TVoid, "Expected if-body of void type");
             },
             WhileExpr(ref mut conditional_expr, ref mut body) => {
-                self.visit_expr(conditional_expr);
-                if self.ty != TInt32{
-                    panic!("Expected conditional expression of int type");
-                }
-
-                self.visit_expr(body);
-                if self.ty != TVoid{
-                    panic!("Expected while-body of void type")
-                }
+                visit_verify_error!(conditional_expr, TInt32, "Expected conditional expression of int type");
+                visit_verify_error!(body, TVoid, "Expected while-body of void type");
             },
             ForExpr(ref mut id, ref mut from, ref mut to, ref mut body) => {
-                self.visit_expr(from);
-                if self.ty != TInt32{
-                    panic!("Initializing expression type should be int in a for loop");
-                }
-
-                self.visit_expr(to);
-                if self.ty != TInt32{
-                    panic!("To expression type should be int in a for loop");
-                }
-
-                self.visit_expr(body);
-                if self.ty != TVoid{
-                    panic!("A for expression's body must be of type void");
-                }
+                visit_verify_error!(from, TInt32, "Initializing expression type should be int in a for loop");
+                visit_verify_error!(to, TInt32, "To expression type should be int in a for loop");
+                visit_verify_error!(body, TVoid, "A for expression's body must be of type void");
             },
             CallExpr(ref id, ref mut optional_ty_expr_list) => {
                 //check if this is a built-in function
