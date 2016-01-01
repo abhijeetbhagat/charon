@@ -501,7 +501,10 @@ impl Parser{
                 break
             }
         }
-        self.lexer.get_token(); //eat ')'
+        match self.lexer.get_token(){ //eat ')'
+            Token::Plus => panic!("Boom"),
+            _ => {}
+        }
         return if args_list.is_empty() {None} else {Some(args_list)}
     }
 
@@ -805,6 +808,46 @@ fn test_parse_call_expr_add_expr(){
                             }
                         },
                         _ => {}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+}
+
+#[test]
+fn test_parse_call_expr_add_expr_with_call_expr_and_num_expr(){
+    let mut p = Parser::new("f(a()+2)".to_string());
+    p.start_lexer();
+    let tup = p.expr();
+    assert_eq!(tup.is_some(), true);
+    let (ty, b_expr) = tup.unwrap();
+    assert_eq!(ty, TVoid);
+    match *b_expr {
+        CallExpr(ref n, ref type_expr_lst) => {
+            assert_eq!(n, "f");
+            assert_eq!(type_expr_lst.is_some(), true);
+            match type_expr_lst{
+                &Some(ref l) => {
+                    //assert_eq!(l.len(), 1);
+                    let (ref ty, ref b_expr) = l[1usize];
+                    //assert_eq!(*ty, TInt32);
+                    match &**b_expr {
+                        &AddExpr(ref op1, ref op2) => {
+                            match &**op1 {
+                                &NumExpr(n) => assert_eq!(n, 1),
+                                _ => {}
+                            }
+                            match &**op2 {
+                                &NumExpr(n) => assert_eq!(n, 2),
+                                _ => {}
+                            }
+                        },
+                        &NumExpr(_) => panic!("num expr") ,
+                        &CallExpr(_, _) => panic!("callexpr"),
+                        _ => {panic!("Different expr found")}
                     }
                 },
                 _ => {}

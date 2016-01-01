@@ -89,6 +89,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
             "print" =>{
                 debug_assert!(args.is_some(), "No args passed to print()");
                 let lst = args.as_ref().unwrap();
+                assert_eq!(lst.len(), 1);
                 debug_assert!(lst.len() == 1, "One arg should be passed to print()");
                 let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
                 debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32,
@@ -1001,14 +1002,11 @@ fn test_prsr_bcknd_intgrtion_print_with_exit_call() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
-    let mut p = Parser::new("print(ord(\"73\"))".to_string());
+    let mut p = Parser::new("print(ord(\"73\") + 12)".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&mut *b_expr);
-    link_object_code(ctxt.as_ref().unwrap());
-    ctxt.unwrap().dump();
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
 }
