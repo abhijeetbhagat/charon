@@ -190,6 +190,39 @@ fn std_functions_call_factory(fn_name : &str,
                                  args_count,
                                  c_str_ptr!("call")))
           },
+          "size" => {
+              debug_assert!(args.is_some(), "No args passed to size()");
+              let lst = args.as_ref().unwrap();
+              debug_assert!(lst.len() == 1, "One arg should be passed to size()");
+              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+              debug_assert!(*arg_type == TType::TString, format!("Arg type of print is {0}", arg_type));
+
+              let size_function : LLVMValueRef;
+              //check if we already have a prototype defined
+              if !ctxt.proto_map.contains_key("size"){
+                  let size_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                  let mut size_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
+                  let proto = LLVMFunctionType(size_ty, size_type_args_vec.as_mut_ptr(), 1, 0);
+                  size_function = LLVMAddFunction(ctxt.module,
+                                                   c_str_ptr!("strlen"),
+                                                   proto);
+                  ctxt.proto_map.insert("size", true);
+              }
+              else{
+                  size_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf")); 
+              }
+
+              let mut size_args = Vec::new();
+              let mut args_count = 1;
+              let gstr = arg_expr.codegen(ctxt);
+              size_args.push(gstr.unwrap());
+
+              Some(LLVMBuildCall(ctxt.builder,
+                                 size_function,
+                                 size_args.as_mut_ptr(),
+                                 args_count,
+                                 c_str_ptr!("call")))
+          },
           "not" => {
               debug_assert!(args.is_some(), "No args passed to not()");
               let lst = args.as_ref().unwrap();
@@ -575,53 +608,55 @@ impl StdFunctionCodeBuilder for Expr{
             Expr::CallExpr(ref id, ref optional_ty_expr_args) => {
                 match &**id{
                     "not" => {
-                        unsafe{ 
-                            let not_function : LLVMValueRef;
-                            //check if we already have a prototype defined
-                            let not_ty = LLVMIntTypeInContext(ctxt.context, 32);
-                            let mut not_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
-                            let proto = LLVMFunctionType(not_ty, not_type_args_vec.as_mut_ptr(), 1, 0);
-                            not_function = LLVMAddFunction(ctxt.module,
-                                                           c_str_ptr!("not"),
-                                                           proto);
-                            let bb = LLVMAppendBasicBlockInContext(ctxt.context,
-                                                                   not_function,
-                                                                   c_str_ptr!("entry"));
+                        if !ctxt.proto_map.contains_key("not"){
+                            unsafe{ 
+                                let not_function : LLVMValueRef;
+                                //check if we already have a prototype defined
+                                let not_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                                let mut not_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
+                                let proto = LLVMFunctionType(not_ty, not_type_args_vec.as_mut_ptr(), 1, 0);
+                                not_function = LLVMAddFunction(ctxt.module,
+                                                               c_str_ptr!("not"),
+                                                               proto);
+                                let bb = LLVMAppendBasicBlockInContext(ctxt.context,
+                                                                       not_function,
+                                                                       c_str_ptr!("entry"));
 
-                            let func = Function::new(String::from("not"), not_function);
-                            //FIXME this should be inserted at the beginning to indicate the fact that
-                            //it belongs to the global scope
-                            ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
-                            LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+                                let func = Function::new(String::from("not"), not_function);
+                                //FIXME this should be inserted at the beginning to indicate the fact that
+                                //it belongs to the global scope
+                                ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
+                                LLVMPositionBuilderAtEnd(ctxt.builder, bb);
 
-                            //build allocas for params
-                            let c = LLVMCountParams(not_function) as usize;
-                            assert_eq!(c, 1);
-                            let mut params_vec = Vec::with_capacity(c);
-                            let p = params_vec.as_mut_ptr();
-                            mem::forget(params_vec);
-                            LLVMGetParams(not_function, p);
-                            let mut v = Vec::from_raw_parts(p, c, c);
-                            assert_eq!(v.len(), 1);
-                            //assert_eq!(params_vec.len(), 1);
-                            let alloca = LLVMBuildAlloca(ctxt.builder,
-                                                         LLVMIntTypeInContext(ctxt.context, 32),
-                                                         c_str_ptr!("a"));
-                            LLVMBuildStore(ctxt.builder,
-                                           v[0],
-                                           alloca);
-                            ctxt.sym_tab.push((String::from("a"), 
-                                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
-                            let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
-                            B(NumExpr(1)),
-                            B(NumExpr(0)));
-                            let value_ref = match body.codegen(ctxt){
-                                Ok(v_ref) => v_ref,
-                                Err(e) => panic!("Error generating code for the body - {0}", e)
-                            };
-                            LLVMBuildRet(ctxt.builder, value_ref);
-                            ctxt.sym_tab.pop();
-                            ctxt.proto_map.insert("not", true);
+                                //build allocas for params
+                                let c = LLVMCountParams(not_function) as usize;
+                                assert_eq!(c, 1);
+                                let mut params_vec = Vec::with_capacity(c);
+                                let p = params_vec.as_mut_ptr();
+                                mem::forget(params_vec);
+                                LLVMGetParams(not_function, p);
+                                let mut v = Vec::from_raw_parts(p, c, c);
+                                assert_eq!(v.len(), 1);
+                                //assert_eq!(params_vec.len(), 1);
+                                let alloca = LLVMBuildAlloca(ctxt.builder,
+                                                             LLVMIntTypeInContext(ctxt.context, 32),
+                                                             c_str_ptr!("a"));
+                                LLVMBuildStore(ctxt.builder,
+                                               v[0],
+                                               alloca);
+                                ctxt.sym_tab.push((String::from("a"), 
+                                                   Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
+                                let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
+                                B(NumExpr(1)),
+                                B(NumExpr(0)));
+                                let value_ref = match body.codegen(ctxt){
+                                    Ok(v_ref) => v_ref,
+                                    Err(e) => panic!("Error generating code for the body - {0}", e)
+                                };
+                                LLVMBuildRet(ctxt.builder, value_ref);
+                                ctxt.sym_tab.pop();
+                                ctxt.proto_map.insert("not", true);
+                            }
                         }
                     },
                     _ => {}
@@ -633,7 +668,7 @@ impl StdFunctionCodeBuilder for Expr{
                     }
                 }
             },
-            _ => {self.std_fn_codegen(ctxt);}
+            _ => {panic!("Expression not covered yet for intrinsic code generation")}
         }
     }
 }
@@ -922,6 +957,18 @@ fn test_prsr_bcknd_intgrtion_print_string_return_call_result() {
 #[test]
 fn test_prsr_bcknd_intgrtion_print_not_return_call_result() {
     let mut p = Parser::new("print(not(0))".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_print_size_return_call_result() {
+    let mut p = Parser::new("print(size(\"abhi\"))".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
