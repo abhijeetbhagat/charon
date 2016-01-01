@@ -83,149 +83,179 @@ trait IRBuilder{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult;
 }
 
-fn std_functions_call_factory(fn_name : &str,
-                              args : &OptionalTypeExprTupleList,
-                              ctxt : &mut Context) -> Option<LLVMValueRef>{
+fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList, ctxt : &mut Context) -> Option<LLVMValueRef>{
     unsafe{
-      match fn_name {
-          "print" =>{
-              debug_assert!(args.is_some(), "No args passed to print()");
-              let lst = args.as_ref().unwrap();
-              debug_assert!(lst.len() == 1, "One arg should be passed to print()");
-              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
-              debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32,
-                            format!("Arg type of print is {0}", arg_type));
+        match fn_name {
+            "print" =>{
+                debug_assert!(args.is_some(), "No args passed to print()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to print()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32,
+                              format!("Arg type of print is {0}", arg_type));
 
-              let print_function : LLVMValueRef;
-              //check if we already have a prototype defined
-              if !ctxt.proto_map.contains_key("printf"){
-                  let print_ty = LLVMIntTypeInContext(ctxt.context, 32);
-                  let mut pf_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
-                  let proto = LLVMFunctionType(print_ty, pf_type_args_vec.as_mut_ptr(), 1, 1);
-                  print_function = LLVMAddFunction(ctxt.module,
-                                                   c_str_ptr!("printf"),
-                                                   proto);
-                  ctxt.proto_map.insert("printf", true);
-              }
-              else{
-                  print_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf"));
-              }
+                let print_function : LLVMValueRef;
+                //check if we already have a prototype defined
+                if !ctxt.proto_map.contains_key("printf"){
+                    let print_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                    let mut pf_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
+                    let proto = LLVMFunctionType(print_ty, pf_type_args_vec.as_mut_ptr(), 1, 1);
+                    print_function = LLVMAddFunction(ctxt.module,
+                                                     c_str_ptr!("printf"),
+                                                     proto);
+                    ctxt.proto_map.insert("printf", true);
+                }
+                else{
+                    print_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf"));
+                }
 
-              let mut pf_args = Vec::new();
-              let mut args_count = 1;
-              if *arg_type == TType::TString {
-                  let gstr = arg_expr.codegen(ctxt);
-                  pf_args.push(gstr.unwrap());
-              }
+                let mut pf_args = Vec::new();
+                let mut args_count = 1;
+                if *arg_type == TType::TString {
+                    let gstr = arg_expr.codegen(ctxt);
+                    pf_args.push(gstr.unwrap());
+                }
 
-              if *arg_type == TType::TInt32{
-                  args_count = 2;
-                  let gstr = LLVMBuildGlobalStringPtr(ctxt.builder, 
-                                                      c_str_ptr!("%d\n"), 
-                                                      c_str_ptr!(".str"));
-                  pf_args.push(gstr);
-                  let l = match &arg_expr.codegen(ctxt){
-                      &Ok(val) => val,
-                      &Err(ref err) => panic!("Error occurred")
-                  };
-                  pf_args.push(l);
-              }
+                if *arg_type == TType::TInt32{
+                    args_count = 2;
+                    let gstr = LLVMBuildGlobalStringPtr(ctxt.builder, 
+                                                        c_str_ptr!("%d\n"), 
+                                                        c_str_ptr!(".str"));
+                    pf_args.push(gstr);
+                    let l = match &arg_expr.codegen(ctxt){
+                        &Ok(val) => val,
+                        &Err(ref err) => panic!("Error occurred")
+                    };
+                    pf_args.push(l);
+                }
 
-              Some(LLVMBuildCall(ctxt.builder,
-                                 print_function,
-                                 pf_args.as_mut_ptr(),
-                                 args_count,
-                                 c_str_ptr!("call")))
-          },
-          "size" => {
-              debug_assert!(args.is_some(), "No args passed to size()");
-              let lst = args.as_ref().unwrap();
-              debug_assert!(lst.len() == 1, "One arg should be passed to size()");
-              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
-              debug_assert!(*arg_type == TType::TString, format!("Arg type of size is {0}", arg_type));
+                Some(LLVMBuildCall(ctxt.builder,
+                                   print_function,
+                                   pf_args.as_mut_ptr(),
+                                   args_count,
+                                   c_str_ptr!("call")))
+            },
+            "size" => {
+                debug_assert!(args.is_some(), "No args passed to size()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to size()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TString, format!("Arg type of size is {0}", arg_type));
 
-              let size_function : LLVMValueRef;
-              //check if we already have a prototype defined
-              if !ctxt.proto_map.contains_key("size"){
-                  let size_ty = LLVMIntTypeInContext(ctxt.context, 32);
-                  let mut size_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
-                  let proto = LLVMFunctionType(size_ty, size_type_args_vec.as_mut_ptr(), 1, 0);
-                  size_function = LLVMAddFunction(ctxt.module,
-                                                   c_str_ptr!("strlen"),
-                                                   proto);
-                  ctxt.proto_map.insert("size", true);
-              }
-              else{
-                  size_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("strlen")); 
-              }
+                let size_function : LLVMValueRef;
+                //check if we already have a prototype defined
+                if !ctxt.proto_map.contains_key("size"){
+                    let size_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                    let mut size_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
+                    let proto = LLVMFunctionType(size_ty, size_type_args_vec.as_mut_ptr(), 1, 0);
+                    size_function = LLVMAddFunction(ctxt.module,
+                                                    c_str_ptr!("strlen"),
+                                                    proto);
+                    ctxt.proto_map.insert("size", true);
+                }
+                else{
+                    size_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("strlen")); 
+                }
 
-              let mut size_args = Vec::new();
-              let mut args_count = 1;
-              let gstr = arg_expr.codegen(ctxt);
-              size_args.push(gstr.unwrap());
+                let mut size_args = Vec::new();
+                let mut args_count = 1;
+                let gstr = arg_expr.codegen(ctxt);
+                size_args.push(gstr.unwrap());
 
-              Some(LLVMBuildCall(ctxt.builder,
-                                 size_function,
-                                 size_args.as_mut_ptr(),
-                                 args_count,
-                                 c_str_ptr!("call")))
-          },
-          "not" => {
-              debug_assert!(args.is_some(), "No args passed to not()");
-              let lst = args.as_ref().unwrap();
-              debug_assert!(lst.len() == 1, "One arg should be passed to not()");
-              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
-              debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32);
+                Some(LLVMBuildCall(ctxt.builder,
+                                   size_function,
+                                   size_args.as_mut_ptr(),
+                                   args_count,
+                                   c_str_ptr!("call")))
+            },
+            "not" => {
+                debug_assert!(args.is_some(), "No args passed to not()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to not()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TString || *arg_type == TType::TInt32);
 
-              let not_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("not"));
-              let mut not_args= Vec::new();
-              let l = match &arg_expr.codegen(ctxt){
-                  &Ok(val) => val,
-                  &Err(ref err) => panic!("Error occurred - {0}", err)
-              };
-              not_args.push(l);
+                let not_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("not"));
+                let mut not_args= Vec::new();
+                let l = match &arg_expr.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                not_args.push(l);
 
-              Some(LLVMBuildCall(ctxt.builder,
-                                 not_function,
-                                 not_args.as_mut_ptr(),
-                                 1,
-                                 c_str_ptr!("call")))
-          },
-          "exit" =>{
-              debug_assert!(args.is_some(), "No args passed to exit()");
-              let lst = args.as_ref().unwrap();
-              debug_assert!(lst.len() == 1, "One arg should be passed to exit()");
-              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
-              debug_assert!(*arg_type == TType::TInt32, format!("Arg type of exit is {0}", arg_type));
+                Some(LLVMBuildCall(ctxt.builder,
+                                   not_function,
+                                   not_args.as_mut_ptr(),
+                                   1,
+                                   c_str_ptr!("call")))
+            },
+            "exit" =>{
+                debug_assert!(args.is_some(), "No args passed to exit()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to exit()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TInt32, format!("Arg type of exit is {0}", arg_type));
 
-              let exit_function : LLVMValueRef;
+                let exit_function : LLVMValueRef;
 
-              if !ctxt.proto_map.contains_key("exit"){
-                  let exit_ty = LLVMVoidTypeInContext(ctxt.context);
-                  let mut exit_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
-                  let proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
-                  exit_function = LLVMAddFunction(ctxt.module,
-                                                  c_str_ptr!("exit"),
-                                                  proto);
-                  ctxt.proto_map.insert("exit", true);
-              }
-              else{
-                  exit_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("exit")); 
-              }
+                if !ctxt.proto_map.contains_key("exit"){
+                    let exit_ty = LLVMVoidTypeInContext(ctxt.context);
+                    let mut exit_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
+                    let proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
+                    exit_function = LLVMAddFunction(ctxt.module,
+                                                    c_str_ptr!("exit"),
+                                                    proto);
+                    ctxt.proto_map.insert("exit", true);
+                }
+                else{
+                    exit_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("exit")); 
+                }
 
-              let mut exit_args = Vec::new();
-              let arg = arg_expr.codegen(ctxt);
-              exit_args.push(arg.unwrap());
+                let mut exit_args = Vec::new();
+                let arg = arg_expr.codegen(ctxt);
+                exit_args.push(arg.unwrap());
 
-              Some(LLVMBuildCall(ctxt.builder,
-                                 exit_function,
-                                 exit_args.as_mut_ptr(),
-                                 1,
-                                 c_str_ptr!("call")))
+                Some(LLVMBuildCall(ctxt.builder,
+                                   exit_function,
+                                   exit_args.as_mut_ptr(),
+                                   1,
+                                   c_str_ptr!("call")))
 
-          }
-          _ => {None}
-      }
+            },
+            "ord" => {
+                debug_assert!(args.is_some(), "No args passed to ord()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to ord()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TString, format!("Arg type of ord is {0}", arg_type));
+
+                let ord_function : LLVMValueRef;
+
+                if !ctxt.proto_map.contains_key("ord"){
+                    let ord_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                    let mut ord_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
+                    let proto = LLVMFunctionType(ord_ty, ord_type_args_vec.as_mut_ptr(), 1, 0);
+                    ord_function = LLVMAddFunction(ctxt.module,
+                                                    c_str_ptr!("atoi"),
+                                                    proto);
+                    ctxt.proto_map.insert("ord", true);
+                }
+                else{
+                    ord_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("atoi")); 
+                }
+
+                let mut ord_args = Vec::new();
+                let gstr = arg_expr.codegen(ctxt);
+                ord_args.push(gstr.unwrap());
+
+                Some(LLVMBuildCall(ctxt.builder,
+                                   ord_function,
+                                   ord_args.as_mut_ptr(),
+                                   1,
+                                   c_str_ptr!("call")))
+            },
+            _ => {None}
+        }
     }
 }
 
@@ -960,6 +990,18 @@ fn test_prsr_bcknd_intgrtion_print_size_return_call_result() {
 #[test]
 fn test_prsr_bcknd_intgrtion_print_with_exit_call() {
     let mut p = Parser::new("exit(1)".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
+    let mut p = Parser::new("print(ord(\"73\"))".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
