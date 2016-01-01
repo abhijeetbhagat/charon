@@ -195,7 +195,7 @@ fn std_functions_call_factory(fn_name : &str,
               let lst = args.as_ref().unwrap();
               debug_assert!(lst.len() == 1, "One arg should be passed to size()");
               let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
-              debug_assert!(*arg_type == TType::TString, format!("Arg type of print is {0}", arg_type));
+              debug_assert!(*arg_type == TType::TString, format!("Arg type of size is {0}", arg_type));
 
               let size_function : LLVMValueRef;
               //check if we already have a prototype defined
@@ -209,7 +209,7 @@ fn std_functions_call_factory(fn_name : &str,
                   ctxt.proto_map.insert("size", true);
               }
               else{
-                  size_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("printf")); 
+                  size_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("strlen")); 
               }
 
               let mut size_args = Vec::new();
