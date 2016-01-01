@@ -179,7 +179,6 @@ fn std_functions_call_factory(fn_name : &str,
 
               let not_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("not"));
               let mut not_args= Vec::new();
-              let mut args_count = 1;
               let l = match &arg_expr.codegen(ctxt){
                   &Ok(val) => val,
                   &Err(ref err) => panic!("Error occurred - {0}", err)
@@ -189,9 +188,42 @@ fn std_functions_call_factory(fn_name : &str,
               Some(LLVMBuildCall(ctxt.builder,
                                  not_function,
                                  not_args.as_mut_ptr(),
-                                 args_count,
+                                 1,
                                  c_str_ptr!("call")))
           },
+          "exit" =>{
+              debug_assert!(args.is_some(), "No args passed to exit()");
+              let lst = args.as_ref().unwrap();
+              debug_assert!(lst.len() == 1, "One arg should be passed to exit()");
+              let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+              debug_assert!(*arg_type == TType::TInt32, format!("Arg type of exit is {0}", arg_type));
+
+              let exit_function : LLVMValueRef;
+
+              if !ctxt.proto_map.contains_key("exit"){
+                  let exit_ty = LLVMVoidTypeInContext(ctxt.context);
+                  let mut exit_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
+                  let proto = LLVMFunctionType(exit_ty, exit_type_args_vec.as_mut_ptr(), 1, 0);
+                  exit_function = LLVMAddFunction(ctxt.module,
+                                                  c_str_ptr!("exit"),
+                                                  proto);
+                  ctxt.proto_map.insert("exit", true);
+              }
+              else{
+                  exit_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("exit")); 
+              }
+
+              let mut exit_args = Vec::new();
+              let arg = arg_expr.codegen(ctxt);
+              exit_args.push(arg.unwrap());
+
+              Some(LLVMBuildCall(ctxt.builder,
+                                 exit_function,
+                                 exit_args.as_mut_ptr(),
+                                 1,
+                                 c_str_ptr!("call")))
+
+          }
           _ => {None}
       }
     }
@@ -916,6 +948,18 @@ fn test_prsr_bcknd_intgrtion_print_not_return_call_result() {
 #[test]
 fn test_prsr_bcknd_intgrtion_print_size_return_call_result() {
     let mut p = Parser::new("print(size(\"abhi\"))".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_print_with_exit_call() {
+    let mut p = Parser::new("exit(1)".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
