@@ -83,59 +83,6 @@ trait IRBuilder{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult;
 }
 
-//fn get_result(e : &Expr, ctxt : &mut Context) -> Result<LLVMValueRef, String>{
-//    let r = try!(e.codegen(ctxt));
-//    r
-//}
-fn not_builder(ctxt : &mut Context) {
-    unsafe{ 
-        let not_function : LLVMValueRef;
-        //check if we already have a prototype defined
-        let not_ty = LLVMIntTypeInContext(ctxt.context, 32);
-        let mut not_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
-        let proto = LLVMFunctionType(not_ty, not_type_args_vec.as_mut_ptr(), 1, 0);
-        not_function = LLVMAddFunction(ctxt.module,
-                                       c_str_ptr!("not"),
-                                       proto);
-        let bb = LLVMAppendBasicBlockInContext(ctxt.context,
-                                               not_function,
-                                               c_str_ptr!("entry"));
-
-        let func = Function::new(String::from("not"), not_function);
-        //FIXME this should be inserted at the beginning to indicate the fact that
-        //it belongs to the global scope
-        ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
-        LLVMPositionBuilderAtEnd(ctxt.builder, bb);
-
-        //build allocas for params
-        let c = LLVMCountParams(not_function) as usize;
-        assert_eq!(c, 1);
-        let mut params_vec = Vec::with_capacity(c);
-        let p = params_vec.as_mut_ptr();
-        mem::forget(params_vec);
-        LLVMGetParams(not_function, p);
-        let mut v = Vec::from_raw_parts(p, c, c);
-        assert_eq!(v.len(), 1);
-        //assert_eq!(params_vec.len(), 1);
-        let alloca = LLVMBuildAlloca(ctxt.builder,
-                                     LLVMIntTypeInContext(ctxt.context, 32),
-                                     c_str_ptr!("a"));
-        LLVMBuildStore(ctxt.builder,
-                       v[0],
-                       alloca);
-        ctxt.sym_tab.push((String::from("a"), Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
-        let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
-        B(NumExpr(1)),
-        B(NumExpr(0)));
-        let value_ref = match body.codegen(ctxt){
-            Ok(v_ref) => v_ref,
-            Err(e) => panic!("Error generating code for the body - {0}", e)
-        };
-        LLVMBuildRet(ctxt.builder, value_ref);
-        ctxt.sym_tab.pop();
-        ctxt.proto_map.insert("not", true);
-    }
-}
 fn std_functions_call_factory(fn_name : &str,
                               args : &OptionalTypeExprTupleList,
                               ctxt : &mut Context) -> Option<LLVMValueRef>{
