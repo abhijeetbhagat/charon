@@ -168,10 +168,12 @@ impl<'a> Visitor<'a> for TypeChecker{
                     for &mut (ref mut ty, ref mut expr) in optional_ty_expr_list.as_mut().unwrap(){
                         match **expr{
                             CallExpr(ref id, _) => {
+                                found = false;
                                 for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                                     if *id == *_id{
                                         match **binding.as_ref().unwrap(){
                                             FuncBinding(ref _ty) => {
+                                                found = true;
                                                 *ty = _ty.clone();
                                                 break;
                                             } ,
@@ -179,6 +181,13 @@ impl<'a> Visitor<'a> for TypeChecker{
                                         }
                                     }
                                 }
+                                if !found && self.std_functions.contains_key(id){
+                                    *ty = match *self.std_functions.get(id).unwrap(){
+                                        FuncBinding(ref ty) => ty.clone(),
+                                        _ => {TNil}
+                                    }
+                                }
+                                //FIXME do we panic if function not found?
                             }, 
                             _ => {}
                         }
