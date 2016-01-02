@@ -306,6 +306,7 @@ impl Parser{
             Token::LeftSquare => {}, //subscript
             Token::Dot => {}, //fieldexp
             Token::LeftParen => { //callexpr
+                println!("parsing call");
                 let args_list = self.parse_call_args();
                 //FIXME should a marker type be used instead of TVoid to indicate that the type should be verified by the type-checker?
                 match *op1 {
@@ -480,12 +481,14 @@ impl Parser{
 
     fn parse_call_args(&mut self) -> OptionalTypeExprTupleList{
         let mut args_list  = Vec::new();
-        loop {
+        while true {
+            println!("loop");
             match self.lexer.get_token() {
                 Token::RightParen => break,
                 Token::Number |
                 Token::Ident |
                 Token::TokString => {
+                    println!("{:?}", self.lexer.curr_token);
                     let e = self.expr();
                     if e.is_some() {
                         args_list.push(e.unwrap());
@@ -501,10 +504,7 @@ impl Parser{
                 break
             }
         }
-        match self.lexer.get_token(){ //eat ')'
-            Token::Plus => panic!("Boom"),
-            _ => {}
-        }
+        self.lexer.get_token();
         return if args_list.is_empty() {None} else {Some(args_list)}
     }
 
@@ -832,7 +832,7 @@ fn test_parse_call_expr_add_expr_with_call_expr_and_num_expr(){
             match type_expr_lst{
                 &Some(ref l) => {
                     //assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[1usize];
+                    let (ref ty, ref b_expr) = l[0usize];
                     //assert_eq!(*ty, TInt32);
                     match &**b_expr {
                         &AddExpr(ref op1, ref op2) => {
