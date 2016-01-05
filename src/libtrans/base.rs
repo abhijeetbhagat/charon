@@ -1009,4 +1009,5 @@ fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
 }

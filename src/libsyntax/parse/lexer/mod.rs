@@ -569,4 +569,20 @@ mod tests {
         assert_eq!(l.get_token(), Token::Plus);
         assert_eq!(l.get_token(), Token::Number);
     }
+
+    #[test] 
+    fn test_function_call_with_two_args_2(){
+        let mut l = Lexer::new("f(a()+1)".to_string());
+        l.get_char();
+        loop{
+            match l.get_token(){
+                Token::Ident => println!("{:?}", l.curr_token),
+                Token::LeftParen => println!("{:?}", l.curr_token),
+                Token::RightParen => println!("{:?}", l.curr_token),
+                Token::Plus => println!("{:?}", l.curr_token),
+                Token::Number => println!("{:?}", l.curr_token),
+                _ => break
+            }
+        }
+    }
 }

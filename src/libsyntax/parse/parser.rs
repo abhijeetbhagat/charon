@@ -302,6 +302,7 @@ impl Parser{
         //check if symbol defined in the sym tab
         //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
         let op1 = B(IdExpr(self.lexer.curr_string.clone()));
+        let fn_name = self.lexer.curr_string.clone();
         match self.lexer.get_token(){
             Token::LeftSquare => {}, //subscript
             Token::Dot => {}, //fieldexp
@@ -309,10 +310,29 @@ impl Parser{
                 println!("parsing call");
                 let args_list = self.parse_call_args();
                 //FIXME should a marker type be used instead of TVoid to indicate that the type should be verified by the type-checker?
+                match self.lexer.curr_token{
+                    Token::Plus => {
+                        let (_, op2) = self.get_nxt_and_parse();
+                        return Some((TInt32, B(AddExpr(B(CallExpr(fn_name, args_list)), op2))))
+                    },
+                    Token::Minus => {
+                        let (_, op2) = self.get_nxt_and_parse();
+                        return Some((TInt32, B(SubExpr(B(CallExpr(fn_name, args_list)), op2))))
+                    },
+                    Token::Mul => {
+                        let (_, op2) = self.get_nxt_and_parse();
+                        return Some((TInt32, B(MulExpr(B(CallExpr(fn_name, args_list)), op2))))
+                    },
+                    Token::Div => {
+                        let (_, op2) = self.get_nxt_and_parse();
+                        return Some((TInt32, B(MulExpr(B(CallExpr(fn_name, args_list)), op2))))
+                    },
+                    _ => {}
+                }
                 match *op1 {
                     IdExpr(ref fn_name) => return Some((TVoid, B(CallExpr(fn_name.clone(), args_list)))),
                     _ => {}
-                };
+                }; 
             },
             Token::Plus => {
                 let (_, op2) = self.get_nxt_and_parse();
