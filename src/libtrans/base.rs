@@ -255,6 +255,27 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                                    1,
                                    c_str_ptr!("call")))
             },
+            "chr" => {
+                debug_assert!(args.is_some(), "No args passed to chr()");
+                let lst = args.as_ref().unwrap();
+                debug_assert!(lst.len() == 1, "One arg should be passed to chr()");
+                let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
+                debug_assert!(*arg_type == TType::TInt32);
+
+                let not_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("chr"));
+                let mut not_args= Vec::new();
+                let l = match &arg_expr.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                not_args.push(l);
+
+                Some(LLVMBuildCall(ctxt.builder,
+                                   not_function,
+                                   not_args.as_mut_ptr(),
+                                   1,
+                                   c_str_ptr!("call")))
+            },
             _ => {None}
         }
     }
@@ -618,56 +639,10 @@ impl StdFunctionCodeBuilder for Expr{
             Expr::CallExpr(ref id, ref optional_ty_expr_args) => {
                 match &**id{
                     "not" => {
-                        if !ctxt.proto_map.contains_key("not"){
-                            unsafe{ 
-                                let not_function : LLVMValueRef;
-                                //check if we already have a prototype defined
-                                let not_ty = LLVMIntTypeInContext(ctxt.context, 32);
-                                let mut not_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
-                                let proto = LLVMFunctionType(not_ty, not_type_args_vec.as_mut_ptr(), 1, 0);
-                                not_function = LLVMAddFunction(ctxt.module,
-                                                               c_str_ptr!("not"),
-                                                               proto);
-                                let bb = LLVMAppendBasicBlockInContext(ctxt.context,
-                                                                       not_function,
-                                                                       c_str_ptr!("entry"));
-
-                                let func = Function::new(String::from("not"), not_function);
-                                //FIXME this should be inserted at the beginning to indicate the fact that
-                                //it belongs to the global scope
-                                ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
-                                LLVMPositionBuilderAtEnd(ctxt.builder, bb);
-
-                                //build allocas for params
-                                let c = LLVMCountParams(not_function) as usize;
-                                assert_eq!(c, 1);
-                                let mut params_vec = Vec::with_capacity(c);
-                                let p = params_vec.as_mut_ptr();
-                                mem::forget(params_vec);
-                                LLVMGetParams(not_function, p);
-                                let mut v = Vec::from_raw_parts(p, c, c);
-                                assert_eq!(v.len(), 1);
-                                //assert_eq!(params_vec.len(), 1);
-                                let alloca = LLVMBuildAlloca(ctxt.builder,
-                                                             LLVMIntTypeInContext(ctxt.context, 32),
-                                                             c_str_ptr!("a"));
-                                LLVMBuildStore(ctxt.builder,
-                                               v[0],
-                                               alloca);
-                                ctxt.sym_tab.push((String::from("a"), 
-                                                   Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
-                                let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
-                                B(NumExpr(1)),
-                                B(NumExpr(0)));
-                                let value_ref = match body.codegen(ctxt){
-                                    Ok(v_ref) => v_ref,
-                                    Err(e) => panic!("Error generating code for the body - {0}", e)
-                                };
-                                LLVMBuildRet(ctxt.builder, value_ref);
-                                ctxt.sym_tab.pop();
-                                ctxt.proto_map.insert("not", true);
-                            }
-                        }
+                        not_builder(ctxt);
+                    },
+                    "chr" => {
+                        chr_builder(ctxt);
                     },
                     _ => {}
                 }
@@ -682,6 +657,131 @@ impl StdFunctionCodeBuilder for Expr{
         }
     }
 }
+fn not_builder(ctxt : &mut Context) {
+    if !ctxt.proto_map.contains_key("not"){
+        unsafe{ 
+            let not_function : LLVMValueRef;
+            //check if we already have a prototype defined
+            let not_ty = LLVMIntTypeInContext(ctxt.context, 32);
+            let mut not_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
+            let proto = LLVMFunctionType(not_ty, not_type_args_vec.as_mut_ptr(), 1, 0);
+            not_function = LLVMAddFunction(ctxt.module,
+                                           c_str_ptr!("not"),
+                                           proto);
+            let bb = LLVMAppendBasicBlockInContext(ctxt.context,
+                                                   not_function,
+                                                   c_str_ptr!("entry"));
+
+            let func = Function::new(String::from("not"), not_function);
+            //FIXME this should be inserted at the beginning to indicate the fact that
+            //it belongs to the global scope
+            ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
+            LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+
+            //build allocas for params
+            let c = LLVMCountParams(not_function) as usize;
+            assert_eq!(c, 1);
+            let mut params_vec = Vec::with_capacity(c);
+            let p = params_vec.as_mut_ptr();
+            mem::forget(params_vec);
+            LLVMGetParams(not_function, p);
+            let mut v = Vec::from_raw_parts(p, c, c);
+            assert_eq!(v.len(), 1);
+            //assert_eq!(params_vec.len(), 1);
+            let alloca = LLVMBuildAlloca(ctxt.builder,
+                                         LLVMIntTypeInContext(ctxt.context, 32),
+                                         c_str_ptr!("a"));
+            LLVMBuildStore(ctxt.builder,
+                           v[0],
+                           alloca);
+            ctxt.sym_tab.push((String::from("a"), 
+                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
+            let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
+            B(NumExpr(1)),
+            B(NumExpr(0)));
+            let value_ref = match body.codegen(ctxt){
+                Ok(v_ref) => v_ref,
+                Err(e) => panic!("Error generating code for the body - {0}", e)
+            };
+            LLVMBuildRet(ctxt.builder, value_ref);
+            ctxt.sym_tab.pop();
+            ctxt.proto_map.insert("not", true);
+        }
+    }
+}
+
+fn chr_builder(ctxt : &mut Context){ 
+    if !ctxt.proto_map.contains_key("chr"){
+        unsafe{
+            let sprintf_function : LLVMValueRef;
+            //check if we already have a prototype defined
+            if !ctxt.proto_map.contains_key("sprintf"){
+                let sprintf_ty = LLVMIntTypeInContext(ctxt.context, 32);
+                let mut spf_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)];
+                let proto = LLVMFunctionType(sprintf_ty, spf_type_args_vec.as_mut_ptr(), 2, 1);
+                sprintf_function = LLVMAddFunction(ctxt.module,
+                                                   c_str_ptr!("sprintf"),
+                                                   proto);
+                ctxt.proto_map.insert("sprintf", true);
+            }
+            else{
+                sprintf_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("sprintf"));
+            }
+
+            let chr_function : LLVMValueRef;
+            //check if we already have a prototype defined
+            let chr_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
+            let mut chr_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32)];
+            let proto = LLVMFunctionType(chr_ty, chr_type_args_vec.as_mut_ptr(), 1, 0);
+            chr_function = LLVMAddFunction(ctxt.module,
+                                           c_str_ptr!("chr"),
+                                           proto);
+            let bb = LLVMAppendBasicBlockInContext(ctxt.context,
+                                                   chr_function,
+                                                   c_str_ptr!("entry"));
+
+            let func = Function::new(String::from("chr"), chr_function);
+            //FIXME this should be inserted at the beginning to indicate the fact that
+            //it belongs to the global scope
+            ctxt.sym_tab.push((String::from("chr"), Some(Box::new(func))));
+            LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+
+            //build allocas for params
+            let c = LLVMCountParams(chr_function) as usize;
+            assert_eq!(c, 1);
+            let mut params_vec = Vec::with_capacity(c);
+            let p = params_vec.as_mut_ptr();
+            mem::forget(params_vec);
+            LLVMGetParams(chr_function, p);
+            let mut v = Vec::from_raw_parts(p, c, c);
+            assert_eq!(v.len(), 1);
+            //assert_eq!(params_vec.len(), 1);
+            let alloca = LLVMBuildAlloca(ctxt.builder,
+                                         LLVMIntTypeInContext(ctxt.context, 32),
+                                         c_str_ptr!("a"));
+            LLVMBuildStore(ctxt.builder,
+                           v[0],
+                           alloca);
+            ctxt.sym_tab.push((String::from("a"), 
+                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
+
+            LLVMBuildCall(ctxt.builder,
+                          sprintf_function,
+                          sprintf_args.as_mut_ptr(),
+                          args_count,
+                          c_str_ptr!("call"));
+
+            let value_ref = match body.codegen(ctxt){
+                Ok(v_ref) => v_ref,
+                Err(e) => panic!("Error generating code for the body - {0}", e)
+            };
+            LLVMBuildRet(ctxt.builder, value_ref);
+            ctxt.sym_tab.pop();
+            ctxt.proto_map.insert("chr", true);
+        }
+    }
+}
+
 pub fn translate(expr : &Expr) -> Option<Context>{
     let mut ctxt = Context::new("main_mod");
     unsafe{
