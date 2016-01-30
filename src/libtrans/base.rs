@@ -262,17 +262,17 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 let (arg_type, arg_expr) = (&lst[0].0, &lst[0].1);
                 debug_assert!(*arg_type == TType::TInt32);
 
-                let not_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("chr"));
-                let mut not_args= Vec::new();
+                let chr_function =  LLVMGetNamedFunction(ctxt.module, c_str_ptr!("chr"));
+                let mut chr_args= Vec::new();
                 let l = match &arg_expr.codegen(ctxt){
                     &Ok(val) => val,
                     &Err(ref err) => panic!("Error occurred - {0}", err)
                 };
-                not_args.push(l);
+                chr_args.push(l);
 
                 Some(LLVMBuildCall(ctxt.builder,
-                                   not_function,
-                                   not_args.as_mut_ptr(),
+                                   chr_function,
+                                   chr_args.as_mut_ptr(),
                                    1,
                                    c_str_ptr!("call")))
             },
@@ -764,18 +764,25 @@ fn chr_builder(ctxt : &mut Context){
                            alloca);
             ctxt.sym_tab.push((String::from("a"), 
                                Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
-
+            let converted_value = LLVMBuildAlloca(ctxt.builder,
+                                                 LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 32), 0),
+                                                 c_str_ptr!("s"));
+            let mut sprintf_args = vec![LLVMBuildLoad(ctxt.builder,
+                                                      converted_value,
+                                                      c_str_ptr!("s")),
+                                        LLVMBuildGlobalStringPtr(ctxt.builder, 
+                                                                 c_str_ptr!("%d"), 
+                                                                 c_str_ptr!(".str")),
+                                        LLVMBuildLoad(ctxt.builder,
+                                                     alloca,
+                                                     c_str_ptr!("a"))];
             LLVMBuildCall(ctxt.builder,
                           sprintf_function,
                           sprintf_args.as_mut_ptr(),
-                          args_count,
+                          3,
                           c_str_ptr!("call"));
 
-            let value_ref = match body.codegen(ctxt){
-                Ok(v_ref) => v_ref,
-                Err(e) => panic!("Error generating code for the body - {0}", e)
-            };
-            LLVMBuildRet(ctxt.builder, value_ref);
+            LLVMBuildRet(ctxt.builder, converted_value);
             ctxt.sym_tab.pop();
             ctxt.proto_map.insert("chr", true);
         }
@@ -1108,6 +1115,16 @@ fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    link_object_code(ctxt.as_ref().unwrap());
 }
+
+//#[test]
+//fn test_prsr_bcknd_intgrtion_print_with_chr_call() {
+//    let mut p = Parser::new("print(chr(7))".to_string());
+//    p.start_lexer();
+//    let mut tup = p.expr();
+//    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+//    let mut v = TypeChecker::new();
+//    v.visit_expr(&mut *b_expr);
+//    let ctxt = translate(&mut *b_expr);
+//    link_object_code(ctxt.as_ref().unwrap());
+//}
