@@ -662,8 +662,8 @@ impl Parser{
                     Token::LeftSquare => {
                         let (dim_ty, dim_expr) = self.get_nxt_and_parse();
 
-                        match self.lexer.get_token(){ 
-                            Token::RightSquare => {
+                        //match self.lexer.get_token(){ 
+                           // Token::RightSquare => {
                                 match self.lexer.get_token(){
                                     Token::Of => {
                                         let (init_ty, init_expr) = self.get_nxt_and_parse();
@@ -672,9 +672,9 @@ impl Parser{
                                     },
                                     _ => panic!("Expected array initialization expression")
                                 }
-                            },
-                            _ => panic!("Expected ']' after dimension expression")
-                        }
+                          //  },
+                         //   _ => {println!("{:?}", self.lexer.curr_token); panic!("Expected ']' after dimension expression");}
+                        //}
                     },
                     _ => panic!("Expected '[' after 'of'")
                 }
@@ -1566,3 +1566,42 @@ fn test_for_expr_with_ident_as_to_and_from_expr(){
     } 
 }
 
+#[test]
+fn test_int_array_with_dim_1_init_1(){
+    let mut p = Parser::new("array of int[1] of 1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+            match(**dim_expr){
+                NumExpr(i) => assert_eq!(i, 1),
+                _ => panic!("Expected a num expression")
+            }
+            match(**init_expr){
+                NumExpr(i) => assert_eq!(i, 1),
+                _ => panic!("Expected a num expression")
+            }
+        },
+        _ => panic!("this will not execute")
+    } 
+}
+
+#[test]
+fn test_int_array_with_dim_add_expr_init_add_expr(){
+    let mut p = Parser::new("array of int[1+1] of 1+1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+            match(**dim_expr){
+                AddExpr(_, _ ) => {},
+                _ => panic!("Expected a num expression")
+            }
+            match(**init_expr){
+                AddExpr(_, _ ) => {},
+                _ => panic!("Expected a num expression")
+            }
+        },
+        _ => panic!("Expected an array expression")
+    } 
+}
