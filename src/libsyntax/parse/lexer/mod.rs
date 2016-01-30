@@ -585,4 +585,18 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_array_decl(){
+        let mut l = Lexer::new("array of int[3] of 0".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Array);
+        assert_eq!(l.get_token(), Token::Of);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::LeftSquare);
+        assert_eq!(l.get_token(), Token::Number);
+        assert_eq!(l.get_token(), Token::RightSquare);
+        assert_eq!(l.get_token(), Token::Of);
+        assert_eq!(l.get_token(), Token::Number);
+    }
 }
