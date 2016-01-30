@@ -168,6 +168,9 @@ impl Parser{
             Token::For => {
                 return self.parse_for_expr()
             },
+            Token::Array => {
+                return self.parse_array_expr()
+            },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
             //         panic!("Mismatched parenthesis");
@@ -646,6 +649,39 @@ impl Parser{
         }
     }
         
+    fn parse_array_expr(&mut self) -> Option<(TType, B<Expr>)>{
+        match self.lexer.get_token(){
+            Token::Of => {
+                let mut array_ty = TNil;
+                match self.lexer.get_token(){
+                    Token::Int => array_ty = TInt32,
+                    Token::TokString => array_ty = TString,
+                    _ => panic!("Invalid array type")
+                }
+                match self.lexer.get_token(){
+                    Token::LeftSquare => {
+                        let (dim_ty, dim_expr) = self.get_nxt_and_parse();
+
+                        match self.lexer.get_token(){ 
+                            Token::RightSquare => {
+                                match self.lexer.get_token(){
+                                    Token::Of => {
+                                        let (init_ty, init_expr) = self.get_nxt_and_parse();
+                                        let arr_ty = array_ty.clone();
+                                        Some((TArray(B(array_ty)), B(ArrayExpr(arr_ty, dim_expr, init_expr))))
+                                    },
+                                    _ => panic!("Expected array initialization expression")
+                                }
+                            },
+                            _ => panic!("Expected ']' after dimension expression")
+                        }
+                    },
+                    _ => panic!("Expected '[' after 'of'")
+                }
+            },
+            _ => panic!("Expected 'of' after 'array'")
+        }
+    }
 }
 
 #[test]

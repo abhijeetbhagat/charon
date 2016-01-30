@@ -129,7 +129,8 @@ pub enum Expr{
    NumExpr(i32),
    //( exp*; )
    SeqExpr(OptionalExprList),
-
+   //array of int[3] of 0
+   ArrayExpr(TType, B<Expr>, B<Expr>),
    AddExpr(B<Expr>, B<Expr>),
    SubExpr(B<Expr>, B<Expr>),
    MulExpr(B<Expr>, B<Expr>),
