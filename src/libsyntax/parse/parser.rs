@@ -291,6 +291,26 @@ impl Parser{
                                     _ => panic!("Expected ':='")
                                 }
                             },
+                            //FIXME this is just a hack to test arrays
+                            //tiger doesn't mention specifying ':' for arrays
+                            //so we are going to tweak the way arrays are declared
+                            //by doing something like - var a : array := arrayof int[dim] of init;
+                            Token::Array => {
+                                match self.lexer.get_token(){
+                                    Token::ColonEquals => {
+
+                                        match self.lexer.get_token(){
+                                            Token::Array => {
+                                                //Some((TArray(B(array_ty)), B(ArrayExpr(arr_ty, dim_expr, init_expr))))
+                                                let (_ty, _expr) = self.parse_array_expr().unwrap(); 
+                                                decls.push(VarDec(id.clone(), _ty, _expr));
+                                            },
+                                            _ => panic!("Expected 'array' keyword after ':='")
+                                        }
+                                    },
+                                    _ => panic!("Expected ':='")
+                                }
+                            },
                             _ => panic!("expr : pattern not covered")
                         }
                     },
@@ -1603,5 +1623,30 @@ fn test_int_array_with_dim_add_expr_init_add_expr(){
             }
         },
         _ => panic!("Expected an array expression")
+    } 
+}
+
+#[test]
+fn test_var_as_int_array_with_dim_add_expr_init_add_expr(){
+    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a end".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match(*expr){
+        LetExpr(ref v, ref o) => {
+            match v[0]{
+                VarDec(ref id, ref ty, ref e) => {
+                    assert_eq!(*id, "a".to_string());
+                    match **e{ //**e means deref deref B<T> which results in T
+                        NumExpr(n) => assert_eq!(1, n),
+                        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+                            assert_eq!(*ty, TInt32);
+                        },
+                        _ => {panic!("expected an array expr")}
+                    }
+                },
+                _ => {}
+            }
+        },
+        _ => {}
     } 
 }
