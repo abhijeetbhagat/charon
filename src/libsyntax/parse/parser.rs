@@ -1640,6 +1640,14 @@ fn test_var_as_int_array_with_dim_add_expr_init_add_expr(){
                         NumExpr(n) => assert_eq!(1, n),
                         ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
                             assert_eq!(*ty, TInt32);
+                            match **dim_expr{
+                                AddExpr(ref l, ref r) => { },
+                                _ => panic!("Expected add expr")
+                            }
+                            match **init_expr{
+                                AddExpr(ref l, ref r) => { },
+                                _ => panic!("Expected add expr")
+                            }
                         },
                         _ => {panic!("expected an array expr")}
                     }
