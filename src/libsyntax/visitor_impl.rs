@@ -238,6 +238,17 @@ impl<'a> Visitor<'a> for TypeChecker{
 
                         }
                     },
+                    ArrayExpr(ref _ty, ref mut _dim_expr, ref mut _init_expr) => {
+                        self.visit_expr(&mut *_dim_expr);
+                        if *_ty != self.ty{
+                            panic!("Array type doesn't match with the type of the dimension expression")
+                        }
+
+                        self.visit_expr(&mut *_init_expr);
+                        if *_ty != self.ty{
+                            panic!("Array type doesn't match with the type of the init expression")
+                        }
+                    },
                     _ => {}
                 }
                 self.visit_expr(expr);
@@ -323,6 +334,26 @@ fn test_type_match_string_for_var_dec() {
     assert_eq!(v.sym_tab.len(), 1);
     assert_eq!(v.sym_tab[0].0, "a".to_string());
     //assert_eq!(v.sym_tab[0].1, TString);
+}
+
+#[test]
+fn test_array_type_matches_dim_expr_type() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TArray(B(TInt32)), B(ArrayExpr(TInt32, B(NumExpr(1)), B(NumExpr(1))))));
+}
+
+#[test]
+#[should_panic(expected="Array type doesn't match with the type of the dimension expression")]
+fn test_array_type_mismatches_dim_expr_type() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TArray(B(TInt32)), B(ArrayExpr(TString, B(NumExpr(1)), B(NumExpr(1))))));
+}
+
+#[test]
+#[should_panic(expected="Array type doesn't match with the type of the init expression")]
+fn test_array_type_mismatches_init_expr_type() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TArray(B(TInt32)), B(ArrayExpr(TInt32, B(NumExpr(1)), B(StringExpr(String::from("abhi")))))));
 }
 
 #[test]
