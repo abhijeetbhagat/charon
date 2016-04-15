@@ -248,6 +248,8 @@ impl<'a> Visitor<'a> for TypeChecker{
                         if *_ty != self.ty{
                             panic!("Array type doesn't match with the type of the init expression")
                         }
+
+                        return;
                     },
                     _ => {}
                 }
