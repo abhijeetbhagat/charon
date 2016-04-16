@@ -45,6 +45,7 @@ end
 
 **Use expr() instead of evaluable_expr()
 **Allow underscores in idents
+**do structured error handling
 
 type-checking scenarios:
 -type mismatch in assignments, func-decs, var-decs
