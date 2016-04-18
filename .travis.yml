@@ -14,7 +14,6 @@ addons:
       - libedit2
       - libedit2-dev
       - g++-multilib
-      - g++-4.8
 before_script:
   - sudo apt-get update
   - sudo apt-get install llvm-3.6
