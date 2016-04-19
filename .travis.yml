@@ -5,4 +5,4 @@ rust:
 install:
   - echo 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main' | sudo tee -a /etc/apt/sources.list
   - sudo apt-get update
-  - sudo apt-get --force-yes install g++ zlib1g-dev libedit-dev llvm-3.7-dev llvm-3.7-tools llvm-3.7 libstdc++
+  - sudo apt-get --force-yes install g++ zlib1g-dev libedit-dev llvm-3.7-dev llvm-3.7-tools llvm-3.7 libstdc++ llvm-3.7-runtime
