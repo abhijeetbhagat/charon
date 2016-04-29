@@ -15,7 +15,7 @@ pub struct Lexer{
 
 impl Lexer{
     pub fn new(src_code : String)->Self{
-        let mut l = Lexer{ src_code : src_code.as_bytes().to_vec(), line_pos : 1, ..Default::default()};
+        let l = Lexer{ src_code : src_code.as_bytes().to_vec(), line_pos : 1, ..Default::default()};
         //l.get_char();
         l
     }
@@ -195,7 +195,7 @@ impl Lexer{
                 self.get_char();
             }
             else{
-                let token = self.match_token();
+                let _ = self.match_token();
 
             }
         }
