@@ -125,7 +125,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                     pf_args.push(gstr);
                     let l = match &arg_expr.codegen(ctxt){
                         &Ok(val) => val,
-                        &Err(ref err) => panic!("Error occurred")
+                        &Err(_) => panic!("Error occurred")
                     };
                     pf_args.push(l);
                 }
@@ -159,7 +159,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 }
 
                 let mut size_args = Vec::new();
-                let mut args_count = 1;
+                let args_count = 1;
                 let gstr = arg_expr.codegen(ctxt);
                 size_args.push(gstr.unwrap());
 
@@ -451,7 +451,7 @@ impl IRBuilder for Expr{
                             let mut pf_args = Vec::new();
                             //FIXME pass args if present in the call
                             if optional_args.is_some() {
-                                for &(ref ty, ref e) in optional_args.as_ref().unwrap(){
+                                for &(_, ref e) in optional_args.as_ref().unwrap(){
                                     let c = try!(e.codegen(ctxt));
                                     pf_args.push(c);
                                 }
@@ -490,7 +490,7 @@ impl IRBuilder for Expr{
                     debug_assert!(expr.is_some(), "Expr in a let block can't be empty");
                     for decl in &*decls {
                         match decl {
-                            &Decl::FunDec(ref name, ref params, ref ty, ref body, ref body_ty) => {
+                            &Decl::FunDec(ref name, ref params, ref ty, ref body, _) => {
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
                                 let mut type_args = Vec::new();
                                 let optional_params = params.as_ref();

@@ -131,7 +131,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                 visit_verify_error!(conditional_expr, TInt32, "Expected conditional expression of int type");
                 visit_verify_error!(body, TVoid, "Expected while-body of void type");
             },
-            ForExpr(ref mut id, ref mut from, ref mut to, ref mut body) => {
+            ForExpr(_, ref mut from, ref mut to, ref mut body) => {
                 visit_verify_error!(from, TInt32, "Initializing expression type should be int in a for loop");
                 visit_verify_error!(to, TInt32, "To expression type should be int in a for loop");
                 visit_verify_error!(body, TVoid, "A for expression's body must be of type void");
