@@ -189,6 +189,19 @@ impl<'a> Visitor<'a> for TypeChecker{
                                 }
                                 //FIXME do we panic if function not found?
                             }, 
+                            SubscriptExpr(ref id, ref sub_expr) => {
+                                for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
+                                    if *id == *_id{
+                                        match **binding.as_ref().unwrap(){
+                                            VarBinding(ref _ty) => {
+                                                *ty = _ty.clone();
+                                                break; 
+                                            },
+                                            _ => {}
+                                        } 
+                                    }
+                                }
+                            },
                             _ => {}
                         }
                     }

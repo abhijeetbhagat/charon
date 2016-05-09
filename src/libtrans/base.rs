@@ -385,13 +385,13 @@ impl IRBuilder for Expr{
 
                     let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
                     if _optional.is_some(){
-                        Ok(LLVMBuildGEP(ctxt.builder,
+                        let val = LLVMBuildGEP(ctxt.builder,
                                         _optional.as_ref().unwrap().alloca_ref(), 
                                         vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
                                              LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0)].as_mut_ptr(),
                                         2,
-                                        c_str_ptr!("array_gep")))
-                        //Ok(LLVMBuildLoad(ctxt.builder, _optional.as_ref().unwrap().alloca_ref(), c_str_ptr!(&*id.clone())))
+                                        c_str_ptr!("array_gep"));
+                        Ok(LLVMBuildLoad(ctxt.builder, val,  c_str_ptr!(&*id.clone())))
                     }
                     else{
                         panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
@@ -600,13 +600,13 @@ impl IRBuilder for Expr{
                                             let _alloca = LLVMBuildAlloca(ctxt.builder,
                                                                               LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
                                                                               c_str_ptr!("_alloca"));
-                                            let _load = LLVMBuildLoad(ctxt.builder, _alloca, c_str_ptr!("arr_load"));
-                                            let _array_alloca = LLVMBuildArrayAlloca(ctxt.builder, 
+                                            //let _load = LLVMBuildLoad(ctxt.builder, _alloca, c_str_ptr!("arr_load"));
+                                            /*let _array_alloca = LLVMBuildArrayAlloca(ctxt.builder, 
                                                                  LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
                                                                  _load,
-                                                                 c_str_ptr!(&(*name.clone())));
+                                                                 c_str_ptr!(&(*name.clone())));*/
                                             ctxt.sym_tab.push((name.clone(), 
-                                                               Some(Box::new(Var::new(name.clone(), ty.clone(), _array_alloca)))));
+                                                               Some(Box::new(Var::new(name.clone(), ty.clone(), _alloca)))));
                                         },
                                         _ => {}
                                     }
@@ -1184,13 +1184,15 @@ fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_array_access() {
-    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a[0] end".to_string());
+    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in print(a[0]) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    //ctxt.unwrap().dump();
 }
 //#[test]
 //fn test_prsr_bcknd_intgrtion_print_with_chr_call() {

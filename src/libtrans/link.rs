@@ -27,7 +27,7 @@ pub fn link(ctxt: &Context){
         let out = Command::new("gcc")
             .arg("tmp.o")
             .arg("-o")
-            .arg("first")
+            .arg("a.out")
             .output()
             .unwrap_or_else(|e|{
                 panic!("failed to compile - {}", e);
