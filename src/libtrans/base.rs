@@ -369,6 +369,10 @@ impl IRBuilder for Expr{
                     }
                 },
                 &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
+                    //FIXME the following line is the first statement because compiler wont
+                    //allow it after the for loop. says ctxt.sym_tab is already borrowed as
+                    //mutable. see how this can be put inside if _optional.is_some(){...}
+                    let i = try!(subscript_expr.codegen(ctxt));
                     let mut sym = &None;
                     let mut found = false;
                     for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
@@ -388,7 +392,8 @@ impl IRBuilder for Expr{
                         let val = LLVMBuildGEP(ctxt.builder,
                                         _optional.as_ref().unwrap().alloca_ref(), 
                                         vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                             LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0)].as_mut_ptr(),
+                                             i].as_mut_ptr(),
+/*LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1u64, 0)*/
                                         2,
                                         c_str_ptr!("array_gep"));
                         Ok(LLVMBuildLoad(ctxt.builder, val,  c_str_ptr!(&*id.clone())))
@@ -602,9 +607,23 @@ impl IRBuilder for Expr{
                                             match &**_dim_expr{
                                                 &NumExpr(n) => {
                                                     let _alloca = LLVMBuildAlloca(ctxt.builder,
-                                                                                  LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), n as u32),
-                                                                                  c_str_ptr!("_alloca"));
+                                                                               LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), n as u32),
+                                                                               c_str_ptr!("_alloca"));
 
+                                                    for i in 0..n{
+                                                        //gep
+                                                        let val = LLVMBuildGEP(ctxt.builder,
+                                                                               _alloca,
+                                                                               vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                                                               LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0)].as_mut_ptr(),
+                                                                               2,
+                                                                               c_str_ptr!("array_gep"));
+                                                        LLVMBuildStore(ctxt.builder,
+                                                                       LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0),
+                                                                       val);
+
+                                                        //store
+                                                    }
                                                     //let _load = LLVMBuildLoad(ctxt.builder, dim, c_str_ptr!("arr_load"));
                                                     /*let _alloca = LLVMBuildArrayAlloca(ctxt.builder, 
                                                       LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
@@ -1192,14 +1211,14 @@ fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_array_access() {
-    let mut p = Parser::new("let var a : array := array of int[1] of 1+1 in print(0) end".to_string());
+    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in print(a[2]) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&mut *b_expr);
-    //link_object_code(ctxt.as_ref().unwrap());
+    link_object_code(ctxt.as_ref().unwrap());
     ctxt.unwrap().dump();
 }
 //#[test]
