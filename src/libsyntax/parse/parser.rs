@@ -327,7 +327,9 @@ impl Parser{
         let op1 = B(IdExpr(self.lexer.curr_string.clone()));
         let fn_name = self.lexer.curr_string.clone();
         match self.lexer.get_token(){
-            Token::LeftSquare => {}, //subscript
+            Token::LeftSquare => {
+                return Some((TVoid, B(SubscriptExpr(fn_name, self.get_nxt_and_parse().1))))
+            }, //subscript
             Token::Dot => {}, //fieldexp
             Token::LeftParen => { //callexpr
                 println!("parsing call");
@@ -1656,5 +1658,18 @@ fn test_var_as_int_array_with_dim_add_expr_init_add_expr(){
             }
         },
         _ => {}
+    } 
+}
+
+#[test]
+fn test_subscript_expr(){
+    let mut p = Parser::new("a[b[0]]".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match *expr{
+        SubscriptExpr(ref name, ref expr) => {
+            assert_eq!(*name, String::from("a")); 
+        },
+        _ => panic!("Expected a subscript expression")
     } 
 }

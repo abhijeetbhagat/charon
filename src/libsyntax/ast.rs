@@ -5,7 +5,6 @@ use std::collections::{HashMap, BTreeMap};
 use visit::{Visitor};
 use ptr::{B};
 use std::cell::RefCell;
-
 struct ExpressionEvaluator;
 
 pub type OptionalExprList = Option<Vec<B<Expr>>>;
@@ -131,6 +130,7 @@ pub enum Expr{
    SeqExpr(OptionalExprList),
    //array of int[3] of 0
    ArrayExpr(TType, B<Expr>, B<Expr>),
+   SubscriptExpr(String, B<Expr>),
    AddExpr(B<Expr>, B<Expr>),
    SubExpr(B<Expr>, B<Expr>),
    MulExpr(B<Expr>, B<Expr>),

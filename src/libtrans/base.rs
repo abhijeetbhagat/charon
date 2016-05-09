@@ -287,6 +287,7 @@ fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
             &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
             &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
             &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
+            &TType::TArray(_) => LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4), 
             _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
         }
     }
@@ -365,6 +366,35 @@ impl IRBuilder for Expr{
                     }
                     else{
                         panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id));
+                    }
+                },
+                &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
+                    let mut sym = &None;
+                    let mut found = false;
+                    for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+                        if *_id == *id  {
+                            sym = info;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if !found{
+                        panic!(format!("Invalid reference to array '{0}'", *id));
+                    }
+
+                    let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+                    if _optional.is_some(){
+                        Ok(LLVMBuildGEP(ctxt.builder,
+                                        _optional.as_ref().unwrap().alloca_ref(), 
+                                        vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                             LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0)].as_mut_ptr(),
+                                        2,
+                                        c_str_ptr!("array_gep")))
+                        //Ok(LLVMBuildLoad(ctxt.builder, _optional.as_ref().unwrap().alloca_ref(), c_str_ptr!(&*id.clone())))
+                    }
+                    else{
+                        panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
                     }
                 },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
@@ -561,13 +591,35 @@ impl IRBuilder for Expr{
                                 ctxt.sym_tab.pop(); 
                             }, 
                             &Decl::VarDec(ref name, ref ty, ref rhs) => {
+                                //TODO use match on rhs and separate processing of IdExpr and
+                                //ArrayExpr
                                 let llvm_ty = get_llvm_type_for_ttype(ty, ctxt);
-                                let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
-                                let rhs_value_ref = try!(rhs.codegen(ctxt));
-                                LLVMBuildStore(ctxt.builder,
-                                               rhs_value_ref,
-                                               alloca);
-                                ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
+                                if let TType::TArray(_) = *ty{
+                                    match &**rhs{
+                                        &ArrayExpr(ref _ty, ref _dim_expr, ref _init_expr) => {
+                                            let _alloca = LLVMBuildAlloca(ctxt.builder,
+                                                                              LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
+                                                                              c_str_ptr!("_alloca"));
+                                            let _load = LLVMBuildLoad(ctxt.builder, _alloca, c_str_ptr!("arr_load"));
+                                            let _array_alloca = LLVMBuildArrayAlloca(ctxt.builder, 
+                                                                 LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
+                                                                 _load,
+                                                                 c_str_ptr!(&(*name.clone())));
+                                            ctxt.sym_tab.push((name.clone(), 
+                                                               Some(Box::new(Var::new(name.clone(), ty.clone(), _array_alloca)))));
+                                        },
+                                        _ => {}
+                                    }
+
+                                }
+                                else{
+                                    let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
+                                    let rhs_value_ref = try!(rhs.codegen(ctxt));
+                                    LLVMBuildStore(ctxt.builder,
+                                                   rhs_value_ref,
+                                                   alloca);
+                                    ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
+                                }
                             },
                             _ => panic!("More decl types should be covered")
                         }
@@ -600,7 +652,9 @@ impl StdFunctionCodeBuilder for Expr{
         match *self{
             Expr::NumExpr(_) |
             Expr::StringExpr(_) |
-            Expr::IdExpr(_) => return,
+            Expr::IdExpr(_) |
+            Expr::SubscriptExpr(_, _) |
+            Expr::ArrayExpr(_, _, _) => return,
             Expr::AddExpr(ref e1, ref e2) |
             Expr::SubExpr(ref e1, ref e2) |
             Expr::MulExpr(ref e1, ref e2) |
@@ -1117,6 +1171,27 @@ fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
     v.visit_expr(&mut *b_expr);
 }
 
+#[test]
+fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
+    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_array_access() {
+    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a[0] end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+}
 //#[test]
 //fn test_prsr_bcknd_intgrtion_print_with_chr_call() {
 //    let mut p = Parser::new("print(chr(7))".to_string());

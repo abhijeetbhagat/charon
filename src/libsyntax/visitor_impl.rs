@@ -249,6 +249,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                             panic!("Array type doesn't match with the type of the init expression")
                         }
 
+                        store_into_sym_tab!(self, id, VarBinding);
                         return;
                     },
                     _ => {}
