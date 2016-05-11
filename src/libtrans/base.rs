@@ -369,9 +369,52 @@ impl IRBuilder for Expr{
                     }
                 },
                 &Expr::AssignExpr(ref lhs, ref rhs) => {
-                    let load = try!(lhs.codegen(ctxt));
-                    let val = try!(rhs.codegen(ctxt));
-                    Ok(LLVMBuildStore(ctxt.builder, val, load))
+                    //let load = try!(lhs.codegen(ctxt));
+                    //FIXME this is a shameful piece of hack made in desperation to
+                    //modify an array element and check its value.
+                    //This code is copy pasted from the Expr::SubscriptExpr block which uses a
+                    //GEP + load which did not work because of the load instr.
+                    //In order to store in an array element, GEP + store is required
+                    //A common logic should be written for subscript-expr with the load and store
+                    //parts interchangeable.  
+                   
+                    match &**lhs{
+                        &Expr::SubscriptExpr(ref id, ref idx_expr) => {
+                            //FIXME the following line is the first statement because compiler wont
+                            //allow it after the for loop. says ctxt.sym_tab is already borrowed as
+                            //mutable. see how this can be put inside if _optional.is_some(){...}
+                            let i = try!(idx_expr.codegen(ctxt));
+                            let val = try!(rhs.codegen(ctxt));
+                            let mut sym = &None;
+                            let mut found = false;
+                            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+                                if *_id == *id  {
+                                    sym = info;
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if !found{
+                                panic!(format!("Invalid reference to array '{0}'", *id));
+                            }
+
+                            let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+                            if _optional.is_some(){
+                                let load = LLVMBuildGEP(ctxt.builder,
+                                                       _optional.as_ref().unwrap().alloca_ref(), 
+                                                       vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                                       i].as_mut_ptr(),
+                                                       2,
+                                                       c_str_ptr!("array_gep"));
+                                Ok(LLVMBuildStore(ctxt.builder, val, load))
+                            }
+                            else{
+                                panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
+                            }
+                        },
+                        _ => {panic!("Need to cover variables and fields");}
+                    }
                 },
                 &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
                     //FIXME the following line is the first statement because compiler wont
@@ -525,15 +568,17 @@ impl IRBuilder for Expr{
                     }
                 },
                 &Expr::SeqExpr(ref opt_list) => {
+                    let mut ret_val = Err(String::from(""));
                     if opt_list.is_some(){
                         for expr in opt_list.as_ref().unwrap().iter(){
                             match expr.codegen(ctxt){
-                                Ok(val) => {return Ok(val)},
-                                Err(msg) => {panic!("{}", msg);}
+                                Ok(val) => { ret_val = Ok(val)},
+                                Err(msg) => {ret_val = Err(msg)} 
                             }
                         }
                     }
-                    Ok(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0))
+                    //Ok(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0))
+                    return ret_val
 
                 },
                 &Expr::LetExpr(ref decls, ref expr) => {
