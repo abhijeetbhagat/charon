@@ -378,13 +378,13 @@ impl IRBuilder for Expr{
                     //A common logic should be written for subscript-expr with the load and store
                     //parts interchangeable.  
                    
+                    let val = try!(rhs.codegen(ctxt));
                     match &**lhs{
                         &Expr::SubscriptExpr(ref id, ref idx_expr) => {
                             //FIXME the following line is the first statement because compiler wont
                             //allow it after the for loop. says ctxt.sym_tab is already borrowed as
                             //mutable. see how this can be put inside if _optional.is_some(){...}
                             let i = try!(idx_expr.codegen(ctxt));
-                            let val = try!(rhs.codegen(ctxt));
                             let mut sym = &None;
                             let mut found = false;
                             for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
