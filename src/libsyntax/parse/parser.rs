@@ -180,6 +180,10 @@ impl Parser{
             //     Some(B(SeqExpr(None)))
             // },
             Token::End => panic!("Unexpected 'end'. Expected an expr."),
+            Token::RightSquare => {
+                panic!("");
+
+            },
             t =>{ println!("{:?}", t); panic!("FIXME: handle more patterns")}
         }
     }
@@ -327,8 +331,30 @@ impl Parser{
         let op1 = B(IdExpr(self.lexer.curr_string.clone()));
         let fn_name = self.lexer.curr_string.clone();
         match self.lexer.get_token(){
-            Token::LeftSquare => {
-                return Some((TVoid, B(SubscriptExpr(fn_name, self.get_nxt_and_parse().1))))
+            Token::LeftSquare => { //a[
+                let idx_expr = self.get_nxt_and_parse();
+                match self.lexer.curr_token{
+                    Token::RightSquare =>{
+                        let subscript_expr = Some((TVoid, B(SubscriptExpr(fn_name.clone(), idx_expr.1.clone()))));
+                        //check if something getting assigned to the subscript
+                        match self.lexer.get_token(){
+                          Token::ColonEquals => { //a[i] := 
+                              //let rhs_expr = self.get_nxt_and_parse();
+                              return Some((TVoid, B(AssignExpr(B(SubscriptExpr(fn_name.clone(), idx_expr.1)), 
+                                                               self.get_nxt_and_parse().1))))
+                          },
+                          _ => {
+                              return subscript_expr
+                          }
+
+                        }
+                        
+                    },
+                    _ => {
+                        println!("{:?}", self.lexer.curr_token);
+                        panic!("");
+                    }
+                }
             }, //subscript
             Token::Dot => {}, //fieldexp
             Token::LeftParen => { //callexpr
@@ -1210,6 +1236,37 @@ fn test_1_seq_expr_add_expr() {
 }
 
 #[test]
+fn test_1_seq_expr_assignexpr_callexpr() {
+    let mut p = Parser::new("(a[1]:=1; print(a[1]);)".to_string());
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match *expr{
+        SeqExpr(ref o) => {
+            assert_eq!(o.as_ref().unwrap().len(), 2);
+            match *o.as_ref().unwrap()[0]{
+                AssignExpr(ref e1, ref e2) => {
+                    match **e1 {
+                        SubscriptExpr(_, _) => {},
+                        _ => {panic!("Expected a subscript_expr");}
+                    }
+                    match **e2 {
+                        NumExpr(n) => assert_eq!(n, 1),
+                        _ => {panic!("Expected a num expr");}
+                    }
+                },
+                _ => {panic!("Expected an assign expr");}
+            }
+            match *o.as_ref().unwrap()[1]{
+                CallExpr(_, _) => {
+
+                },
+                _ => {panic!("Expected a call expr");}
+            }
+        },
+        _ => panic!("Invalid expr")
+    }
+}
+#[test]
 fn test_get_ty(){
     assert_eq!(Parser::get_ty_from_string("int"), TInt32);
     assert_eq!(Parser::get_ty_from_string("string"), TString);
@@ -1671,5 +1728,29 @@ fn test_subscript_expr(){
             assert_eq!(*name, String::from("a")); 
         },
         _ => panic!("Expected a subscript expression")
+    } 
+}
+
+#[test]
+fn test_subscript_expr_assign(){
+    let mut p = Parser::new("a[0] := 1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match *expr{
+        AssignExpr(ref lhs, ref rhs) => {
+            match **lhs{
+                SubscriptExpr(ref name, _) =>{
+                    assert_eq!(*name, String::from("a"));
+                },
+                _ => {panic!("Expected a SubscriptExpr");}
+            }
+
+            match **rhs{
+                NumExpr(i) => {assert_eq!(i, 1);},
+                _ => {panic!("Expected a NumExpr");}
+            }
+            //assert_eq!(*name, String::from("a")); 
+        },
+        _ => panic!("Expected an assignment expression")
     } 
 }

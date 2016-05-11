@@ -93,7 +93,7 @@ impl Block{
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr{
    //let dec+ in exp*; end
    //note: instead of making a list of exprs as the grammar suggests,
@@ -131,6 +131,7 @@ pub enum Expr{
    //array of int[3] of 0
    ArrayExpr(TType, B<Expr>, B<Expr>),
    SubscriptExpr(String, B<Expr>),
+   SubscriptSetExpr(String, B<Expr>, B<Expr>),
    AddExpr(B<Expr>, B<Expr>),
    SubExpr(B<Expr>, B<Expr>),
    MulExpr(B<Expr>, B<Expr>),
@@ -142,12 +143,12 @@ pub enum Expr{
    GreaterThanEqualsExpr(B<Expr>, B<Expr>),
    NotEqualsExpr(B<Expr>, B<Expr>),
    ModExpr(B<Expr>, B<Expr>),
-   BlockExpr(B<Block>),
+   //BlockExpr(B<Block>),
    IfThenExpr(B<Expr>, B<Expr>),
    IfThenElseExpr(B<Expr>, B<Expr>, B<Expr>),
    WhileExpr(B<Expr>, B<Expr>),
    ForExpr(String, B<Expr>, B<Expr>, B<Expr>),
-   AssignExpr(String, B<Expr>),
+   AssignExpr(B<Expr>, B<Expr>),
    LabelExpr(String),
    GotoExpr(String)
 }
@@ -159,7 +160,7 @@ pub struct FieldDec{
 
 //lst.where(move |x|{x.id == "id"}).first()
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Decl{
     //type tyId = ty
     TypeDec(String, TType),

@@ -368,6 +368,11 @@ impl IRBuilder for Expr{
                         panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id));
                     }
                 },
+                &Expr::AssignExpr(ref lhs, ref rhs) => {
+                    let load = try!(lhs.codegen(ctxt));
+                    let val = try!(rhs.codegen(ctxt));
+                    Ok(LLVMBuildStore(ctxt.builder, val, load))
+                },
                 &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
                     //FIXME the following line is the first statement because compiler wont
                     //allow it after the for loop. says ctxt.sym_tab is already borrowed as
@@ -393,7 +398,6 @@ impl IRBuilder for Expr{
                                         _optional.as_ref().unwrap().alloca_ref(), 
                                         vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
                                              i].as_mut_ptr(),
-/*LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1u64, 0)*/
                                         2,
                                         c_str_ptr!("array_gep"));
                         Ok(LLVMBuildLoad(ctxt.builder, val,  c_str_ptr!(&*id.clone())))
@@ -520,6 +524,18 @@ impl IRBuilder for Expr{
                         }
                     }
                 },
+                &Expr::SeqExpr(ref opt_list) => {
+                    if opt_list.is_some(){
+                        for expr in opt_list.as_ref().unwrap().iter(){
+                            match expr.codegen(ctxt){
+                                Ok(val) => {return Ok(val)},
+                                Err(msg) => {panic!("{}", msg);}
+                            }
+                        }
+                    }
+                    Ok(LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0))
+
+                },
                 &Expr::LetExpr(ref decls, ref expr) => {
                     debug_assert!(!decls.is_empty(), "Declarations in a let block can't be empty");
                     debug_assert!(expr.is_some(), "Expr in a let block can't be empty");
@@ -610,6 +626,7 @@ impl IRBuilder for Expr{
                                                                                LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), n as u32),
                                                                                c_str_ptr!("_alloca"));
 
+                                                    let init_val = try!(_init_expr.codegen(ctxt));
                                                     for i in 0..n{
                                                         //gep
                                                         let val = LLVMBuildGEP(ctxt.builder,
@@ -618,8 +635,11 @@ impl IRBuilder for Expr{
                                                                                LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0)].as_mut_ptr(),
                                                                                2,
                                                                                c_str_ptr!("array_gep"));
+                                                        //FIXME replace i with codegenerated
+                                                        //_init_expr
                                                         LLVMBuildStore(ctxt.builder,
-                                                                       LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0),
+                                                                       init_val,
+                                                                       //LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0),
                                                                        val);
 
                                                         //store
@@ -680,6 +700,7 @@ impl StdFunctionCodeBuilder for Expr{
             Expr::NumExpr(_) |
             Expr::StringExpr(_) |
             Expr::IdExpr(_) |
+            //FIXME call std_fn_codegen() for index, dim and init exprs
             Expr::SubscriptExpr(_, _) |
             Expr::ArrayExpr(_, _, _) => return,
             Expr::AddExpr(ref e1, ref e2) |
@@ -733,6 +754,17 @@ impl StdFunctionCodeBuilder for Expr{
                         e.std_fn_codegen(ctxt);
                     }
                 }
+            },
+            Expr::SeqExpr(ref opt_list) => {
+                if opt_list.is_some(){
+                    for expr in opt_list.as_ref().unwrap().iter(){
+                        expr.std_fn_codegen(ctxt);
+                    }
+                }
+            },
+            Expr::AssignExpr(ref lhs, ref rhs) => {
+                lhs.std_fn_codegen(ctxt);
+                rhs.std_fn_codegen(ctxt);
             },
             _ => {panic!("Expression not covered yet for intrinsic code generation")}
         }
@@ -1212,6 +1244,19 @@ fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
 #[test]
 fn test_prsr_bcknd_intgrtion_array_access() {
     let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in print(a[2]) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_array_element_modification() {
+    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[2]:=99;print(a[2]);) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
