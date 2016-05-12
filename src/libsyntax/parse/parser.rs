@@ -399,6 +399,10 @@ impl Parser{
                     //panic!("Expected i32 as the type of rhs expression");
                 //}
             },
+            Token::ColonEquals => {
+                return Some((TVoid, B(AssignExpr(B(IdExpr(fn_name.clone())), 
+                                                               self.get_nxt_and_parse().1))))
+            },
             Token::Equals => {
                 let (_, op2) = self.get_nxt_and_parse();
                 return Some((TVoid, B(EqualsExpr(op1, op2))))
@@ -1741,6 +1745,30 @@ fn test_subscript_expr_assign(){
         AssignExpr(ref lhs, ref rhs) => {
             match **lhs{
                 SubscriptExpr(ref name, _) =>{
+                    assert_eq!(*name, String::from("a"));
+                },
+                _ => {panic!("Expected a SubscriptExpr");}
+            }
+
+            match **rhs{
+                NumExpr(i) => {assert_eq!(i, 1);},
+                _ => {panic!("Expected a NumExpr");}
+            }
+            //assert_eq!(*name, String::from("a")); 
+        },
+        _ => panic!("Expected an assignment expression")
+    } 
+}
+
+#[test]
+fn test_int_var_assign(){
+    let mut p = Parser::new("a := 1".to_string()); 
+    p.start_lexer();
+    let (ty, expr) = p.expr().unwrap();
+    match *expr{
+        AssignExpr(ref lhs, ref rhs) => {
+            match **lhs{
+                IdExpr(ref name) =>{
                     assert_eq!(*name, String::from("a"));
                 },
                 _ => {panic!("Expected a SubscriptExpr");}

@@ -375,7 +375,32 @@ impl IRBuilder for Expr{
                             let elem_ptr = try!(get_gep(id, idx_expr, ctxt));
                             Ok(LLVMBuildStore(ctxt.builder, val, elem_ptr))
                         },
-                        _ => {panic!("Need to cover variables and fields");}
+                        &Expr::IdExpr(ref id) => {
+                            //let load = try!(lhs.codegen(ctxt));
+                            let mut sym = &None;
+                            let mut found = false;
+                            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+                                if *_id == *id  {
+                                    sym = info;
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if !found{
+                                panic!(format!("Invalid reference to variable '{0}'", *id));
+                            }
+
+                            let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+                            if _optional.is_some(){
+                                Ok(LLVMBuildStore(ctxt.builder, val, _optional.as_ref().unwrap().alloca_ref()))
+                            }
+                            else{
+                                panic!(format!("Invalid reference to variable '{0}'. Different binding found.", *id));
+                            }
+                            
+                        },
+                        _ => {panic!("Need to cover fields");}
                     }
                 },
                 &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
@@ -1265,13 +1290,26 @@ fn test_prsr_bcknd_intgrtion_array_access() {
     let mut v = TypeChecker::new();
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&mut *b_expr);
-    link_object_code(ctxt.as_ref().unwrap());
-    ctxt.unwrap().dump();
+    //link_object_code(ctxt.as_ref().unwrap());
+    //ctxt.unwrap().dump();
 }
 
 #[test]
 fn test_prsr_bcknd_intgrtion_array_element_modification() {
     let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[2]:=99;print(a[2]);) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    //link_object_code(ctxt.as_ref().unwrap());
+    //ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_int_var_modification() {
+    let mut p = Parser::new("let var a : int := 3 in (a := 8;print(a);) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
