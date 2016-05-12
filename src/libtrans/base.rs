@@ -369,15 +369,6 @@ impl IRBuilder for Expr{
                     }
                 },
                 &Expr::AssignExpr(ref lhs, ref rhs) => {
-                    //let load = try!(lhs.codegen(ctxt));
-                    //FIXME this is a shameful piece of hack made in desperation to
-                    //modify an array element and check its value.
-                    //This code is copy pasted from the Expr::SubscriptExpr block which uses a
-                    //GEP + load which did not work because of the load instr.
-                    //In order to store in an array element, GEP + store is required
-                    //A common logic should be written for subscript-expr with the load and store
-                    //parts interchangeable.  
-                   
                     let val = try!(rhs.codegen(ctxt));
                     match &**lhs{
                         &Expr::SubscriptExpr(ref id, ref idx_expr) => {
