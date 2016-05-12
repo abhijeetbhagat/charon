@@ -335,6 +335,7 @@ impl Parser{
                 let idx_expr = self.get_nxt_and_parse();
                 match self.lexer.curr_token{
                     Token::RightSquare =>{
+                        //FIXME can something be done about cloning the expression?
                         let subscript_expr = Some((TVoid, B(SubscriptExpr(fn_name.clone(), idx_expr.1.clone()))));
                         //check if something getting assigned to the subscript
                         match self.lexer.get_token(){

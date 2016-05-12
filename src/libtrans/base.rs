@@ -381,73 +381,15 @@ impl IRBuilder for Expr{
                     let val = try!(rhs.codegen(ctxt));
                     match &**lhs{
                         &Expr::SubscriptExpr(ref id, ref idx_expr) => {
-                            //FIXME the following line is the first statement because compiler wont
-                            //allow it after the for loop. says ctxt.sym_tab is already borrowed as
-                            //mutable. see how this can be put inside if _optional.is_some(){...}
-                            let i = try!(idx_expr.codegen(ctxt));
-                            let mut sym = &None;
-                            let mut found = false;
-                            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-                                if *_id == *id  {
-                                    sym = info;
-                                    found = true;
-                                    break;
-                                }
-                            }
-
-                            if !found{
-                                panic!(format!("Invalid reference to array '{0}'", *id));
-                            }
-
-                            let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
-                            if _optional.is_some(){
-                                let load = LLVMBuildGEP(ctxt.builder,
-                                                       _optional.as_ref().unwrap().alloca_ref(), 
-                                                       vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                                       i].as_mut_ptr(),
-                                                       2,
-                                                       c_str_ptr!("array_gep"));
-                                Ok(LLVMBuildStore(ctxt.builder, val, load))
-                            }
-                            else{
-                                panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
-                            }
+                            let elem_ptr = try!(get_gep(id, idx_expr, ctxt));
+                            Ok(LLVMBuildStore(ctxt.builder, val, elem_ptr))
                         },
                         _ => {panic!("Need to cover variables and fields");}
                     }
                 },
                 &Expr::SubscriptExpr(ref id, ref subscript_expr) => {
-                    //FIXME the following line is the first statement because compiler wont
-                    //allow it after the for loop. says ctxt.sym_tab is already borrowed as
-                    //mutable. see how this can be put inside if _optional.is_some(){...}
-                    let i = try!(subscript_expr.codegen(ctxt));
-                    let mut sym = &None;
-                    let mut found = false;
-                    for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-                        if *_id == *id  {
-                            sym = info;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if !found{
-                        panic!(format!("Invalid reference to array '{0}'", *id));
-                    }
-
-                    let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
-                    if _optional.is_some(){
-                        let val = LLVMBuildGEP(ctxt.builder,
-                                        _optional.as_ref().unwrap().alloca_ref(), 
-                                        vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                             i].as_mut_ptr(),
-                                        2,
-                                        c_str_ptr!("array_gep"));
-                        Ok(LLVMBuildLoad(ctxt.builder, val,  c_str_ptr!(&*id.clone())))
-                    }
-                    else{
-                        panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
-                    }
+                    let elem_ptr = try!(get_gep(id, subscript_expr, ctxt));
+                    Ok(LLVMBuildLoad(ctxt.builder, elem_ptr,  c_str_ptr!(&*id.clone())))
                 },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
@@ -731,6 +673,43 @@ impl IRBuilder for Expr{
                 }
                 t => Err(format!("error: {:?}", t))
             }
+        }
+    }
+
+}
+
+fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuildingResult {
+    unsafe {
+        //FIXME the following line is the first statement because compiler wont
+        //allow it after the for loop. says ctxt.sym_tab is already borrowed as
+        //mutable. see how this can be put inside if _optional.is_some(){...}
+        let i = try!(subscript_expr.codegen(ctxt));
+        let mut sym = &None;
+        let mut found = false;
+        for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+            if *_id == *id  {
+                sym = info;
+                found = true;
+                break;
+            }
+        }
+
+        if !found{
+            panic!(format!("Invalid reference to array '{0}'", *id));
+        }
+
+        let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+        if _optional.is_some(){
+            let val = LLVMBuildGEP(ctxt.builder,
+                                   _optional.as_ref().unwrap().alloca_ref(), 
+                                   vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                   i].as_mut_ptr(),
+                                   2,
+                                   c_str_ptr!("array_gep"));
+            Ok(val)
+        }
+        else{
+            panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
         }
     }
 }
@@ -1277,7 +1256,7 @@ fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
 
 #[test]
 fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
-    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a end".to_string());
+    let mut p = Parser::new("let var a : array := array of int[1] of 1+1 in a end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
