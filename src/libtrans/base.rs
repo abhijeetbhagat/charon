@@ -24,14 +24,14 @@ use link::link;
 use helpers::*;
 use symbol::*;
 
-//FIXME this is only of unit testing
+//FIXME pub is only of unit testing
 pub type OptionalSymbolInfo = Option<Box<Any>>;
 
 pub struct Context<'a>{
     context : LLVMContextRef,
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
-    //FIXME this is only for unit testing
+    //FIXME pub is only of unit testing
     pub sym_tab : Vec<(String, OptionalSymbolInfo)>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
@@ -346,6 +346,8 @@ impl IRBuilder for Expr{
                     build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntNE, e1, e2, "necmp_tmp")
                 },
                 &Expr::IdExpr(ref id) => {
+                    //FIXME this logic to check whether a symbol exists in the sym-tab
+                    //is repetitive. Needs refactoring.
                     let mut sym = &None;
                     let mut found = false;
                     for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
@@ -694,6 +696,7 @@ impl IRBuilder for Expr{
 
 }
 
+//returns the pointer to an element in the array
 fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuildingResult {
     unsafe {
         //FIXME the following line is the first statement because compiler wont
@@ -717,7 +720,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
         let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
         if _optional.is_some(){
             let val = LLVMBuildGEP(ctxt.builder,
-                                   _optional.as_ref().unwrap().alloca_ref(), 
+                                   _optional.as_ref().unwrap().alloca_ref(), //array alloca
                                    vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
                                    i].as_mut_ptr(),
                                    2,

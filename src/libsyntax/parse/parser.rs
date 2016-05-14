@@ -19,6 +19,7 @@ pub struct Parser{
     lexer : Lexer,
     block_stack : BlockStack,
     paren_stack : Vec<char>,
+    square_stack : Vec<char>,
     seq_expr_list : Vec<B<Expr>>,
     last_expr_type : Option<TType>
 }
@@ -332,6 +333,8 @@ impl Parser{
         let fn_name = self.lexer.curr_string.clone();
         match self.lexer.get_token(){
             Token::LeftSquare => { //a[
+                //FIXME check nested brackets
+                //self.square_stack.push('[');
                 let idx_expr = self.get_nxt_and_parse();
                 match self.lexer.curr_token{
                     Token::RightSquare =>{
@@ -347,9 +350,7 @@ impl Parser{
                           _ => {
                               return subscript_expr
                           }
-
-                        }
-                        
+                        } 
                     },
                     _ => {
                         println!("{:?}", self.lexer.curr_token);
