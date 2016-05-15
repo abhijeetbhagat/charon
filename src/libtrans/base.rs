@@ -777,7 +777,8 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
 
         let index_check_exp = B(IfThenExpr(B(GreaterThanExpr(B((subscript_expr.clone())), len_expr)), 
                                            B(SeqExpr(Some(vec![B(CallExpr(String::from("print"),
-                                          Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))), B(CallExpr(String::from("abort"), None))])))));
+                                          Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))),
+                                                               B(CallExpr(String::from("abort"), None))])))));
         try!(index_check_exp.codegen(ctxt));
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
@@ -789,6 +790,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
     }
 }
 
+//FIXME make this work so that it can be used at a number of places
 fn get_symbol<'a>(ctxt : &'a Context, id : &String) -> &'a Option<Box<Any>>{
     //let mut sym = &None;
     let mut found = false;
