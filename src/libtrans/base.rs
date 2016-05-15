@@ -434,6 +434,28 @@ impl IRBuilder for Expr{
                     let elem_ptr = try!(get_gep(id, subscript_expr, ctxt));
                     Ok(LLVMBuildLoad(ctxt.builder, elem_ptr,  c_str_ptr!(&*id.clone())))
                 },
+                &Expr::IfThenExpr(ref conditional_expr, ref then_expr) => {
+                    
+                    let cond_code = try!(conditional_expr.codegen(ctxt));
+                    let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
+                    let if_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, cond_code, zero, c_str_ptr!("ifcond"));
+                    let bb = LLVMGetInsertBlock(ctxt.builder);
+                    let function = LLVMGetBasicBlockParent(bb);
+                    let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("thencond"));
+                    let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("ifcont"));
+                    LLVMBuildCondBr(ctxt.builder, if_cond, then_block, ifcont_block); 
+
+                    LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
+                    let then_code = try!(then_expr.codegen(ctxt));
+                    LLVMBuildBr(ctxt.builder, ifcont_block);
+                    let then_end = LLVMGetInsertBlock(ctxt.builder);
+
+                    LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
+
+                    let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
+                    LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
+                    Ok(phi_node) 
+                },
                 &Expr::IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
                     let cond_code = try!(conditional_expr.codegen(ctxt));
                     let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
@@ -732,63 +754,61 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
         //allow it after the for loop. says ctxt.sym_tab is already borrowed as
         //mutable. see how this can be put inside if _optional.is_some(){...}
         let i = try!(subscript_expr.codegen(ctxt));
-        {
-            //let mut sym;
-            let mut found = false;
-            let mut idx = ctxt.sym_tab.len() - 1;
-            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-                if *_id == *id  {
-                    //sym = info;
-                    found = true;
-                    break;
-                }
-                idx = idx - 1;
+        //let mut sym;
+        let mut found = false;
+        let mut idx = ctxt.sym_tab.len() - 1;
+        for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+            if *_id == *id  {
+                //sym = info;
+                found = true;
+                break;
             }
-
-            if !found{
-                panic!(format!("Invalid reference to '{0}'", *id));
-            }
-            //assert_eq!(sym.is_some(), true);
-
-            //sym = ctxt.sym_tab[idx].1.clone();
-            //let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
-            //if _optional.is_some(){
-                //let sym = _optional.as_ref().unwrap();
-                //FIXME move index checking out of here
-                let array_len = LLVMGetArrayLength(ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().llvm_type_ref());
-                let len_expr = B(NumExpr(array_len as i32));
-                let len = try!(len_expr.codegen(ctxt));
-                let cond_code = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, i, len, c_str_ptr!("gtcmp_tmp"));
-                let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
-                let if_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, cond_code, zero, c_str_ptr!("ifcond"));
-
-                let bb = LLVMGetInsertBlock(ctxt.builder);
-                let function = LLVMGetBasicBlockParent(bb);
-                let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("thencond"));
-                let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("ifcont"));
-
-                LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
-                let then_code = try!(B(CallExpr("abort".to_string(), None)).codegen(ctxt));
-                LLVMBuildBr(ctxt.builder, ifcont_block);
-                let then_end = LLVMGetInsertBlock(ctxt.builder);
-
-                LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
-
-                let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
-                LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
-
-                let val = LLVMBuildGEP(ctxt.builder,
-                                       ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
-                                       vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                       i].as_mut_ptr(),
-                                       2,
-                                       c_str_ptr!("array_gep"));
-                return Ok(val);
-            //}
-            //else{
-                panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
-            //}
+            idx = idx - 1;
         }
+
+        if !found{
+            panic!(format!("Invalid reference to '{0}'", *id));
+        }
+        //assert_eq!(sym.is_some(), true);
+
+        //sym = ctxt.sym_tab[idx].1.clone();
+        //let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+        //if _optional.is_some(){
+        //let sym = _optional.as_ref().unwrap();
+        //FIXME move index checking out of here
+        let array_len = LLVMGetArrayLength(ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().llvm_type_ref());
+        let len_expr = B(NumExpr(array_len as i32));
+        let len = try!(len_expr.codegen(ctxt));
+        let cond_code = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, i, len, c_str_ptr!("gtcmp_tmp"));
+        let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
+        let if_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, cond_code, zero, c_str_ptr!("ifcond"));
+
+        let bb = LLVMGetInsertBlock(ctxt.builder);
+        let function = LLVMGetBasicBlockParent(bb);
+        let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("thencond"));
+        let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("ifcont"));
+
+        LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
+        let then_code = try!(B(CallExpr("abort".to_string(), None)).codegen(ctxt));
+        LLVMBuildBr(ctxt.builder, ifcont_block);
+        let then_end = LLVMGetInsertBlock(ctxt.builder);
+
+        LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
+
+        let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
+        LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
+
+        let val = LLVMBuildGEP(ctxt.builder,
+                               ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
+                               vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                               i].as_mut_ptr(),
+                               2,
+                               c_str_ptr!("array_gep"));
+        return Ok(val);
+        //}
+        //else{
+        panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
+        //}
     }
 }
 
@@ -828,6 +848,10 @@ impl StdFunctionCodeBuilder for Expr{
             Expr::EqualsExpr(ref e1, ref e2) => {
                 e1.std_fn_codegen(ctxt);
                 e2.std_fn_codegen(ctxt);
+            },
+            Expr::IfThenExpr(ref cond_expr, ref then_expr) => {
+                cond_expr.std_fn_codegen(ctxt);
+                then_expr.std_fn_codegen(ctxt);
             },
             Expr::IfThenElseExpr(ref cond_expr, ref then_expr, ref else_expr) => {
                 cond_expr.std_fn_codegen(ctxt);
@@ -1099,7 +1123,7 @@ fn test_prsr_bcknd_intgrtion_let_blk() {
 }
 
 #[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr() {
+fn test_prsr_bcknd_intgrtion_if_then_else_expr() {
     let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
@@ -1111,7 +1135,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr() {
 }
 
 #[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
+fn test_prsr_bcknd_intgrtion_if_then_else_expr_with_div_expr() {
     let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
@@ -1123,7 +1147,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
 }
 
 #[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
+fn test_prsr_bcknd_intgrtion_if_then_else_expr_with_mul_expr() {
     let mut p = Parser::new("let function foo()  = if 1*1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
@@ -1135,7 +1159,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
 }
 
 #[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
+fn test_prsr_bcknd_intgrtion_if_then_else_expr_with_less_than_expr() {
     let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
@@ -1157,6 +1181,34 @@ fn test_prsr_bcknd_intgrtion_less_than_expr_with_mismatched_types() {
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
+    let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") in foo() end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
+    let mut p = Parser::new("let function foo() = if 1*1 then print(\"ruby\n\") in foo() end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&*b_expr);
+    assert_eq!(ctxt.is_some(), true);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
 }
 #[test]
 fn test_prsr_bcknd_intgrtion_var_decl() {
