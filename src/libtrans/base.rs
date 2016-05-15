@@ -771,33 +771,14 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
         }
         //assert_eq!(sym.is_some(), true);
 
-        //sym = ctxt.sym_tab[idx].1.clone();
-        //let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
-        //if _optional.is_some(){
-        //let sym = _optional.as_ref().unwrap();
         //FIXME move index checking out of here
         let array_len = LLVMGetArrayLength(ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().llvm_type_ref());
         let len_expr = B(NumExpr(array_len as i32));
-        let len = try!(len_expr.codegen(ctxt));
-        let cond_code = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, i, len, c_str_ptr!("gtcmp_tmp"));
-        let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
-        let if_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, cond_code, zero, c_str_ptr!("ifcond"));
 
-        let bb = LLVMGetInsertBlock(ctxt.builder);
-        let function = LLVMGetBasicBlockParent(bb);
-        let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("thencond"));
-        let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("ifcont"));
-
-        LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
-        let then_code = try!(B(CallExpr("abort".to_string(), None)).codegen(ctxt));
-        LLVMBuildBr(ctxt.builder, ifcont_block);
-        let then_end = LLVMGetInsertBlock(ctxt.builder);
-
-        LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
-
-        let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
-        LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
-
+        let index_check_exp = B(IfThenExpr(B(GreaterThanExpr(B((subscript_expr.clone())), len_expr)), 
+                                           B(SeqExpr(Some(vec![B(CallExpr(String::from("print"),
+                                          Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))), B(CallExpr(String::from("abort"), None))])))));
+        try!(index_check_exp.codegen(ctxt));
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
@@ -805,10 +786,6 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                2,
                                c_str_ptr!("array_gep"));
         return Ok(val);
-        //}
-        //else{
-        panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
-        //}
     }
 }
 
