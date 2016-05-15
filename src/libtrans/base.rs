@@ -223,6 +223,30 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                                    c_str_ptr!("call")))
 
             },
+
+            "abort" =>{
+                let abort_function : LLVMValueRef;
+
+                if !ctxt.proto_map.contains_key("abort"){
+                    let abort_ty = LLVMVoidTypeInContext(ctxt.context);
+                    let mut exit_type_args_vec = vec![LLVMVoidTypeInContext(ctxt.context)];
+                    let proto = LLVMFunctionType(abort_ty, ptr::null_mut(), 0, 0);
+                    abort_function = LLVMAddFunction(ctxt.module,
+                                                    c_str_ptr!("abort"),
+                                                    proto);
+                    ctxt.proto_map.insert("abort", true);
+                }
+                else{
+                    abort_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("abort")); 
+                }
+
+                Some(LLVMBuildCall(ctxt.builder,
+                                   abort_function,
+                                   ptr::null_mut(),
+                                   0,
+                                   c_str_ptr!("call")))
+
+            },
             "ord" => {
                 debug_assert!(args.is_some(), "No args passed to ord()");
                 let lst = args.as_ref().unwrap();
@@ -293,6 +317,14 @@ fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
     }
 }
 
+macro_rules! build_relational_instrs{
+    ($fun : ident, $ctxt : ident, $pred : path, $e1:ident, $e2:ident, $s : expr) => {{
+        let ev1 = try!($e1.codegen($ctxt));
+        let ev2 = try!($e2.codegen($ctxt));
+        Ok($fun($ctxt.builder, $pred, ev1, ev2, $s.as_ptr() as *const i8))
+    }}
+}
+
 impl IRBuilder for Expr{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult{
         macro_rules! build_binary_instrs{
@@ -303,13 +335,6 @@ impl IRBuilder for Expr{
             }}
         }
 
-        macro_rules! build_relational_instrs{
-            ($fun : ident, $pred : path, $e1:ident, $e2:ident, $s : expr) => {{
-                let ev1 = try!($e1.codegen(ctxt));
-                let ev2 = try!($e2.codegen(ctxt));
-                Ok($fun(ctxt.builder, $pred, ev1, ev2, $s.as_ptr() as *const i8))
-            }}
-        }
         unsafe{
             match self{
                 &Expr::NumExpr(ref i) => {
@@ -334,16 +359,16 @@ impl IRBuilder for Expr{
                     build_binary_instrs!(LLVMBuildSDiv, e1, e2, "div_tmp")
                 },
                 &Expr::EqualsExpr(ref e1, ref e2) => {
-                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntEQ, e1, e2, "eqcmp_tmp")
+                    build_relational_instrs!(LLVMBuildICmp, ctxt, llvm::LLVMIntPredicate::LLVMIntEQ, e1, e2, "eqcmp_tmp")
                 },
                 &Expr::LessThanExpr(ref e1, ref e2) => {
-                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntSLT, e1, e2, "lecmp_tmp")
+                    build_relational_instrs!(LLVMBuildICmp, ctxt, llvm::LLVMIntPredicate::LLVMIntSLT, e1, e2, "lecmp_tmp")
                 },
                 &Expr::GreaterThanExpr(ref e1, ref e2) => {
-                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntSGT, e1, e2, "gtcmp_tmp")
+                    build_relational_instrs!(LLVMBuildICmp, ctxt, llvm::LLVMIntPredicate::LLVMIntSGT, e1, e2, "gtcmp_tmp")
                 },
                 &Expr::NotEqualsExpr(ref e1, ref e2) => {
-                    build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntNE, e1, e2, "necmp_tmp")
+                    build_relational_instrs!(LLVMBuildICmp, ctxt, llvm::LLVMIntPredicate::LLVMIntNE, e1, e2, "necmp_tmp")
                 },
                 &Expr::IdExpr(ref id) => {
                     //FIXME this logic to check whether a symbol exists in the sym-tab
@@ -591,14 +616,18 @@ impl IRBuilder for Expr{
                                     let mut v = Vec::from_raw_parts(p, c, c);
                                     //assert_eq!(params_vec.len(), 1);
                                     for (value_ref, param) in v.iter().zip(optional_params.unwrap()){
+                                        let llvm_ty = get_llvm_type_for_ttype(&param.1, ctxt);
                                         let alloca = LLVMBuildAlloca(ctxt.builder,
-                                                                     get_llvm_type_for_ttype(&param.1, ctxt),
+                                                                     llvm_ty,
                                                                      c_str_ptr!(&*param.0));
                                         LLVMBuildStore(ctxt.builder,
                                                        *value_ref,
                                                        alloca);
                                         ctxt.sym_tab.push((param.0.clone(), 
-                                                           Some(Box::new(Var::new(param.0.clone(), param.1.clone(), alloca)))));
+                                                           Some(Box::new(Var::new(param.0.clone(),
+                                                                                  param.1.clone(),
+                                                                                  llvm_ty,
+                                                                                  alloca)))));
 
                                     }
                                 }
@@ -624,11 +653,11 @@ impl IRBuilder for Expr{
                                     match &**rhs{
                                         &ArrayExpr(ref _ty, ref _dim_expr, ref _init_expr) => {
                                             //let dim = try!(_dim_expr.codegen(ctxt));
-                                            println!("dim");
                                             match &**_dim_expr{
                                                 &NumExpr(n) => {
+                                                    let llvm_array_ty = LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), n as u32);
                                                     let _alloca = LLVMBuildAlloca(ctxt.builder,
-                                                                               LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), n as u32),
+                                                                               llvm_array_ty,
                                                                                c_str_ptr!("_alloca"));
 
                                                     let init_val = try!(_init_expr.codegen(ctxt));
@@ -655,7 +684,7 @@ impl IRBuilder for Expr{
                                                       LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 4 as u64, 0),
                                                       c_str_ptr!("_alloca"));*/
                                                     ctxt.sym_tab.push((name.clone(), 
-                                                                       Some(Box::new(Var::new(name.clone(), ty.clone(), _alloca)))));
+                                                                       Some(Box::new(Var::new(name.clone(), ty.clone(), llvm_array_ty, _alloca)))));
                                                 },
                                                 _ => {}
                                             }
@@ -670,7 +699,7 @@ impl IRBuilder for Expr{
                                     LLVMBuildStore(ctxt.builder,
                                                    rhs_value_ref,
                                                    alloca);
-                                    ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
+                                    ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), llvm_ty, alloca)))));
                                 }
                             },
                             _ => panic!("More decl types should be covered")
@@ -703,34 +732,78 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
         //allow it after the for loop. says ctxt.sym_tab is already borrowed as
         //mutable. see how this can be put inside if _optional.is_some(){...}
         let i = try!(subscript_expr.codegen(ctxt));
-        let mut sym = &None;
-        let mut found = false;
-        for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-            if *_id == *id  {
-                sym = info;
-                found = true;
-                break;
+        {
+            //let mut sym;
+            let mut found = false;
+            let mut idx = ctxt.sym_tab.len() - 1;
+            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+                if *_id == *id  {
+                    //sym = info;
+                    found = true;
+                    break;
+                }
+                idx = idx - 1;
             }
-        }
 
-        if !found{
-            panic!(format!("Invalid reference to array '{0}'", *id));
-        }
+            if !found{
+                panic!(format!("Invalid reference to '{0}'", *id));
+            }
+            //assert_eq!(sym.is_some(), true);
 
-        let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
-        if _optional.is_some(){
-            let val = LLVMBuildGEP(ctxt.builder,
-                                   _optional.as_ref().unwrap().alloca_ref(), //array alloca
-                                   vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                   i].as_mut_ptr(),
-                                   2,
-                                   c_str_ptr!("array_gep"));
-            Ok(val)
-        }
-        else{
-            panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
+            //sym = ctxt.sym_tab[idx].1.clone();
+            //let _optional = sym.as_ref().unwrap().downcast_ref::<Var>();
+            //if _optional.is_some(){
+                //let sym = _optional.as_ref().unwrap();
+                //FIXME move index checking out of here
+                let array_len = LLVMGetArrayLength(ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().llvm_type_ref());
+                let len_expr = B(NumExpr(array_len as i32));
+                let len = try!(len_expr.codegen(ctxt));
+                let cond_code = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntSGT, i, len, c_str_ptr!("gtcmp_tmp"));
+                let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
+                let if_cond = LLVMBuildICmp(ctxt.builder, llvm::LLVMIntPredicate::LLVMIntNE, cond_code, zero, c_str_ptr!("ifcond"));
+
+                let bb = LLVMGetInsertBlock(ctxt.builder);
+                let function = LLVMGetBasicBlockParent(bb);
+                let then_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("thencond"));
+                let ifcont_block = LLVMAppendBasicBlockInContext(ctxt.context, function, c_str_ptr!("ifcont"));
+
+                LLVMPositionBuilderAtEnd(ctxt.builder, then_block);
+                let then_code = try!(B(CallExpr("abort".to_string(), None)).codegen(ctxt));
+                LLVMBuildBr(ctxt.builder, ifcont_block);
+                let then_end = LLVMGetInsertBlock(ctxt.builder);
+
+                LLVMPositionBuilderAtEnd(ctxt.builder, ifcont_block);
+
+                let phi_node = LLVMBuildPhi(ctxt.builder, LLVMIntTypeInContext(ctxt.context, 32), c_str_ptr!("ifphi"));
+                LLVMAddIncoming(phi_node, vec![then_code].as_mut_ptr(), vec![then_end].as_mut_ptr(), 1);
+
+                let val = LLVMBuildGEP(ctxt.builder,
+                                       ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
+                                       vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                       i].as_mut_ptr(),
+                                       2,
+                                       c_str_ptr!("array_gep"));
+                return Ok(val);
+            //}
+            //else{
+                panic!(format!("Invalid reference to array '{0}'. Different binding found.", *id));
+            //}
         }
     }
+}
+
+fn get_symbol<'a>(ctxt : &'a Context, id : &String) -> &'a Option<Box<Any>>{
+    //let mut sym = &None;
+    let mut found = false;
+    for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
+        if *_id == *id  {
+            return info;
+            found = true;
+            break;
+        }
+    }
+
+    panic!(format!("Invalid reference to '{0}'", *id));
 }
 
 trait StdFunctionCodeBuilder{
@@ -844,14 +917,15 @@ fn not_builder(ctxt : &mut Context) {
             let mut v = Vec::from_raw_parts(p, c, c);
             assert_eq!(v.len(), 1);
             //assert_eq!(params_vec.len(), 1);
+            let llvm_ty = LLVMIntTypeInContext(ctxt.context, 32);
             let alloca = LLVMBuildAlloca(ctxt.builder,
-                                         LLVMIntTypeInContext(ctxt.context, 32),
+                                         llvm_ty,
                                          c_str_ptr!("a"));
             LLVMBuildStore(ctxt.builder,
                            v[0],
                            alloca);
             ctxt.sym_tab.push((String::from("a"), 
-                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
+                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, llvm_ty, alloca)))));
             let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
             B(NumExpr(1)),
             B(NumExpr(0)));
@@ -912,14 +986,15 @@ fn chr_builder(ctxt : &mut Context){
             let mut v = Vec::from_raw_parts(p, c, c);
             assert_eq!(v.len(), 1);
             //assert_eq!(params_vec.len(), 1);
+            let llvm_ty = LLVMIntTypeInContext(ctxt.context, 32);
             let alloca = LLVMBuildAlloca(ctxt.builder,
-                                         LLVMIntTypeInContext(ctxt.context, 32),
+                                         llvm_ty,
                                          c_str_ptr!("a"));
             LLVMBuildStore(ctxt.builder,
                            v[0],
                            alloca);
             ctxt.sym_tab.push((String::from("a"), 
-                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
+                               Some(Box::new(Var::new(String::from("a"), TType::TInt32, llvm_ty, alloca)))));
             let converted_value = LLVMBuildAlloca(ctxt.builder,
                                                  LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 32), 0),
                                                  c_str_ptr!("s"));
@@ -1313,6 +1388,19 @@ fn test_prsr_bcknd_intgrtion_array_element_modification() {
 #[test]
 fn test_prsr_bcknd_intgrtion_int_var_modification() {
     let mut p = Parser::new("let var a : int := 3 in (a := 8;print(a);) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_array_index_out_of_bounds() {
+    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[8]:=99;print(a[2]);) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();

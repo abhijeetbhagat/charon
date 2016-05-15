@@ -19,7 +19,7 @@ pub struct Parser{
     lexer : Lexer,
     block_stack : BlockStack,
     paren_stack : Vec<char>,
-    square_stack : Vec<char>,
+    //square_stack : Vec<char>,
     seq_expr_list : Vec<B<Expr>>,
     last_expr_type : Option<TType>
 }

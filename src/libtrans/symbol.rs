@@ -1,5 +1,5 @@
 extern crate llvm_sys as llvm;
-use self::llvm::prelude::{LLVMValueRef};
+use self::llvm::prelude::{LLVMValueRef, LLVMTypeRef};
 use syntax::ast::TType;
 
 #[derive(Clone, Debug)]
@@ -17,6 +17,7 @@ pub trait Symbol{
 
 pub trait VarSymbol : Symbol{
     fn var_type(&self) -> &TType;
+    fn llvm_type_ref(&self) -> LLVMTypeRef;
     fn alloca_ref(&self) ->  LLVMValueRef;
 }
 
@@ -27,14 +28,16 @@ pub trait FunctionSymbol : Symbol{
 pub struct Var{
     id : String,
     var_type : TType,
+    llvm_type_ref : LLVMTypeRef,
     alloca_ref : LLVMValueRef
 }
 
 impl Var{
-    pub fn new(id : String, ty : TType, alloca_ref : LLVMValueRef) -> Self{
+    pub fn new(id : String, ty : TType, llvm_ty : LLVMTypeRef, alloca_ref : LLVMValueRef) -> Self{
         Var {
             id : id,
             var_type : ty,
+            llvm_type_ref : llvm_ty,
             alloca_ref : alloca_ref
         } 
     }
@@ -56,6 +59,10 @@ impl VarSymbol for Var{
 
    fn alloca_ref(&self) -> LLVMValueRef{
        self.alloca_ref
+   }
+
+   fn llvm_type_ref(&self) -> LLVMTypeRef{
+       self.llvm_type_ref
    }
 }
 
