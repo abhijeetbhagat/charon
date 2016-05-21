@@ -747,6 +747,7 @@ impl IRBuilder for Expr{
 
 }
 
+//FIXME use instruction insertion instead of working hard in the function
 //returns the pointer to an element in the array
 fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuildingResult {
     unsafe {
@@ -787,6 +788,83 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                2,
                                c_str_ptr!("array_gep"));
         return Ok(val);
+    }
+}
+
+fn raise_exception(ctxt : &mut Context){
+    unsafe{
+        //FIXME create this type only once
+        let excpt_type = LLVMStructCreateNamed(ctxt.context, c_str_ptr!("_Unwind_Exception"));
+        LLVMStructSetBody(excpt_type, 
+                          vec![LLVMInt64Type(),
+                          LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
+                          vec![LLVMIntTypeInContext(ctxt.context, 32),
+                          LLVMPointerType(excpt_type, 0)
+                          ].as_mut_ptr(),
+                          2,
+                          0),
+                          0),
+                          LLVMInt64Type(),
+                          LLVMInt64Type()
+                          ].as_mut_ptr(),
+                          4,
+                          0);
+        //call _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception* object);
+        let ure_function : LLVMValueRef;
+        //check if we already have a prototype defined
+        if !ctxt.proto_map.contains_key("raise_excpt"){
+            let ure_ty = LLVMIntTypeInContext(ctxt.context, 32);
+            /*
+               void (*_Unwind_Exception_Cleanup_Fn) (_Unwind_Reason_Code,
+               struct _Unwind_Exception *);
+
+               struct _Unwind_Exception
+               {
+               uint64_t exception_class;
+               _Unwind_Exception_Cleanup_Fn exception_cleanup;
+               unsigned long private_1;
+               unsigned long private_2;
+               } __attribute__((__aligned__));
+               */
+            let mut ure_args_types_vec = vec![LLVMPointerType(excpt_type, 0)];
+            let proto = LLVMFunctionType(ure_ty, ure_args_types_vec.as_mut_ptr(), 1, 1);
+            ure_function = LLVMAddFunction(ctxt.module,
+                                           c_str_ptr!("_Unwind_RaiseException"),
+                                           proto);
+            ctxt.proto_map.insert("raise_excpt", true);
+        }
+        else{
+            ure_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("_Unwind_RaiseException"));
+        }
+
+        //create an exception object and call _Unwind_RaiseException() with exception object passed as
+        //arg
+
+        /*
+        /// Creates (allocates on the heap), an exception (OurException instance),
+        /// of the supplied type info type.
+        /// @param type type info type
+        OurUnwindException *createOurException(int type) {
+        size_t size = sizeof(OurException);
+        OurException *ret = (OurException*) memset(malloc(size), 0, size);
+        (ret->type).type = type;
+        (ret->unwindException).exception_class = ourBaseExceptionClass;
+        (ret->unwindException).exception_cleanup = deleteFromUnwindOurException;
+
+        return(&(ret->unwindException));
+        }
+        */
+
+        //let struct_size = LLVMSizeOf()
+        //let mut pf_args = Vec::new();
+        let mut args_count = 1;
+
+        /*Some(LLVMBuildCall(ctxt.builder,
+          ure_function,
+          pf_args.as_mut_ptr(),
+          args_count,
+          c_str_ptr!("call")))
+          */ 
     }
 }
 
