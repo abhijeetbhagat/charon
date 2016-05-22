@@ -300,6 +300,59 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                                    1,
                                    c_str_ptr!("call")))
             },
+            "memset" => {
+                //void *memset(void *buffer, int ch, size_t num);
+                //OurException *ret = (OurException*) memset(malloc(size), 0, size);
+                debug_assert!(args.is_some(), "No args passed to memset");
+                let lst = args.as_ref().unwrap();
+                assert_eq!(lst.len(), 3);
+                let arg_expr1 = &lst[0].1;
+                let arg_expr2 = &lst[1].1;
+                let arg_expr3 = &lst[2].1;
+
+                let memset_function : LLVMValueRef;
+                //check if we already have a prototype defined
+                if !ctxt.proto_map.contains_key("memset"){
+                    let memset_ty = LLVMVoidTypeInContext(ctxt.context);
+                    let mut memset_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
+                                                        LLVMIntTypeInContext(ctxt.context, 32),
+                                                        LLVMIntTypeInContext(ctxt.context, 32)
+                                                       ];
+                    let proto = LLVMFunctionType(memset_ty, memset_type_args_vec.as_mut_ptr(), 3, 0);
+                    memset_function = LLVMAddFunction(ctxt.module,
+                                                     c_str_ptr!("memset"),
+                                                     proto);
+                    ctxt.proto_map.insert("memset", true);
+                }
+                else{
+                    memset_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset"));
+                }
+
+                let mut memset_args = Vec::new();
+                let mut args_count = 3;
+                let l = match &arg_expr1.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                memset_args.push(l);
+                let l = match &arg_expr2.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                memset_args.push(l);
+                let l = match &arg_expr3.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                memset_args.push(l);
+
+                Some(LLVMBuildCall(ctxt.builder,
+                                   memset_function,
+                                   memset_args.as_mut_ptr(),
+                                   args_count,
+                                   c_str_ptr!("call")))
+                 
+            },
             _ => {None}
         }
     }
@@ -855,7 +908,8 @@ fn raise_exception(ctxt : &mut Context){
         }
         */
 
-        //let struct_size = LLVMSizeOf()
+        let struct_size = LLVMSizeOf(excpt_type);
+        //panic!("{}", struct_size);
         //let mut pf_args = Vec::new();
         let mut args_count = 1;
 
