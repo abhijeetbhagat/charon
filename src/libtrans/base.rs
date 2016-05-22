@@ -313,7 +313,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 let memset_function : LLVMValueRef;
                 //check if we already have a prototype defined
                 if !ctxt.proto_map.contains_key("memset"){
-                    let memset_ty = LLVMVoidTypeInContext(ctxt.context);
+                    let memset_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0));
                     let mut memset_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
                                                         LLVMIntTypeInContext(ctxt.context, 32),
                                                         LLVMIntTypeInContext(ctxt.context, 32)
