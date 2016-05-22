@@ -313,7 +313,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 let memset_function : LLVMValueRef;
                 //check if we already have a prototype defined
                 if !ctxt.proto_map.contains_key("memset"){
-                    let memset_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0));
+                    let memset_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
                     let mut memset_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
                                                         LLVMIntTypeInContext(ctxt.context, 32),
                                                         LLVMIntTypeInContext(ctxt.context, 32)
@@ -349,6 +349,44 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 Some(LLVMBuildCall(ctxt.builder,
                                    memset_function,
                                    memset_args.as_mut_ptr(),
+                                   args_count,
+                                   c_str_ptr!("call")))
+                 
+            },
+            "malloc" => {
+                //void *memset(void *buffer, int ch, size_t num);
+                //OurException *ret = (OurException*) memset(malloc(size), 0, size);
+                debug_assert!(args.is_some(), "No args passed to malloc");
+                let lst = args.as_ref().unwrap();
+                assert_eq!(lst.len(), 1);
+                let arg_expr = &lst[0].1;
+
+                let malloc_function : LLVMValueRef;
+                //check if we already have a prototype defined
+                if !ctxt.proto_map.contains_key("malloc"){
+                    let malloc_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
+                    let mut malloc_type_args_vec = vec![ LLVMIntTypeInContext(ctxt.context, 32) ];
+                    let proto = LLVMFunctionType(malloc_ty, malloc_type_args_vec.as_mut_ptr(), 1, 0);
+                    malloc_function = LLVMAddFunction(ctxt.module,
+                                                     c_str_ptr!("malloc"),
+                                                     proto);
+                    ctxt.proto_map.insert("malloc", true);
+                }
+                else{
+                    malloc_function = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("malloc"));
+                }
+
+                let mut malloc_args = Vec::new();
+                let mut args_count = 1;
+                let l = match &arg_expr.codegen(ctxt){
+                    &Ok(val) => val,
+                    &Err(ref err) => panic!("Error occurred - {0}", err)
+                };
+                malloc_args.push(l);
+
+                Some(LLVMBuildCall(ctxt.builder,
+                                   malloc_function,
+                                   malloc_args.as_mut_ptr(),
                                    args_count,
                                    c_str_ptr!("call")))
                  
