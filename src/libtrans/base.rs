@@ -38,31 +38,27 @@ pub struct Context<'a>{
 }
 
 impl<'a> Context<'a>{
-    fn new(module_name : &str) -> Self{
-        unsafe{
-            let llvm_context =  LLVMContextCreate();
-            let llvm_module = LLVMModuleCreateWithNameInContext(c_str_ptr!(module_name),
-                                                                llvm_context);
-            let builder = LLVMCreateBuilderInContext(llvm_context);
-            let sym_tab = Vec::new();
-            let bb_stack = Vec::new();
-            let proto_map = HashMap::new();
+    unsafe fn new(module_name : &str) -> Self{
+        let llvm_context =  LLVMContextCreate();
+        let llvm_module = LLVMModuleCreateWithNameInContext(c_str_ptr!(module_name),
+        llvm_context);
+        let builder = LLVMCreateBuilderInContext(llvm_context);
+        let sym_tab = Vec::new();
+        let bb_stack = Vec::new();
+        let proto_map = HashMap::new();
 
-            Context {
-                context : llvm_context,
-                module : llvm_module,
-                builder : builder,
-                sym_tab : sym_tab,
-                bb_stack : bb_stack,
-                proto_map : proto_map
-            }
+        Context {
+            context : llvm_context,
+            module : llvm_module,
+            builder : builder,
+            sym_tab : sym_tab,
+            bb_stack : bb_stack,
+            proto_map : proto_map
         }
     }
 
-    pub fn dump(&self){
-        unsafe{
-            LLVMDumpModule(self.module);
-        }
+    pub unsafe fn dump(&self){
+        LLVMDumpModule(self.module);
     }
 }
 
@@ -398,15 +394,13 @@ fn std_functions_call_factory(fn_name : &str,
     }
 }
 
-fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
-    unsafe{
-        match ty {
-            &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
-            &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
-            &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
-            &TType::TArray(_) => LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4), 
-            _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
-        }
+unsafe fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
+    match ty {
+        &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
+        &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
+        &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
+        &TType::TArray(_) => LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4), 
+        _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
     }
 }
 
@@ -969,24 +963,21 @@ fn raise_exception(ctxt : &mut Context){
     }
 }
 
-fn create_malloc_proto(ctxt : &mut Context){
-    unsafe{
-        let malloc_function : LLVMValueRef;
-        //check if we already have a prototype defined
-        if !ctxt.proto_map.contains_key("malloc"){
-            let malloc_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
-            let mut malloc_type_args_vec = vec![ LLVMIntTypeInContext(ctxt.context, 32) ];
-            let proto = LLVMFunctionType(malloc_ty, malloc_type_args_vec.as_mut_ptr(), 1, 0);
-            malloc_function = LLVMAddFunction(ctxt.module,
-                                              c_str_ptr!("malloc"),
-                                              proto);
-            ctxt.proto_map.insert("malloc", true);
-        }
+unsafe fn create_malloc_proto(ctxt : &mut Context){
+    let malloc_function : LLVMValueRef;
+    //check if we already have a prototype defined
+    if !ctxt.proto_map.contains_key("malloc"){
+        let malloc_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
+        let mut malloc_type_args_vec = vec![ LLVMIntTypeInContext(ctxt.context, 32) ];
+        let proto = LLVMFunctionType(malloc_ty, malloc_type_args_vec.as_mut_ptr(), 1, 0);
+        malloc_function = LLVMAddFunction(ctxt.module,
+                                          c_str_ptr!("malloc"),
+                                          proto);
+        ctxt.proto_map.insert("malloc", true);
     }
 }
 
-fn create_memset_proto(ctxt : &mut Context){
-    unsafe{
+unsafe fn create_memset_proto(ctxt : &mut Context){
         let memset_function : LLVMValueRef;
         //check if we already have a prototype defined
         if !ctxt.proto_map.contains_key("memset"){
@@ -1001,7 +992,6 @@ fn create_memset_proto(ctxt : &mut Context){
                                               proto);
             ctxt.proto_map.insert("memset", true);
         }
-    }
 }
 
 //FIXME make this work so that it can be used at a number of places
@@ -1238,8 +1228,8 @@ fn chr_builder(ctxt : &mut Context){
 }
 
 pub fn translate(expr : &Expr) -> Option<Context>{
-    let mut ctxt = Context::new("main_mod");
     unsafe{
+        let mut ctxt = Context::new("main_mod");
         let r = LLVM_InitializeNativeTarget();
         assert_eq!(r, 0);
         LLVM_InitializeNativeAsmPrinter();
@@ -1262,8 +1252,8 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         LLVMBuildRet(ctxt.builder,
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
+        Some(ctxt)
     }
-    Some(ctxt)
 }
 
 fn link_object_code(ctxt : &Context){
