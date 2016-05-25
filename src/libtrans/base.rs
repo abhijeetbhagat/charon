@@ -890,16 +890,16 @@ fn raise_exception(ctxt : &mut Context){
         let excpt_type = LLVMStructCreateNamed(ctxt.context, c_str_ptr!("_Unwind_Exception"));
         LLVMStructSetBody(excpt_type, 
                           vec![LLVMInt64Type(),
-                          LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
-                          vec![LLVMIntTypeInContext(ctxt.context, 32),
-                          LLVMPointerType(excpt_type, 0)
-                          ].as_mut_ptr(),
-                          2,
-                          0),
-                          0),
-                          LLVMInt64Type(),
-                          LLVMInt64Type()
-                          ].as_mut_ptr(),
+                               LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
+                                                                vec![LLVMIntTypeInContext(ctxt.context, 32),
+                                                                     LLVMPointerType(excpt_type, 0)
+                                                                ].as_mut_ptr(),
+                                                                2,
+                                                                0),
+                                               0),
+                               LLVMInt64Type(),
+                               LLVMInt64Type()
+                              ].as_mut_ptr(),
                           4,
                           0);
         //call _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception* object);
@@ -950,16 +950,38 @@ fn raise_exception(ctxt : &mut Context){
 
         let struct_size = LLVMSizeOf(excpt_type);
         
-        //FIXME vec is missing an element
-        let mut memset_args = vec![ LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0, 0), struct_size];
-        memset_args.push(struct_size);
+        create_malloc_proto(ctxt);
+        let mut memset_args = vec![LLVMBuildCall(ctxt.builder,
+                                                 LLVMGetNamedFunction(ctxt.module, c_str_ptr!("malloc")),
+                                                 vec![struct_size].as_mut_ptr(),
+                                                 1,
+                                                 c_str_ptr!("malloc_call")),
+                                   LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0, 0),
+                                   struct_size];
             
         create_memset_proto(ctxt);
-        LLVMBuildCall(ctxt.builder,
-                      LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
-                      memset_args.as_mut_ptr(),
-                      3,
-                      c_str_ptr!("call"));
+
+        let excpt_obj = LLVMBuildCall(ctxt.builder,
+                                      LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
+                                      memset_args.as_mut_ptr(),
+                                      3,
+                                      c_str_ptr!("call"));
+    }
+}
+
+fn create_malloc_proto(ctxt : &mut Context){
+    unsafe{
+        let malloc_function : LLVMValueRef;
+        //check if we already have a prototype defined
+        if !ctxt.proto_map.contains_key("malloc"){
+            let malloc_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
+            let mut malloc_type_args_vec = vec![ LLVMIntTypeInContext(ctxt.context, 32) ];
+            let proto = LLVMFunctionType(malloc_ty, malloc_type_args_vec.as_mut_ptr(), 1, 0);
+            malloc_function = LLVMAddFunction(ctxt.module,
+                                              c_str_ptr!("malloc"),
+                                              proto);
+            ctxt.proto_map.insert("malloc", true);
+        }
     }
 }
 
@@ -981,6 +1003,7 @@ fn create_memset_proto(ctxt : &mut Context){
         }
     }
 }
+
 //FIXME make this work so that it can be used at a number of places
 fn get_symbol<'a>(ctxt : &'a Context, id : &String) -> &'a Option<Box<Any>>{
     //let mut sym = &None;
