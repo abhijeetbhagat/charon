@@ -83,7 +83,9 @@ trait IRBuilder{
     fn codegen(&self, ctxt : &mut Context) -> IRBuildingResult;
 }
 
-fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList, ctxt : &mut Context) -> Option<LLVMValueRef>{
+fn std_functions_call_factory(fn_name : &str,
+                              args : &OptionalTypeExprTupleList,
+                              ctxt : &mut Context) -> Option<LLVMValueRef>{
     unsafe{
         match fn_name {
             "print" =>{
@@ -315,13 +317,13 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
                 if !ctxt.proto_map.contains_key("memset"){
                     let memset_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
                     let mut memset_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
-                                                        LLVMIntTypeInContext(ctxt.context, 32),
-                                                        LLVMIntTypeInContext(ctxt.context, 32)
-                                                       ];
+                    LLVMIntTypeInContext(ctxt.context, 32),
+                    LLVMIntTypeInContext(ctxt.context, 32)
+                        ];
                     let proto = LLVMFunctionType(memset_ty, memset_type_args_vec.as_mut_ptr(), 3, 0);
                     memset_function = LLVMAddFunction(ctxt.module,
-                                                     c_str_ptr!("memset"),
-                                                     proto);
+                                                      c_str_ptr!("memset"),
+                                                      proto);
                     ctxt.proto_map.insert("memset", true);
                 }
                 else{
@@ -947,19 +949,38 @@ fn raise_exception(ctxt : &mut Context){
         */
 
         let struct_size = LLVMSizeOf(excpt_type);
-        //panic!("{}", struct_size);
-        //let mut pf_args = Vec::new();
-        let mut args_count = 1;
-
-        /*Some(LLVMBuildCall(ctxt.builder,
-          ure_function,
-          pf_args.as_mut_ptr(),
-          args_count,
-          c_str_ptr!("call")))
-          */ 
+        
+        //FIXME vec is missing an element
+        let mut memset_args = vec![ LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0, 0), struct_size];
+        memset_args.push(struct_size);
+            
+        create_memset_proto(ctxt);
+        LLVMBuildCall(ctxt.builder,
+                      LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
+                      memset_args.as_mut_ptr(),
+                      3,
+                      c_str_ptr!("call"));
     }
 }
 
+fn create_memset_proto(ctxt : &mut Context){
+    unsafe{
+        let memset_function : LLVMValueRef;
+        //check if we already have a prototype defined
+        if !ctxt.proto_map.contains_key("memset"){
+            let memset_ty = LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0);
+            let mut memset_type_args_vec = vec![LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
+            LLVMIntTypeInContext(ctxt.context, 32),
+            LLVMIntTypeInContext(ctxt.context, 32)
+                ];
+            let proto = LLVMFunctionType(memset_ty, memset_type_args_vec.as_mut_ptr(), 3, 0);
+            memset_function = LLVMAddFunction(ctxt.module,
+                                              c_str_ptr!("memset"),
+                                              proto);
+            ctxt.proto_map.insert("memset", true);
+        }
+    }
+}
 //FIXME make this work so that it can be used at a number of places
 fn get_symbol<'a>(ctxt : &'a Context, id : &String) -> &'a Option<Box<Any>>{
     //let mut sym = &None;
