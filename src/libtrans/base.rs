@@ -955,11 +955,38 @@ fn raise_exception(ctxt : &mut Context){
             
         create_memset_proto(ctxt);
 
-        let excpt_obj = LLVMBuildCall(ctxt.builder,
+        let void_excpt_obj = LLVMBuildCall(ctxt.builder,
                                       LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
                                       memset_args.as_mut_ptr(),
                                       3,
                                       c_str_ptr!("call"));
+        //bitcast here to _Unwind_Exception
+        //...
+        let excpt_obj = LLVMBuildCast(ctxt.builder,
+                                      llvm::LLVMOpcode::LLVMBitCast,
+                                      void_excpt_obj,
+                                      excpt_type,
+                                      c_str_ptr!("cast"));
+        
+        
+        //time to access struct fields and init them
+        /*struct _Unwind_Exception
+          {
+          uint64_t exception_class;
+          _Unwind_Exception_Cleanup_Fn exception_cleanup;
+          unsigned long private_1;
+          unsigned long private_2;
+          } __attribute__((__aligned__));*/
+        //0th field
+        let excpt_class = LLVMBuildGEP(ctxt.builder,
+                               excpt_obj,
+                               vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                               LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0)].as_mut_ptr(),
+                               2,
+                               c_str_ptr!("struct_0"));
+        LLVMBuildStore(ctxt.builder,
+                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0),
+                      excpt_class);
     }
 }
 
