@@ -990,6 +990,24 @@ fn raise_exception(ctxt : &mut Context){
     }
 }
 
+//attach the function returned by this to the _Unwind_Exception's exception_cleanup field
+unsafe fn create_excpt_handler_fn(ctxt : &mut Context) -> LLVMValueRef{
+    let excpt_handler : LLVMValueRef;
+    let ret_ty = LLVMVoidTypeInContext(ctxt.context);
+    let mut handler_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32),
+                                         LLVMGetTypeByName(ctxt.module, c_str_ptr!("_Unwind_Exception"))
+                                         ];
+    let proto = LLVMFunctionType(ret_ty, handler_type_args_vec.as_mut_ptr(), 2, 0);
+    excpt_handler = LLVMAddFunction(ctxt.module,
+                                   c_str_ptr!("cleanup_fn"),
+                                   proto);
+    let bb = LLVMAppendBasicBlockInContext(ctxt.context,
+                                           excpt_handler,
+                                           c_str_ptr!("entry"));
+    LLVMPositionBuilderAtEnd(ctxt.builder, bb);
+    LLVMBuildRetVoid(ctxt.builder);
+
+}
 unsafe fn create_malloc_proto(ctxt : &mut Context){
     let malloc_function : LLVMValueRef;
     //check if we already have a prototype defined
