@@ -981,12 +981,30 @@ fn raise_exception(ctxt : &mut Context){
         let excpt_class = LLVMBuildGEP(ctxt.builder,
                                excpt_obj,
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                               LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0)].as_mut_ptr(),
+                                    LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0)].as_mut_ptr(),
                                2,
                                c_str_ptr!("struct_0"));
         LLVMBuildStore(ctxt.builder,
                       LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0),
                       excpt_class);
+
+        //1st field
+        let excpt_handler = create_excpt_handler_fn(ctxt);
+        let excpt_handler_field = LLVMBuildGEP(ctxt.builder,
+                                              excpt_obj,
+                                              vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+                                                   LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0)].as_mut_ptr(),
+                                              2,
+                                              c_str_ptr!("struct_1"));
+        LLVMBuildStore(ctxt.builder,
+                      excpt_handler,
+                      excpt_handler_field);
+
+        LLVMBuildCall(ctxt.builder,
+                      ure_function,
+                      vec![excpt_obj].as_mut_ptr(),
+                      1,
+                      c_str_ptr!("ure_call"));
     }
 }
 
@@ -1006,6 +1024,7 @@ unsafe fn create_excpt_handler_fn(ctxt : &mut Context) -> LLVMValueRef{
                                            c_str_ptr!("entry"));
     LLVMPositionBuilderAtEnd(ctxt.builder, bb);
     LLVMBuildRetVoid(ctxt.builder);
+    excpt_handler
 
 }
 unsafe fn create_malloc_proto(ctxt : &mut Context){
