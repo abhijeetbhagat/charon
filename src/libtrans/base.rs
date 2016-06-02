@@ -57,8 +57,10 @@ impl<'a> Context<'a>{
         }
     }
 
-    pub unsafe fn dump(&self){
-        LLVMDumpModule(self.module);
+    pub fn dump(&self){
+        unsafe {
+            LLVMDumpModule(self.module);
+        }
     }
 }
 
@@ -586,7 +588,7 @@ impl IRBuilder for Expr{
                     LLVMPositionBuilderAtEnd(ctxt.builder, preloop_block);
 
                     let to_code = try!(to.codegen(ctxt));
-                    let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0);
+                    let zero = LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0);
                     let end_cond = LLVMBuildICmp(ctxt.builder,
                                                  llvm::LLVMIntPredicate::LLVMIntNE,
                                                  LLVMBuildLoad(ctxt.builder, from_var, c_str_ptr!(&*id.clone())),
@@ -603,7 +605,7 @@ impl IRBuilder for Expr{
                     //stepping
                     let cur_value = LLVMBuildLoad(ctxt.builder, from_var, c_str_ptr!(&*id.clone()));
                     let next_value = LLVMBuildAdd(ctxt.builder, cur_value, 
-                                                  LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0), 
+                                                  LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1u64, 0), 
                                                   c_str_ptr!("nextvar"));
                     LLVMBuildStore(ctxt.builder, next_value, from_var);
 
@@ -868,6 +870,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                           Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))),
                                                                B(CallExpr(String::from("abort"), None))])))));
         try!(index_check_exp.codegen(ctxt));
+        raise_exception(ctxt);
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
@@ -883,7 +886,7 @@ fn raise_exception(ctxt : &mut Context){
         //FIXME create this type only once
         let excpt_type = LLVMStructCreateNamed(ctxt.context, c_str_ptr!("_Unwind_Exception"));
         LLVMStructSetBody(excpt_type, 
-                          vec![LLVMInt64Type(),
+                          vec![LLVMInt64TypeInContext(ctxt.context),
                                LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
                                                                 vec![LLVMIntTypeInContext(ctxt.context, 32),
                                                                      LLVMPointerType(excpt_type, 0)
@@ -891,8 +894,8 @@ fn raise_exception(ctxt : &mut Context){
                                                                 2,
                                                                 0),
                                                0),
-                               LLVMInt64Type(),
-                               LLVMInt64Type()
+                               LLVMInt64TypeInContext(ctxt.context),
+                               LLVMInt64TypeInContext(ctxt.context)
                               ].as_mut_ptr(),
                           4,
                           0);
@@ -913,8 +916,8 @@ fn raise_exception(ctxt : &mut Context){
                unsigned long private_2;
                } __attribute__((__aligned__));
                */
-            let mut ure_args_types_vec = vec![LLVMPointerType(excpt_type, 0)];
-            let proto = LLVMFunctionType(ure_ty, ure_args_types_vec.as_mut_ptr(), 1, 1);
+            //let mut ure_args_types_vec = ;
+            let proto = LLVMFunctionType(ure_ty, vec![LLVMPointerType(excpt_type, 0)].as_mut_ptr(), 1, 0);
             ure_function = LLVMAddFunction(ctxt.module,
                                            c_str_ptr!("_Unwind_RaiseException"),
                                            proto);
@@ -960,12 +963,13 @@ fn raise_exception(ctxt : &mut Context){
                                       memset_args.as_mut_ptr(),
                                       3,
                                       c_str_ptr!("call"));
-        //bitcast here to _Unwind_Exception
+        
+        //bitcast here to _Unwind_Exception*
         //...
         let excpt_obj = LLVMBuildCast(ctxt.builder,
                                       llvm::LLVMOpcode::LLVMBitCast,
                                       void_excpt_obj,
-                                      excpt_type,
+                                      LLVMPointerType(excpt_type, 0),
                                       c_str_ptr!("cast"));
         
         
@@ -981,7 +985,7 @@ fn raise_exception(ctxt : &mut Context){
         let excpt_class = LLVMBuildGEP(ctxt.builder,
                                excpt_obj,
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                    LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0)].as_mut_ptr(),
+                                    LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0)].as_mut_ptr(),
                                2,
                                c_str_ptr!("struct_0"));
         LLVMBuildStore(ctxt.builder,
@@ -990,21 +994,21 @@ fn raise_exception(ctxt : &mut Context){
 
         //1st field
         let excpt_handler = create_excpt_handler_fn(ctxt);
-        let excpt_handler_field = LLVMBuildGEP(ctxt.builder,
-                                              excpt_obj,
-                                              vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
-                                                   LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1 as u64, 0)].as_mut_ptr(),
-                                              2,
-                                              c_str_ptr!("struct_1"));
-        LLVMBuildStore(ctxt.builder,
-                      excpt_handler,
-                      excpt_handler_field);
+//        let excpt_handler_field = LLVMBuildGEP(ctxt.builder,
+//                                              excpt_obj,
+//                                              vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
+//                                                   LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 1u64, 0)].as_mut_ptr(),
+//                                              2,
+//                                              c_str_ptr!("struct_1"));
+//        LLVMBuildStore(ctxt.builder,
+//                      excpt_handler,
+//                      excpt_handler_field);
 
-        LLVMBuildCall(ctxt.builder,
-                      ure_function,
-                      vec![excpt_obj].as_mut_ptr(),
-                      1,
-                      c_str_ptr!("ure_call"));
+//        LLVMBuildCall(ctxt.builder,
+//                      ure_function,
+//                      vec![excpt_obj].as_mut_ptr(),
+//                      1,
+//                      c_str_ptr!("ure_call"));
     }
 }
 
@@ -1013,12 +1017,13 @@ unsafe fn create_excpt_handler_fn(ctxt : &mut Context) -> LLVMValueRef{
     let excpt_handler : LLVMValueRef;
     let ret_ty = LLVMVoidTypeInContext(ctxt.context);
     let mut handler_type_args_vec = vec![LLVMIntTypeInContext(ctxt.context, 32),
-                                         LLVMGetTypeByName(ctxt.module, c_str_ptr!("_Unwind_Exception"))
+                                       LLVMGetTypeByName(ctxt.module, c_str_ptr!("_Unwind_Exception"))
                                          ];
     let proto = LLVMFunctionType(ret_ty, handler_type_args_vec.as_mut_ptr(), 2, 0);
     excpt_handler = LLVMAddFunction(ctxt.module,
                                    c_str_ptr!("cleanup_fn"),
                                    proto);
+    //This is where the problem is:
     let bb = LLVMAppendBasicBlockInContext(ctxt.context,
                                            excpt_handler,
                                            c_str_ptr!("entry"));
@@ -1314,7 +1319,7 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         trans_expr(expr, &mut ctxt);
         
         LLVMBuildRet(ctxt.builder,
-                     LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
+                     LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0));
 
         Some(ctxt)
     }
@@ -1440,7 +1445,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    link_object_code(ctxt.as_ref().unwrap());
+    //link_object_code(ctxt.as_ref().unwrap());
     ctxt.unwrap().dump();
 }
 
@@ -1454,7 +1459,7 @@ fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
     v.visit_expr(&mut *b_expr);
     let ctxt = translate(&*b_expr);
     assert_eq!(ctxt.is_some(), true);
-    link_object_code(ctxt.as_ref().unwrap());
+    //link_object_code(ctxt.as_ref().unwrap());
     ctxt.unwrap().dump();
 }
 #[test]
@@ -1700,6 +1705,19 @@ fn test_prsr_bcknd_intgrtion_int_var_modification() {
 #[test]
 fn test_prsr_bcknd_intgrtion_array_index_out_of_bounds() {
     let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[8]:=99;print(a[2]);) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_ure_call() {
+    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in print(a[2]) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
