@@ -30,6 +30,7 @@ impl Parser{
                 lexer : Lexer::new(src),
                 block_stack : BlockStack::new(),
                 paren_stack : Vec::new(),
+		square_stack : Vec::new(),
                 seq_expr_list : Vec::new(),
                 last_expr_type : None
         }
