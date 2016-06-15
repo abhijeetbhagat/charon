@@ -881,23 +881,9 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
 fn raise_exception(ctxt : &mut Context){
     unsafe{
         //FIXME create this type only once
-        let excpt_type = LLVMStructCreateNamed(ctxt.context, c_str_ptr!("_Unwind_Exception"));
-        LLVMStructSetBody(excpt_type, 
-                          vec![LLVMInt64Type(),
-                               LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
-                                                                vec![LLVMIntTypeInContext(ctxt.context, 32),
-                                                                     LLVMPointerType(excpt_type, 0)
-                                                                ].as_mut_ptr(),
-                                                                2,
-                                                                0),
-                                               0),
-                               LLVMInt64Type(),
-                               LLVMInt64Type()
-                              ].as_mut_ptr(),
-                          4,
-                          0);
         //call _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception* object);
         let ure_function : LLVMValueRef;
+        let excpt_type = LLVMGetTypeByName(ctxt.module, c_str_ptr!("_Unwind_Exception"));
         //check if we already have a prototype defined
         if !ctxt.proto_map.contains_key("raise_excpt"){
             let ure_ty = LLVMIntTypeInContext(ctxt.context, 32);
@@ -1298,8 +1284,10 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         assert_eq!(r, 0);
         LLVM_InitializeNativeAsmPrinter();
 
+
         expr.std_fn_codegen(&mut ctxt);
 
+        create_exception_struct(&mut ctxt);
         //build outer embedding main() fn
         let ty = LLVMIntTypeInContext(ctxt.context, 32);
         let proto = LLVMFunctionType(ty, ptr::null_mut(), 0, 0);
@@ -1317,6 +1305,26 @@ pub fn translate(expr : &Expr) -> Option<Context>{
                      LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0 as u64, 0));
 
         Some(ctxt)
+    }
+}
+
+fn create_exception_struct(ctxt: &mut Context){
+    unsafe{
+        let excpt_type = LLVMStructCreateNamed(ctxt.context, c_str_ptr!("_Unwind_Exception"));
+        LLVMStructSetBody(excpt_type, 
+                          vec![LLVMInt64Type(),
+                          LLVMPointerType(LLVMFunctionType(LLVMVoidTypeInContext(ctxt.context),
+                          vec![LLVMIntTypeInContext(ctxt.context, 32),
+                          LLVMPointerType(excpt_type, 0)
+                          ].as_mut_ptr(),
+                          2,
+                          0),
+                          0),
+                          LLVMInt64Type(),
+                          LLVMInt64Type()
+                          ].as_mut_ptr(),
+                          4,
+                          0);
     }
 }
 
@@ -1700,6 +1708,19 @@ fn test_prsr_bcknd_intgrtion_int_var_modification() {
 #[test]
 fn test_prsr_bcknd_intgrtion_array_index_out_of_bounds() {
     let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[8]:=99;print(a[2]);) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_ure_call() {
+    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (print(a[2])) end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
