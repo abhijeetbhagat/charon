@@ -870,6 +870,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                           Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))),
                                                                B(CallExpr(String::from("abort"), None))])))));
         try!(index_check_exp.codegen(ctxt));
+        raise_exception(ctxt);
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
@@ -948,12 +949,12 @@ fn raise_exception(ctxt : &mut Context){
                                       memset_args.as_mut_ptr(),
                                       3,
                                       c_str_ptr!("call"));
-        //bitcast here to _Unwind_Exception
+        //bitcast here to _Unwind_Exception*
         //...
         let excpt_obj = LLVMBuildCast(ctxt.builder,
                                       llvm::LLVMOpcode::LLVMBitCast,
                                       void_excpt_obj,
-                                      excpt_type,
+                                      LLVMPointerType(excpt_type, 0),
                                       c_str_ptr!("cast"));
         
         
