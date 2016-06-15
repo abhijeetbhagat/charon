@@ -57,8 +57,10 @@ impl<'a> Context<'a>{
         }
     }
 
-    pub unsafe fn dump(&self){
-        LLVMDumpModule(self.module);
+    pub fn dump(&self){
+        unsafe{
+            LLVMDumpModule(self.module);
+        }
     }
 }
 
