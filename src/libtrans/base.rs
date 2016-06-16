@@ -870,7 +870,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                           Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))),
                                                                B(CallExpr(String::from("abort"), None))])))));
         try!(index_check_exp.codegen(ctxt));
-        //raise_exception(ctxt);
+        raise_exception(ctxt);
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
@@ -934,26 +934,27 @@ fn raise_exception(ctxt : &mut Context){
         let struct_size = LLVMSizeOf(excpt_type);
         
         create_malloc_proto(ctxt);
-        let mut memset_args = vec![LLVMBuildCall(ctxt.builder,
-                                                 LLVMGetNamedFunction(ctxt.module, c_str_ptr!("malloc")),
-                                                 vec![struct_size].as_mut_ptr(),
-                                                 1,
-                                                 c_str_ptr!("malloc_call")),
+        let malloc_call = LLVMBuildCall(ctxt.builder,
+                                        LLVMGetNamedFunction(ctxt.module, c_str_ptr!("malloc")),
+                                        vec![struct_size].as_mut_ptr(),
+                                        1,
+                                        c_str_ptr!("malloc_call"));
+        let mut memset_args = vec![malloc_call,
                                    LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0, 0),
                                    struct_size];
             
         create_memset_proto(ctxt);
 
-        let void_excpt_obj = LLVMBuildCall(ctxt.builder,
-                                      LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
-                                      memset_args.as_mut_ptr(),
-                                      3,
-                                      c_str_ptr!("call"));
+        LLVMBuildCall(ctxt.builder,
+                      LLVMGetNamedFunction(ctxt.module, c_str_ptr!("memset")),
+                      memset_args.as_mut_ptr(),
+                      3,
+                      c_str_ptr!("call"));
         //bitcast here to _Unwind_Exception*
         //...
         let excpt_obj = LLVMBuildCast(ctxt.builder,
                                       llvm::LLVMOpcode::LLVMBitCast,
-                                      void_excpt_obj,
+                                      malloc_call,
                                       LLVMPointerType(excpt_type, 0),
                                       c_str_ptr!("cast"));
         
@@ -978,7 +979,7 @@ fn raise_exception(ctxt : &mut Context){
                       excpt_class);
 
         //1st field
-        let excpt_handler = create_excpt_handler_fn(ctxt);
+        let excpt_handler = LLVMGetNamedFunction(ctxt.module, c_str_ptr!("cleanup_fn"));
         let excpt_handler_field = LLVMBuildGEP(ctxt.builder,
                                               excpt_obj,
                                               vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
