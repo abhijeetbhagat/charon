@@ -870,7 +870,7 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
                                           Some(vec![(TType::TString, B(StringExpr(String::from("Array index out of bounds\n"))))]))),
                                                                B(CallExpr(String::from("abort"), None))])))));
         try!(index_check_exp.codegen(ctxt));
-        raise_exception(ctxt);
+        //raise_exception(ctxt);
         let val = LLVMBuildGEP(ctxt.builder,
                                ctxt.sym_tab[idx].1.as_ref().unwrap().downcast_ref::<Var>().unwrap().alloca_ref(), //array alloca
                                vec![LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 0u64, 0), 
@@ -1291,6 +1291,7 @@ pub fn translate(expr : &Expr) -> Option<Context>{
         expr.std_fn_codegen(&mut ctxt);
 
         create_exception_struct(&mut ctxt);
+        create_excpt_handler_fn(&mut ctxt);
         //build outer embedding main() fn
         let ty = LLVMIntTypeInContext(ctxt.context, 32);
         let proto = LLVMFunctionType(ty, ptr::null_mut(), 0, 0);
