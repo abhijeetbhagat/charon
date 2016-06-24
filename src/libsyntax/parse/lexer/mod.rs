@@ -599,4 +599,30 @@ mod tests {
         assert_eq!(l.get_token(), Token::Of);
         assert_eq!(l.get_token(), Token::Number);
     }
+
+    #[test]
+    fn test_typdef_decl(){
+        let mut l = Lexer::new("type rec = {a:int}".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Type);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Equals);
+        assert_eq!(l.get_token(), Token::LeftCurly);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::RightCurly);
+    }
+
+    #[test]
+    fn test_record_decl(){
+        let mut l = Lexer::new("rec{a:int}".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::LeftCurly);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Colon);
+        assert_eq!(l.get_token(), Token::Int);
+        assert_eq!(l.get_token(), Token::RightCurly);
+    }
 }
