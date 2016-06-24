@@ -206,6 +206,7 @@ impl Lexer{
            "let"      => Token::Let,
            "var"      => Token::Var,
            "array"    => Token::Array,
+           "rec"    => Token::Rec,
            "of"       => Token::Of,
            "type"      => Token::Type,
            "break"      => Token::Break,

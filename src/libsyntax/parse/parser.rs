@@ -258,6 +258,13 @@ impl Parser{
                                     _ => panic!("Expected 'of' after 'array'")
                                 }
                             },
+                            Token::Rec => {
+                                match self.lexer.get_token(){
+                                    
+
+                                }
+
+                            },
                             Token::LeftCurly => { //rectype
 
                             },
