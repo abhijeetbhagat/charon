@@ -887,6 +887,9 @@ fn raise_exception(ctxt : &mut Context){
         //call _Unwind_Reason_Code _Unwind_RaiseException(struct _Unwind_Exception* object);
         let ure_function : LLVMValueRef;
         let excpt_type = LLVMGetTypeByName(ctxt.module, c_str_ptr!("_Unwind_Exception"));
+        let struct_alloca = LLVMBuildAlloca(ctxt.builder,
+                                            LLVMPointerType(excpt_type, 0),
+                                            c_str_ptr!("struct_alloca"));
         //check if we already have a prototype defined
         if !ctxt.proto_map.contains_key("raise_excpt"){
             let ure_ty = LLVMIntTypeInContext(ctxt.context, 32);
