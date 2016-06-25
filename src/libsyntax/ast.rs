@@ -11,7 +11,7 @@ pub type OptionalExprList = Option<Vec<B<Expr>>>;
 pub type OptionalExpr = Option<B<Expr>>;
 pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
 pub type OptionalParamInfoList = Option<Vec<(String, TType)>>;
-pub type OptionalIdTypePairs = Option<Vec<(String, String)>>;
+pub type OptionalIdTypePairs = Option<Vec<(String, TType)>>;
 #[derive(Debug, PartialEq, Clone)]
 pub enum TType{
     TInt32,
