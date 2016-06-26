@@ -660,6 +660,10 @@ impl IRBuilder for Expr{
                                                 _ => {}
                                             }
                                         },
+                                        &RecordExpr(ref field_decls) => {
+
+
+                                        },
                                         _ => {}
                                     }
 
