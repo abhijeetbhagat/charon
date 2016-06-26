@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
+use itertools::Itertools;
 use std::collections::{HashMap};
-use ast::{Binding, Expr, Decl, TType};
+use ast::{Binding, Expr, Decl, TType, OptionalIdTypePairs};
 use ast::Binding::*;
 use ast::Expr::*;
 use ast::TType::*;
@@ -278,6 +279,17 @@ impl<'a> Visitor<'a> for TypeChecker{
 
                         store_into_sym_tab!(self, id, VarBinding);
                         return;
+                    },
+                    RecordExpr(ref field_decls) => {
+                        let list = field_decls.as_ref().unwrap();
+                        if !list.is_empty(){
+                            let len = list.len();
+                            let unique_len = list.into_iter().map(|x| &x.0).unique().count();
+                            if len != unique_len{
+                                panic!("record '{0}' contains repetitive fields", id);
+                            }
+                        }
+
                     },
                     _ => {}
                 }
@@ -608,4 +620,31 @@ fn test_call_expr_ret_type_fix(){
         },
         _ => panic!("failed3")
     }
+}
+
+#[test]
+#[should_panic(expected="record 'a' contains repetitive fields")]
+fn test_record_dup_fields_1() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("f"), TInt32)])))));
+}
+
+#[test]
+#[should_panic(expected="record 'a' contains repetitive fields")]
+fn test_record_dup_fields_2() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("g"), TInt32), (String::from("f"), TInt32)])))));
+}
+
+#[test]
+#[should_panic(expected="record 'a' contains repetitive fields")]
+fn test_record_dup_fields_3() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("g"), TInt32), (String::from("f"), TString)])))));
+}
+
+#[test]
+fn test_record_unique_fields() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("g"), TInt32), (String::from("h"), TString)])))));
 }

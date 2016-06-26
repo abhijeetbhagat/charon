@@ -2,6 +2,7 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![feature(convert)]
+#[macro_use]extern crate itertools;
 
 pub mod parse;
 pub mod ast;
