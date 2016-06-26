@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_typdef_decl(){
-        let mut l = Lexer::new("type rec = {a:int}".to_string());
+        let mut l = Lexer::new("type r = {a:int}".to_string());
         l.get_char();
         assert_eq!(l.get_token(), Token::Type);
         assert_eq!(l.get_token(), Token::Ident);
@@ -617,7 +617,7 @@ mod tests {
 
     #[test]
     fn test_record_decl(){
-        let mut l = Lexer::new("rec{a:int}".to_string());
+        let mut l = Lexer::new("r{a:int}".to_string());
         l.get_char();
         assert_eq!(l.get_token(), Token::Ident);
         assert_eq!(l.get_token(), Token::LeftCurly);

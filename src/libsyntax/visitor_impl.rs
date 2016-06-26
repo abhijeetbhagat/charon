@@ -288,8 +288,15 @@ impl<'a> Visitor<'a> for TypeChecker{
                             if len != unique_len{
                                 panic!("record '{0}' contains repetitive fields", id);
                             }
-                        }
 
+                            let rec_contains_cyclic_ref = list.into_iter().find(|x| match &x.1{
+                                &TCustom(ref name) => *id == *name,
+                                _ => false
+                            });
+                            if rec_contains_cyclic_ref.is_some(){
+                                panic!("rec '{0}' contains a field of type '{0}'. cyclic references to type are not allowed.", id)
+                            } 
+                        } 
                     },
                     _ => {}
                 }
@@ -647,4 +654,26 @@ fn test_record_dup_fields_3() {
 fn test_record_unique_fields() {
     let mut v = TypeChecker::new();
     v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("g"), TInt32), (String::from("h"), TString)])))));
+}
+
+#[test]
+#[should_panic(expected="rec 'a' contains a field of type 'a'. cyclic references to type are not allowed.")]
+fn test_record_contains_cyclic_ref() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TCustom(String::from("a")))])))));
+}
+
+#[test]
+#[should_panic(expected="rec 'a' contains a field of type 'a'. cyclic references to type are not allowed.")]
+fn test_record_contains_cyclic_ref_2() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("a"), TCustom(String::from("int"))),
+                                                                              (String::from("f"), TCustom(String::from("a")))])))));
+}
+
+#[test]
+fn test_record_contains_cyclic_ref_3() {
+    let mut v = TypeChecker::new();
+    v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("a"), TCustom(String::from("int"))),
+                                                                              (String::from("f"), TCustom(String::from("b")))])))));
 }
