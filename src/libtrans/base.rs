@@ -3,6 +3,7 @@ extern crate libc;
 use std::ptr;
 use std::ffi;
 
+use std::borrow::Cow;
 use self::llvm::prelude::{LLVMContextRef, LLVMModuleRef, LLVMBuilderRef, LLVMValueRef, LLVMTypeRef};
 use self::llvm::core::*;
 use self::llvm::target::*;
@@ -32,7 +33,7 @@ pub struct Context<'a>{
     pub module : LLVMModuleRef,
     builder : LLVMBuilderRef,
     //FIXME pub is only of unit testing
-    pub sym_tab : Vec<(String, OptionalSymbolInfo)>,
+    pub sym_tab : Vec<(Cow<'a, str>, OptionalSymbolInfo)>,
     bb_stack : Vec<*mut llvm::LLVMBasicBlock>,
     proto_map : HashMap<&'a str, bool>
 }
@@ -575,11 +576,11 @@ impl IRBuilder for Expr{
                                                                        c_str_ptr!("entry"));
 
                                 let func = Function::new(cloned_name.clone(), function);
-                                ctxt.sym_tab.push((cloned_name.clone(), Some(Box::new(func))));
+                                ctxt.sym_tab.push((cloned_name.into(), Some(Box::new(func))));
                                 LLVMPositionBuilderAtEnd(ctxt.builder, bb);
                                 //trans_expr(body, &mut ctxt);
                                 
-                                ctxt.sym_tab.push((String::from("<marker>"),
+                                ctxt.sym_tab.push(("<marker>".into(),
                                                    None));
                                 //build allocas for params
                                 if optional_params.is_some() && optional_params.unwrap().len() > 0{
@@ -597,7 +598,7 @@ impl IRBuilder for Expr{
                                         LLVMBuildStore(ctxt.builder,
                                                        *value_ref,
                                                        alloca);
-                                        ctxt.sym_tab.push((param.0.clone(), 
+                                        ctxt.sym_tab.push((param.0.clone().into(), 
                                                            Some(Box::new(Var::new(param.0.clone(), param.1.clone(), alloca)))));
 
                                     }
@@ -654,7 +655,7 @@ impl IRBuilder for Expr{
                                                       LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4),
                                                       LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), 4 as u64, 0),
                                                       c_str_ptr!("_alloca"));*/
-                                                    ctxt.sym_tab.push((name.clone(), 
+                                                    ctxt.sym_tab.push((name.clone().into(), 
                                                                        Some(Box::new(Var::new(name.clone(), ty.clone(), _alloca)))));
                                                 },
                                                 _ => {}
@@ -674,7 +675,7 @@ impl IRBuilder for Expr{
                                     LLVMBuildStore(ctxt.builder,
                                                    rhs_value_ref,
                                                    alloca);
-                                    ctxt.sym_tab.push((name.clone(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
+                                    ctxt.sym_tab.push((name.clone().into(), Some(Box::new(Var::new(name.clone(), ty.clone(), alloca)))));
                                 }
                             },
                             _ => panic!("More decl types should be covered")
@@ -835,7 +836,7 @@ fn not_builder(ctxt : &mut Context) {
             let func = Function::new(String::from("not"), not_function);
             //FIXME this should be inserted at the beginning to indicate the fact that
             //it belongs to the global scope
-            ctxt.sym_tab.push((String::from("not"), Some(Box::new(func))));
+            ctxt.sym_tab.push(("not".into(), Some(Box::new(func))));
             LLVMPositionBuilderAtEnd(ctxt.builder, bb);
 
             //build allocas for params
@@ -854,7 +855,7 @@ fn not_builder(ctxt : &mut Context) {
             LLVMBuildStore(ctxt.builder,
                            v[0],
                            alloca);
-            ctxt.sym_tab.push((String::from("a"), 
+            ctxt.sym_tab.push(("a".into(), 
                                Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
             let body = IfThenElseExpr(B(EqualsExpr(B(IdExpr(String::from("a"))), B(NumExpr(0)))),
             B(NumExpr(1)),
@@ -903,7 +904,7 @@ fn chr_builder(ctxt : &mut Context){
             let func = Function::new(String::from("chr"), chr_function);
             //FIXME this should be inserted at the beginning to indicate the fact that
             //it belongs to the global scope
-            ctxt.sym_tab.push((String::from("chr"), Some(Box::new(func))));
+            ctxt.sym_tab.push(("chr".into(), Some(Box::new(func))));
             LLVMPositionBuilderAtEnd(ctxt.builder, bb);
 
             //build allocas for params
@@ -922,7 +923,7 @@ fn chr_builder(ctxt : &mut Context){
             LLVMBuildStore(ctxt.builder,
                            v[0],
                            alloca);
-            ctxt.sym_tab.push((String::from("a"), 
+            ctxt.sym_tab.push(("a".into(), 
                                Some(Box::new(Var::new(String::from("a"), TType::TInt32, alloca)))));
             let converted_value = LLVMBuildAlloca(ctxt.builder,
                                                  LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 32), 0),
