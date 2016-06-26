@@ -39,6 +39,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.4.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "libc"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -62,6 +67,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "syntax"
 version = "0.1.0"
+dependencies = [
+ "itertools 0.4.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "trans"

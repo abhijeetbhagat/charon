@@ -7,3 +7,6 @@ authors = ["abhijeet bhagat"]
 name = "syntax"
 path = "lib.rs"
 test = true
+
+[dependencies]
+itertools = "*"
