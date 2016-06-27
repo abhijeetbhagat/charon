@@ -288,6 +288,7 @@ fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
             &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
             &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
             &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
+            //FIXME remove array from here
             &TType::TArray(_) => LLVMArrayType(LLVMIntTypeInContext(ctxt.context, 32), 4), 
             _ => panic!("Other TTypes not mapped yet to the corresponding LLVM types")
         }
@@ -625,7 +626,6 @@ impl IRBuilder for Expr{
                                     match &**rhs{
                                         &ArrayExpr(ref _ty, ref _dim_expr, ref _init_expr) => {
                                             //let dim = try!(_dim_expr.codegen(ctxt));
-                                            println!("dim");
                                             match &**_dim_expr{
                                                 &NumExpr(n) => {
                                                     let _alloca = LLVMBuildAlloca(ctxt.builder,
@@ -661,14 +661,34 @@ impl IRBuilder for Expr{
                                                 _ => {}
                                             }
                                         },
-                                        &RecordExpr(ref field_decls) => {
-
-
-                                        },
                                         _ => {}
                                     }
 
                                 }
+                                else if let TType::TRecord = *ty{
+                                    match &**rhs{
+                                        &RecordExpr(ref field_decls) =>{
+
+                                            let mut v = Vec::new();
+                                            for &(ref field_name, ref field_type) in field_decls.as_ref().unwrap(){
+                                                match field_type{
+                                                    &TType::TInt32 => v.push(LLVMIntTypeInContext(ctxt.context, 32)),
+                                                    &TType::TString => v.push(LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0)), 
+                                                    _ => {} 
+                                                }
+
+                                            }
+                                            let _alloca = LLVMBuildAlloca(ctxt.builder,
+                                                                          LLVMStructType(v.as_mut_ptr(),
+                                                                                        field_decls.as_ref().unwrap().len() as u32,
+                                                                                        0),
+                                                                          c_str_ptr!("alloca"));
+
+                                        },
+                                        _ => {}
+                                    }
+                                }
+
                                 else{
                                     let alloca = LLVMBuildAlloca(ctxt.builder, llvm_ty, c_str_ptr!(&(*name.clone())));
                                     let rhs_value_ref = try!(rhs.codegen(ctxt));
@@ -750,6 +770,7 @@ impl StdFunctionCodeBuilder for Expr{
             Expr::IdExpr(_) |
             //FIXME call std_fn_codegen() for index, dim and init exprs
             Expr::SubscriptExpr(_, _) |
+            Expr::RecordExpr(_) |
             Expr::ArrayExpr(_, _, _) => return,
             Expr::AddExpr(ref e1, ref e2) |
             Expr::SubExpr(ref e1, ref e2) |
@@ -1318,6 +1339,19 @@ fn test_prsr_bcknd_intgrtion_array_element_modification() {
 #[test]
 fn test_prsr_bcknd_intgrtion_int_var_modification() {
     let mut p = Parser::new("let var a : int := 3 in (a := 8;print(a);) end".to_string());
+    p.start_lexer();
+    let mut tup = p.expr();
+    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    let mut v = TypeChecker::new();
+    v.visit_expr(&mut *b_expr);
+    let ctxt = translate(&mut *b_expr);
+    link_object_code(ctxt.as_ref().unwrap());
+    ctxt.unwrap().dump();
+}
+
+#[test]
+fn test_prsr_bcknd_intgrtion_record_decl() {
+    let mut p = Parser::new("let var a : rec := {b:int} in a end".to_string());
     p.start_lexer();
     let mut tup = p.expr();
     let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
