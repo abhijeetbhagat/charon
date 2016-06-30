@@ -285,7 +285,7 @@ fn std_functions_call_factory(fn_name : &str, args : &OptionalTypeExprTupleList,
 fn get_llvm_type_for_ttype(ty : &TType, ctxt : &mut Context) -> LLVMTypeRef{
     unsafe{
         match ty {
-            &TType::TVoid => LLVMVoidTypeInContext(ctxt.context),
+            &TType::TVoid | &TType::TRecord => LLVMVoidTypeInContext(ctxt.context),
             &TType::TInt32 => LLVMIntTypeInContext(ctxt.context, 32),
             &TType::TString => LLVMPointerType(LLVMIntTypeInContext(ctxt.context, 8), 0),
             //FIXME remove array from here
@@ -683,6 +683,8 @@ impl IRBuilder for Expr{
                                                                                         field_decls.as_ref().unwrap().len() as u32,
                                                                                         0),
                                                                           c_str_ptr!("alloca"));
+                                            ctxt.sym_tab.push((name.clone().into(), 
+                                                               Some(Box::new(Var::new(name.clone(), ty.clone(), _alloca)))));
 
                                         },
                                         _ => {}
