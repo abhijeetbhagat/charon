@@ -74,7 +74,7 @@ impl Block{
         self.sym_tab.borrow_mut().insert(sym_id, ty);
     }
 
-    pub fn contains(&self, sym_id : &String)->bool{
+    pub fn contains(&self, sym_id : &str)->bool{
         //FIXME use contains key
         match self.sym_tab.borrow().get(sym_id){
             Some(s) => true,

@@ -100,9 +100,8 @@ impl<'a> Visitor<'a> for TypeChecker{
             DivExpr(ref mut left, ref mut  right) => {
                 visit_verify_error!(left, TInt32, "Expected left operand of int type");
                 visit_verify_error!(right, TInt32, "Expected right operand of int type");
-                match **right{
-                    Expr::NumExpr(n) => if n == 0 {panic!("Denominator cannot be 0")},
-                    _ => {}
+                if let Expr::NumExpr(n) = **right{
+                     if n == 0 {panic!("Denominator cannot be 0")}
                 }
             },
             SeqExpr(ref mut opt_expr_list) => {
@@ -151,12 +150,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                     for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                         if *_id == *id{
                             found = true;
-                            match **binding.as_ref().unwrap(){
-                                FuncBinding(ref _ty) => {
-                                    self.ty = _ty.clone();
-                                    break;
-                                }
-                                _ => {}
+                            if let FuncBinding(ref _ty) = **binding.as_ref().unwrap(){
+                                self.ty = _ty.clone();
+                                break;
                             }
                         }
                     }
@@ -172,13 +168,10 @@ impl<'a> Visitor<'a> for TypeChecker{
                                 found = false;
                                 for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                                     if *id == *_id{
-                                        match **binding.as_ref().unwrap(){
-                                            FuncBinding(ref _ty) => {
+                                        if let FuncBinding(ref _ty) = **binding.as_ref().unwrap(){
                                                 found = true;
                                                 *ty = _ty.clone();
                                                 break;
-                                            } ,
-                                            _ => {}
                                         }
                                     }
                                 }
@@ -193,12 +186,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                             SubscriptExpr(ref id, ref sub_expr) => {
                                 for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                                     if *id == *_id{
-                                        match **binding.as_ref().unwrap(){
-                                            VarBinding(ref _ty) => {
-                                                *ty = _ty.clone();
-                                                break; 
-                                            },
-                                            _ => {}
+                                        if let VarBinding(ref _ty) = **binding.as_ref().unwrap(){
+                                            *ty = _ty.clone();
+                                            break; 
                                         } 
                                     }
                                 }
@@ -206,12 +196,9 @@ impl<'a> Visitor<'a> for TypeChecker{
                             IdExpr(ref id) => {
                                 for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                                     if *id == *_id{
-                                        match **binding.as_ref().unwrap(){
-                                            VarBinding(ref _ty) => {
-                                                *ty = _ty.clone();
-                                                break; 
-                                            },
-                                            _ => {}
+                                        if let VarBinding(ref _ty) = **binding.as_ref().unwrap(){
+                                            *ty = _ty.clone();
+                                            break; 
                                         } 
                                     }
                                 }
@@ -229,14 +216,11 @@ impl<'a> Visitor<'a> for TypeChecker{
                     self.visit_decl(dec);
                 }
 
-                match *opt_expr {
-                    Some(ref mut b_expr) => {
-                        self.visit_expr(&mut *b_expr);
-                    },
-                    _ => {}
+                if let Some(ref mut b_expr) = *opt_expr {
+                    self.visit_expr(&mut *b_expr);
                 }
                 //pop till marker and then pop marker
-                while self.sym_tab.last().unwrap().0 != "<marker>".to_string(){
+                while self.sym_tab.last().unwrap().0 != "<marker>"{
                     self.sym_tab.pop();
                 }
                 self.sym_tab.pop();
@@ -289,8 +273,8 @@ impl<'a> Visitor<'a> for TypeChecker{
                                 panic!("record '{0}' contains repetitive fields", id);
                             }
 
-                            let rec_contains_cyclic_ref = list.into_iter().find(|x| match &x.1{
-                                &TCustom(ref name) => *id == *name,
+                            let rec_contains_cyclic_ref = list.into_iter().find(|x| match x.1{
+                                TCustom(ref name) => *id == *name,
                                 _ => false
                             });
                             if rec_contains_cyclic_ref.is_some(){
