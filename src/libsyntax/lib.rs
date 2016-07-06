@@ -2,6 +2,8 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![feature(convert)]
+#![feature(plugin)]
+#![plugin(clippy)]
 #[macro_use]extern crate itertools;
 
 pub mod parse;

@@ -63,3 +63,8 @@ bluss	abhi: yeah
 bluss	abhi: so for example something like this would work http://is.gd/ErqVWk
 bluss	or the Symbol trait would need to have its own downcasting methods
 bluss	(just like trait Error has)
+
+
+
+Exception handling:
+Rust makes a call to the LLVM Invoke instruction
