@@ -3,6 +3,6 @@ rust:
   - nightly
 
 before_install:
-  - sudo add-apt-repository "deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.6 main"
+  - sudo add-apt-repository "deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.7 main"
   - sudo apt-get update -q
-  - sudo apt-get install llvm-3.6
+  - sudo apt-get install llvm-3.7
