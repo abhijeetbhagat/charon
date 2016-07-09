@@ -37,6 +37,7 @@ impl fmt::Display for TType{
     }
 }
 
+#[allow(enum_variant_names)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Binding{
     TypeBinding(TType),
@@ -93,6 +94,7 @@ impl Block{
     }
 }
 
+#[allow(enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum Expr{
    //let dec+ in exp*; end

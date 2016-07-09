@@ -116,17 +116,17 @@ impl Parser{
                 Some((TNil, B(NilExpr)))
             },
             Token::Number => {
-                return self.parse_num_expr()
+                self.parse_num_expr()
                 //B(NumExpr(self.lexer.curr_string.clone().parse::<i32>().unwrap()))
             },
             Token::Ident => {
-                return self.parse_ident_expr()
+                self.parse_ident_expr()
             },
             Token::TokString => {
-                return self.parse_string_expr()
+                self.parse_string_expr()
             },
             Token::Let =>{
-                return self.parse_let_expr()
+                self.parse_let_expr()
             },
             // Token::Function => {
             //     return self.parse_function_decl()
@@ -162,16 +162,16 @@ impl Parser{
                 Some((last_type.unwrap(), B(SeqExpr(Some(expr_list)))))
             },
             Token::If => {
-                return self.parse_if_then_else_expr()
+                self.parse_if_then_else_expr()
             },
             Token::While => {
-                return self.parse_while_expr()
+                self.parse_while_expr()
             },
             Token::For => {
-                return self.parse_for_expr()
+                self.parse_for_expr()
             },
             Token::Array => {
-                return self.parse_array_expr()
+                self.parse_array_expr()
             },
             // Token::RightParen => {
             //     if self.paren_stack.is_empty(){
@@ -232,7 +232,7 @@ impl Parser{
         else{
             panic!("Expected 'in' after declarations");
         };
-        return Some((_ty, B(LetExpr(decls, Some(_expr)))))
+        Some((_ty, B(LetExpr(decls, Some(_expr)))))
     }
 
     fn parse_type_decl(&mut self, decls : &mut Vec<Decl>){
@@ -298,7 +298,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                             //which is required to set up args during call.
                             //Vec will respect the order but cost O(n) for the verification
                             //Need multi_index kind of a structure from C++ Boost
-                            if field_decs.iter().find(|&tup| tup.0 == id).is_some(){
+                            if field_decs.iter().any(|ref tup| tup.0 == id){
                                 panic!(format!("parameter '{}' found more than once", id));
                             }
                             match  self.lexer.get_token() {
@@ -319,7 +319,12 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                         _ => panic!("Expected a ')' or parameter id")
                     }
                 }
-                return if field_decs.is_empty() {None} else {Some(field_decs)}
+                if field_decs.is_empty() {
+                    None
+                }
+                else {
+                    Some(field_decs)
+                }
             },
             _ => panic!("Expected a '{' after ':='")
         }
@@ -437,13 +442,12 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                     },
                     Token::Div => {
                         let (_, op2) = self.get_nxt_and_parse();
-                        return Some((TInt32, B(MulExpr(B(CallExpr(fn_name, args_list)), op2))))
+                        return Some((TInt32, B(DivExpr(B(CallExpr(fn_name, args_list)), op2))))
                     },
                     _ => {}
                 }
-                match *op1 {
-                    IdExpr(ref fn_name) => return Some((TVoid, B(CallExpr(fn_name.clone(), args_list)))),
-                    _ => {}
+                if let IdExpr(ref fn_name) = *op1 {
+                    return Some((TVoid, B(CallExpr(fn_name.clone(), args_list))))
                 }; 
             },
             Token::Plus => {
@@ -488,7 +492,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                 let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
-                    return Some((TInt32, B(AddExpr(op1, op2))))
+                    Some((TInt32, B(AddExpr(op1, op2))))
                 }
                 else{
                     panic!("Expected i32 as the type of rhs expression");
@@ -498,7 +502,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                 let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
-                    return Some((TInt32, B(SubExpr(op1, op2))))
+                    Some((TInt32, B(SubExpr(op1, op2))))
                 }
                 else{
                     panic!("Expected i32 as the type of rhs expression");
@@ -508,7 +512,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                 let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
-                    return Some((TInt32, B(MulExpr(op1, op2))))
+                    Some((TInt32, B(MulExpr(op1, op2))))
                 }
                 else{
                     panic!("Expected i32 as the type of rhs expression");
@@ -518,7 +522,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                 let (t, op2) = self.get_nxt_and_parse();
                 //FIXME it's better to use a type-checker
                 if t == TInt32{
-                    return Some((TInt32, B(DivExpr(op1, op2))))
+                    Some((TInt32, B(DivExpr(op1, op2))))
                 }
                 else{
                     panic!("Expected i32 as the type of rhs expression");
@@ -526,23 +530,23 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
             },
             Token::Equals => {
                 let (_, op2) = self.get_nxt_and_parse();
-                return Some((TVoid, B(EqualsExpr(op1, op2))))
+                Some((TVoid, B(EqualsExpr(op1, op2))))
             },
             Token::LessThan => {
                 let (_, op2) = self.get_nxt_and_parse();
-                return Some((TVoid, B(LessThanExpr(op1, op2))))
+                Some((TVoid, B(LessThanExpr(op1, op2))))
             },
             Token::GreaterThan => {
                 let (_, op2) = self.get_nxt_and_parse();
-                return Some((TVoid, B(GreaterThanExpr(op1, op2))))
+                Some((TVoid, B(GreaterThanExpr(op1, op2))))
             },
             Token::LessThanGreaterThan => {
                 let (_, op2) = self.get_nxt_and_parse();
-                return Some((TVoid, B(NotEqualsExpr(op1, op2))))
+                Some((TVoid, B(NotEqualsExpr(op1, op2))))
             },
             //FIXME ';', ')' can be a encountered as well. deal with it.
             _ => {
-                return Some((TInt32, op1))
+                Some((TInt32, op1))
             }
         }
     }
@@ -560,7 +564,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
 
                 //parse body here
                 let e = self.expr();
-                debug_assert!(e.is_some() == true, "Function body cannot be empty");
+                debug_assert!(e.is_some(), "Function body cannot be empty");
                 let body = e.unwrap();
 
                 //function id ( fieldDec; ) : tyId = exp
@@ -588,7 +592,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                             //which is required to set up args during call.
                             //Vec will respect the order but cost O(n) for the verification
                             //Need multi_index kind of a structure from C++ Boost
-                            if field_decs.iter().find(|&tup| tup.0 == id).is_some(){
+                            if field_decs.iter().any(|ref tup| tup.0 == id){
                                 panic!(format!("parameter '{}' found more than once", id));
                             }
                             match  self.lexer.get_token() {
@@ -609,7 +613,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                         _ => panic!("Expected a ')' or parameter id")
                     }
                 }
-                return if field_decs.is_empty() {None} else {Some(field_decs)}
+                if field_decs.is_empty() {None} else {Some(field_decs)}
             },
             _ => panic!("Expected a '(' after function id")
         }
@@ -641,7 +645,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
             }
         }
         self.lexer.get_token();
-        return if args_list.is_empty() {None} else {Some(args_list)}
+        if args_list.is_empty() {None} else {Some(args_list)}
     }
 
     fn parse_function_ret_type(&mut self) -> TType{
@@ -656,7 +660,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                             Token::Equals => {self.lexer.get_token();},
                             _ => panic!("Expected '=' after the return type")
                         }
-                        return ty                     
+                        ty                     
                     },
                     _ => panic!("Expected a type after ':'")
                 }
@@ -746,7 +750,7 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                                    Token::Do => {
                                        self.lexer.get_token();
                                        let (_, do_expr) = self.expr().unwrap();
-                                       return Some((TVoid, B(ForExpr(id, id_expr, to_expr, do_expr))))
+                                       Some((TVoid, B(ForExpr(id, id_expr, to_expr, do_expr))))
                                    },
                                    _ => panic!("Expected 'do' after expression")
                                }

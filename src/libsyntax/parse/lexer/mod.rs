@@ -15,9 +15,7 @@ pub struct Lexer{
 
 impl Lexer{
     pub fn new(src_code : String)->Self{
-        let l = Lexer{ src_code : src_code.as_bytes().to_vec(), line_pos : 1, ..Default::default()};
-        //l.get_char();
-        l
+        Lexer{ src_code : src_code.as_bytes().to_vec(), line_pos : 1, ..Default::default()}
     }
 
     //FIXME: get_char() shouldn't be exposed
@@ -33,8 +31,8 @@ impl Lexer{
 
     pub fn peek_next(&mut self) -> Token{
         //save context
-        let old_pos = self.char_pos.clone();
-        let old_tok = self.curr_token.clone();
+        let old_pos = self.char_pos;
+        let old_tok = self.curr_token;
         let old_string = self.curr_string.clone(); 
         let t = self.get_token();
         //load saved context
@@ -50,7 +48,7 @@ impl Lexer{
         macro_rules! get_cur_tok_and_eat{
             //without the double curly braces, compiler complains saying everything after the
             //first statement will be ignored. So we tell it to treat the body as a block
-            ($e : path) => {{self.curr_token = $e; self.get_char(); return self.curr_token;}}
+            ($e : path) => {{self.curr_token = $e; self.get_char(); self.curr_token}}
         }
         match self.curr_char{
             '+' => { get_cur_tok_and_eat!(Token::Plus)},
@@ -66,7 +64,7 @@ impl Lexer{
                     self.get_char();
                     self.curr_token = Token::GreaterEquals;
                 }
-                return self.curr_token
+                self.curr_token
              },
             '<' => {
                 self.get_char();
@@ -82,17 +80,17 @@ impl Lexer{
                 else{
                     Token::LessThan
                 };
-                return self.curr_token
+                self.curr_token
             },
             '.' =>{
                 self.curr_token = Token::Dot;
                 self.get_char();
-                return self.curr_token
+                self.curr_token
             },
             '=' => {
                 self.get_char();
                 self.curr_token = Token::Equals;
-                return self.curr_token
+                self.curr_token
             },
             '{' => { get_cur_tok_and_eat!(Token::LeftCurly)}, 
             '}' => { get_cur_tok_and_eat!(Token::RightCurly)},
@@ -111,9 +109,9 @@ impl Lexer{
                  else {
                     Token::Colon
                  };
-                 return self.curr_token
+                 self.curr_token
              },
-            ';' => { self.curr_token = Token::SemiColon; self.get_char(); return self.curr_token},
+            ';' => { self.curr_token = Token::SemiColon; self.get_char(); self.curr_token},
             '"' => {
                 self.curr_string.clear();
                 loop {
@@ -144,7 +142,7 @@ impl Lexer{
                 }
 
                 self.curr_token = Token::TokString;
-                return self.curr_token;
+                self.curr_token
             },
             '0' ... '9' => {
                 self.curr_string.clear();
@@ -155,7 +153,7 @@ impl Lexer{
                     self.get_char();
                 }
                 self.curr_token = Token::Number;
-                return self.curr_token
+                self.curr_token
             },
             'a' ... 'z' => {
                 self.curr_string.clear();
@@ -167,12 +165,12 @@ impl Lexer{
                 }
 
                 self.curr_token = self.match_token(); //mat(&self.curr_string) {return Token::} else {return Token::Ident}
-                return self.curr_token
+                self.curr_token
 
             },
             //\n is also whitespace. So put it before whitespace check
-            '\0' => {self.curr_token = Token::Eof; return self.curr_token},
-            '\n' => { self.line_pos += 1; self.curr_token = Token::NewLine; self.get_char(); return self.curr_token },
+            '\0' => {self.curr_token = Token::Eof; self.curr_token},
+            '\n' => { self.line_pos += 1; self.curr_token = Token::NewLine; self.get_char(); self.curr_token },
             c if c.is_whitespace() => {
                 loop{
                     self.get_char();
@@ -181,10 +179,10 @@ impl Lexer{
                     }
                 }
                 self.curr_token = self.get_token();
-                return self.curr_token
+                self.curr_token
             },
 
-            _ => {self.curr_token = Token::Error; return self.curr_token}
+            _ => {self.curr_token = Token::Error; self.curr_token}
         }
     }
 
