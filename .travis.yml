@@ -2,16 +2,14 @@ language: rust
 rust:
   - nightly
 
-addons:
+install:
   apt:
     sources:
-      - llvm-toolchain-precise
+      - ubuntu-toolchain-r-test
       - llvm-toolchain-precise-3.6
+      - llvm-toolchain-precise
     packages:
       - llvm-3.6
       - llvm-3.6-dev
       - libedit2
       - g++-multilib
-before_script:
-  - sudo apt-get update
-  - sudo apt-get install llvm-3.6
