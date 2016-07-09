@@ -3,6 +3,5 @@ rust:
   - nightly
 
 before_install:
-  - sudo add-apt-repository ppa:adrozdoff/llvm-backport-y
   - sudo apt-get update -q
   - sudo apt-get install llvm-3.6
