@@ -801,1105 +801,1113 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
     }
 }
 
-#[test]
-fn test_func_decl_no_params() {
-    let mut p = Parser::new("function foo()=print(\"ab\")".to_string());
-    p.start_lexer();
-    let mut decls = Vec::new();
-    p.parse_function_decl(&mut decls);
-    assert_eq!(decls.len(), 1);
-    match &decls[0]{
-        &FunDec(ref name, _, ref ty, ref b_expr, ref b_type) => {
-            assert_eq!(String::from("foo"), *name);
-            assert_eq!(TVoid, *ty);
-            match &**b_expr {
-                &CallExpr(ref name, _) => assert_eq!(String::from("print"), *name),
-                _ => {}
-            }
-        },
-        _ => {}
+#[cfg(test)]
+mod tests {
+    use parse::tokens::*;
+    use ast::TType::*;
+    use ast::Decl::*;
+    use ast::Expr::*;
+    use super::*;
+    #[test]
+    fn test_func_decl_no_params() {
+        let mut p = Parser::new("function foo()=print(\"ab\")".to_string());
+        p.start_lexer();
+        let mut decls = Vec::new();
+        p.parse_function_decl(&mut decls);
+        assert_eq!(decls.len(), 1);
+        match &decls[0]{
+            &FunDec(ref name, _, ref ty, ref b_expr, ref b_type) => {
+                assert_eq!(String::from("foo"), *name);
+                assert_eq!(TVoid, *ty);
+                match &**b_expr {
+                    &CallExpr(ref name, _) => assert_eq!(String::from("print"), *name),
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-#[should_panic(expected="parameter 'a' found more than once")]
-fn test_parse_function_params_list_duplicate_params() {
-    let mut p = Parser::new("foo(a:int, a:int)".to_string());
-    p.start_lexer();
-    p.parse_function_params_list();
-}
-
-#[test]
-fn test_parse_call_expr_num_expr(){
-    let mut p = Parser::new("f(1)".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[0usize];
-                    assert_eq!(*ty, TInt32);
-                    match &**b_expr {
-                        &NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    #[should_panic(expected="parameter 'a' found more than once")]
+    fn test_parse_function_params_list_duplicate_params() {
+        let mut p = Parser::new("foo(a:int, a:int)".to_string());
+        p.start_lexer();
+        p.parse_function_params_list();
     }
-}
 
-#[test]
-fn test_parse_call_expr_ident_expr(){
-    let mut p = Parser::new("f(abc)".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[0usize];
-                    assert_eq!(*ty, TVoid);
-                    match &**b_expr {
-                        &IdExpr(ref id) => assert_eq!(*id, "abc"),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_num_expr(){
+        let mut p = Parser::new("f(1)".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        assert_eq!(l.len(), 1);
+                        let (ref ty, ref b_expr) = l[0usize];
+                        assert_eq!(*ty, TInt32);
+                        match &**b_expr {
+                            &NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_only_string_expr() {
-    let mut p = Parser::new("\"abc\"".to_string());
-    p.start_lexer();
-    assert_eq!(p.lexer.curr_token, Token::TokString);
-}
-
-#[test]
-fn test_parse_call_expr_string_arg(){
-    let mut p = Parser::new("f(\"abc\")".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[0usize];
-                    assert_eq!(*ty, TString);
-                    match &**b_expr {
-                        &StringExpr(ref value) => assert_eq!(*value, "abc"),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_ident_expr(){
+        let mut p = Parser::new("f(abc)".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        assert_eq!(l.len(), 1);
+                        let (ref ty, ref b_expr) = l[0usize];
+                        assert_eq!(*ty, TVoid);
+                        match &**b_expr {
+                            &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_parse_call_expr_inum_ident_exprs(){
-    let mut p = Parser::new("f(1, abc)".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    assert_eq!(l.len(), 2);
-                    let (ref ty, ref b_expr) = l[1usize];
-                    assert_eq!(*ty, TVoid);
-                    match &**b_expr {
-                        &IdExpr(ref id) => assert_eq!(*id, "abc"),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_only_string_expr() {
+        let mut p = Parser::new("\"abc\"".to_string());
+        p.start_lexer();
+        assert_eq!(p.lexer.curr_token, Token::TokString);
     }
-}
 
-#[test]
-fn test_parse_call_expr_add_expr(){
-    let mut p = Parser::new("f(1+2)".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[0usize];
-                    assert_eq!(*ty, TInt32);
-                    match &**b_expr {
-                        &AddExpr(ref op1, ref op2) => {
-                            match &**op1 {
-                                &NumExpr(n) => assert_eq!(n, 1),
-                                _ => {}
-                            }
-                            match &**op2 {
-                                &NumExpr(n) => assert_eq!(n, 2),
-                                _ => {}
-                            }
-                        },
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_string_arg(){
+        let mut p = Parser::new("f(\"abc\")".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        assert_eq!(l.len(), 1);
+                        let (ref ty, ref b_expr) = l[0usize];
+                        assert_eq!(*ty, TString);
+                        match &**b_expr {
+                            &StringExpr(ref value) => assert_eq!(*value, "abc"),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_parse_call_expr_add_expr_with_call_expr_and_num_expr(){
-    let mut p = Parser::new("f(a()+2)".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-    match *b_expr {
-        CallExpr(ref n, ref type_expr_lst) => {
-            assert_eq!(n, "f");
-            assert_eq!(type_expr_lst.is_some(), true);
-            match type_expr_lst{
-                &Some(ref l) => {
-                    //assert_eq!(l.len(), 1);
-                    let (ref ty, ref b_expr) = l[0usize];
-                    //assert_eq!(*ty, TInt32);
-                    match &**b_expr {
-                        &AddExpr(ref op1, ref op2) => {
-                            match &**op1 {
-                                &NumExpr(n) => assert_eq!(n, 1),
-                                _ => {}
-                            }
-                            match &**op2 {
-                                &NumExpr(n) => assert_eq!(n, 2),
-                                _ => {}
-                            }
-                        },
-                        &NumExpr(_) => panic!("num expr") ,
-                        &CallExpr(_, _) => panic!("callexpr"),
-                        _ => {panic!("Different expr found")}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_inum_ident_exprs(){
+        let mut p = Parser::new("f(1, abc)".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        assert_eq!(l.len(), 2);
+                        let (ref ty, ref b_expr) = l[1usize];
+                        assert_eq!(*ty, TVoid);
+                        match &**b_expr {
+                            &IdExpr(ref id) => assert_eq!(*id, "abc"),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_parse_call_expr_no_args(){
-    let mut p = Parser::new("f()".to_string());
-    p.start_lexer();
-    let tup = p.expr();
-    assert_eq!(tup.is_some(), true);
-    let (ty, b_expr) = tup.unwrap();
-    assert_eq!(ty, TVoid);
-     match *b_expr {
-        CallExpr(ref n, _) => assert_eq!(n, "f"),
-        _ => {}
-     }
-}
-
-#[test]
-fn test_parse_func_ret_type_void(){
-    let mut p = Parser::new(")=".to_string());
-    p.start_lexer();
-    let ty = p.parse_function_ret_type();
-    assert_eq!(ty, TVoid);
-}
-
-#[test]
-fn test_parse_func_ret_type_int(){
-    let mut p = Parser::new(") : int =".to_string());
-    p.start_lexer();
-    let ty = p.parse_function_ret_type();
-    assert_eq!(ty, TInt32);
-}
-
-#[test]
-fn test_parse_func_ret_type_string(){
-    let mut p = Parser::new(") : string =".to_string());
-    p.start_lexer();
-    let ty = p.parse_function_ret_type();
-    assert_eq!(ty, TString);
-}
-
-#[test]
-fn test_parse_func_ret_type_custom(){
-    let mut p = Parser::new(") : custom =".to_string());
-    p.start_lexer();
-    let ty = p.parse_function_ret_type();
-    assert_eq!(ty, TCustom("custom".to_string()));
-}
-
-#[test]
-fn test_field_decs_none(){
-    let mut p = Parser::new("f()".to_string());
-    p.start_lexer();
-    let m = p.parse_function_params_list();
-    assert_eq!(m, None);
-}
-
-#[test]
-fn test_field_decs_one_dec(){
-    let mut p = Parser::new("f(a: int)".to_string());
-    p.start_lexer();
-    let m = p.parse_function_params_list();
-    assert_eq!(m.is_some(), true);
-    assert_eq!(m.unwrap().len(), 1);
-}
-
-#[test]
-fn test_field_decs_two_decs(){
-    let mut p = Parser::new("f(a: int, b:int)".to_string());
-    p.start_lexer();
-    let m = p.parse_function_params_list();
-    assert_eq!(m.is_some(), true);
-    assert_eq!(m.unwrap().len(), 2);
-}
-
-#[test]
-fn test_field_decs_two_decs_int_string(){
-    let mut p = Parser::new("f(a: int, b:string)".to_string());
-    p.start_lexer();
-    let m = p.parse_function_params_list().unwrap();
-    assert_eq!(m.len(), 2);
-    assert_eq!(m[0].1, TType::TInt32);
-    assert_eq!(m[1].1, TType::TString);
-}
-
-#[test]
-fn test_field_decs_one_dec_with_alias(){
-    let mut p = Parser::new("f(a: myint)".to_string());
-    p.start_lexer();
-    let m = p.parse_function_params_list().unwrap();
-    assert_eq!(m[0].1, TType::TCustom("myint".to_string()));
-}
-
-#[test]
-#[should_panic(expected="Unexpected eof encountered. Expected a ')' after field-declaration.")]
-fn test_field_decs_no_closing_paren(){
-    let mut p = Parser::new("f(a: myint".to_string());
-    p.start_lexer();
-    p.parse_function_params_list();
-}
-
-#[test]
-fn test_let_var_decl_returns_block() {
-    let mut p = Parser::new("let var a : int := 1 in 1+1 end".to_string());
-    assert_eq!(p.run().is_some(), true);
-}
-
-#[test]
-fn test_let_var_decl_returns_let_expr() {
-    let mut p = Parser::new("let var a : int := 1 in a end".to_string());
-    let b = p.run().unwrap();
-    match *b.expr.unwrap(){
-        LetExpr(ref v, ref o) => {
-            assert_eq!(v.len(), 1);
-            assert_eq!(o.is_some(), true);
-            match v[0]{
-                VarDec(ref id, ref ty, ref e) => {
-                    assert_eq!(*id, "a".to_string());
-                    match **e{ //**e means deref deref B<T> which results in T
-                        NumExpr(n) => assert_eq!(1, n),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_add_expr(){
+        let mut p = Parser::new("f(1+2)".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        assert_eq!(l.len(), 1);
+                        let (ref ty, ref b_expr) = l[0usize];
+                        assert_eq!(*ty, TInt32);
+                        match &**b_expr {
+                            &AddExpr(ref op1, ref op2) => {
+                                match &**op1 {
+                                    &NumExpr(n) => assert_eq!(n, 1),
+                                    _ => {}
+                                }
+                                match &**op2 {
+                                    &NumExpr(n) => assert_eq!(n, 2),
+                                    _ => {}
+                                }
+                            },
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_let_var_decl_sym_tab_count() {
-    let mut p = Parser::new("let var a : int := 1 in a end".to_string());
-    let b = p.run().unwrap();
-    assert_eq!(b.sym_tab.borrow().len(), 1);
-    assert_eq!(b.sym_tab.borrow().get(&"a".to_string()), Some(&TInt32));
-}
-
-#[test]
-fn test_let_add_expr() {
-    let mut p = Parser::new("let var a : int := 1 + 3 + 1 in a end".to_string());
-    let b = p.run().unwrap();
-    match *b.expr.unwrap(){
-        LetExpr(ref v, ref o) => {
-            assert_eq!(v.len(), 1);
-            assert_eq!(o.is_some(), true);
-            match v[0]{
-                VarDec(ref id, ref ty, ref e) => {
-                    assert_eq!(*id, "a".to_string());
-                    match **e{ //**e means deref deref B<T> which results in T
-                        AddExpr(ref e1, ref e2) => {
-                            match **e1{
-                                NumExpr(n) => assert_eq!(n, 1),
-                                _ => panic!("num expr expected")
-                            }
-
-                            match **e2{
-                                AddExpr(ref e1, ref e2) => {
-                                    match **e1{
-                                        NumExpr(n) => assert_eq!(n, 3),
-                                        _ => panic!("num expr expected")
-                                    }
-
-                                    match **e2{
-                                        NumExpr(n) => assert_eq!(n, 1),
-                                        _ => panic!("num expr expected")
-                                    }
-                                },
-                                _ => panic!("add expr expected")
-                            }
-                        },
-                        _ => panic!("add expr expected")
-                    }
-                },
-                _ => panic!("ver decl expected")
-            }
-        },
-        _ => panic!("let expr expected")
+    #[test]
+    fn test_parse_call_expr_add_expr_with_call_expr_and_num_expr(){
+        let mut p = Parser::new("f(a()+2)".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, ref type_expr_lst) => {
+                assert_eq!(n, "f");
+                assert_eq!(type_expr_lst.is_some(), true);
+                match type_expr_lst{
+                    &Some(ref l) => {
+                        //assert_eq!(l.len(), 1);
+                        let (ref ty, ref b_expr) = l[0usize];
+                        //assert_eq!(*ty, TInt32);
+                        match &**b_expr {
+                            &AddExpr(ref op1, ref op2) => {
+                                match &**op1 {
+                                    &NumExpr(n) => assert_eq!(n, 1),
+                                    _ => {}
+                                }
+                                match &**op2 {
+                                    &NumExpr(n) => assert_eq!(n, 2),
+                                    _ => {}
+                                }
+                            },
+                            &NumExpr(_) => panic!("num expr") ,
+                            &CallExpr(_, _) => panic!("callexpr"),
+                            _ => {panic!("Different expr found")}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_parse_2_vars_in_let() {
-    let mut p = Parser::new("let var a : int := 1\nvar b : int:=2\n in b end".to_string());
-    let b = p.run().unwrap();
-    match *b.expr.unwrap(){
-        LetExpr(ref v, ref o) => {
-            assert_eq!(v.len(), 2);
-        },
-        _ => {}
+    #[test]
+    fn test_parse_call_expr_no_args(){
+        let mut p = Parser::new("f()".to_string());
+        p.start_lexer();
+        let tup = p.expr();
+        assert_eq!(tup.is_some(), true);
+        let (ty, b_expr) = tup.unwrap();
+        assert_eq!(ty, TVoid);
+        match *b_expr {
+            CallExpr(ref n, _) => assert_eq!(n, "f"),
+            _ => {}
+        }
     }
-}
 
-#[test]
-fn test_1_seq_expr_able_to_parse() {
-    let mut p = Parser::new("(1;)".to_string());
-    p.start_lexer();
-    assert_eq!(p.expr().is_some(), true);
-}
-
-#[test]
-fn test_1_seq_expr_last_type_int() {
-    let mut p = Parser::new("(1;)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        SeqExpr(ref o) => {
-            assert_eq!(o.as_ref().unwrap().len(), 1);
-            match *o.as_ref().unwrap()[0]{
-                NumExpr(n) => {
-                    assert_eq!(n, 1);
-                },
-                _ => {}
-            }
-        },
-        _ => panic!("Invalid expr")
+    #[test]
+    fn test_parse_func_ret_type_void(){
+        let mut p = Parser::new(")=".to_string());
+        p.start_lexer();
+        let ty = p.parse_function_ret_type();
+        assert_eq!(ty, TVoid);
     }
-}
 
-#[test]
-fn test_1_seq_expr_last_type_void() {
-    let mut p = Parser::new("(a;)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    assert_eq!(ty, TVoid);
-}
-
-#[test]
-fn test_2_seq_exprs_last_type_void() {
-    let mut p = Parser::new("(1;a;)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    assert_eq!(ty, TVoid);
-}
-
-#[test]
-fn test_2_seq_exprs_last_type_int() {
-    let mut p = Parser::new("(a;1;)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    assert_eq!(ty, TInt32);
-}
-
-#[test]
-fn test_1_seq_expr_without_semicolon_type_int() {
-    let mut p = Parser::new("(1)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    assert_eq!(ty, TInt32);
-}
-
-#[test]
-fn test_1_seq_expr_add_expr() {
-    let mut p = Parser::new("(5+16)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        SeqExpr(ref o) => {
-            assert_eq!(o.as_ref().unwrap().len(), 1);
-            match *o.as_ref().unwrap()[0]{
-                AddExpr(ref e1, ref e2) => {
-                    match **e1 {
-                        NumExpr(n) => assert_eq!(n, 5),
-                        _ => {}
-                    }
-                    match **e2 {
-                        NumExpr(n) => assert_eq!(n, 16),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => panic!("Invalid expr")
+    #[test]
+    fn test_parse_func_ret_type_int(){
+        let mut p = Parser::new(") : int =".to_string());
+        p.start_lexer();
+        let ty = p.parse_function_ret_type();
+        assert_eq!(ty, TInt32);
     }
-}
 
-#[test]
-fn test_1_seq_expr_assignexpr_callexpr() {
-    let mut p = Parser::new("(a[1]:=1; print(a[1]);)".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        SeqExpr(ref o) => {
-            assert_eq!(o.as_ref().unwrap().len(), 2);
-            match *o.as_ref().unwrap()[0]{
-                AssignExpr(ref e1, ref e2) => {
-                    match **e1 {
-                        SubscriptExpr(_, _) => {},
-                        _ => {panic!("Expected a subscript_expr");}
-                    }
-                    match **e2 {
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {panic!("Expected a num expr");}
-                    }
-                },
-                _ => {panic!("Expected an assign expr");}
-            }
-            match *o.as_ref().unwrap()[1]{
-                CallExpr(_, _) => {
-
-                },
-                _ => {panic!("Expected a call expr");}
-            }
-        },
-        _ => panic!("Invalid expr")
+    #[test]
+    fn test_parse_func_ret_type_string(){
+        let mut p = Parser::new(") : string =".to_string());
+        p.start_lexer();
+        let ty = p.parse_function_ret_type();
+        assert_eq!(ty, TString);
     }
-}
-#[test]
-fn test_get_ty(){
-    assert_eq!(Parser::get_ty_from_string("int"), TInt32);
-    assert_eq!(Parser::get_ty_from_string("string"), TString);
-    assert_eq!(Parser::get_ty_from_string("index_type"), TCustom("index_type".to_string()));
-}
 
-#[test]
-fn test_if_then_expr(){
-    let mut p = Parser::new("if 1 then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, ref then_expr) => {
-            match **conditional_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => {}
-            }
-        },
-        _ => {}
-    } 
-}
+    #[test]
+    fn test_parse_func_ret_type_custom(){
+        let mut p = Parser::new(") : custom =".to_string());
+        p.start_lexer();
+        let ty = p.parse_function_ret_type();
+        assert_eq!(ty, TCustom("custom".to_string()));
+    }
 
-#[test]
-fn test_if_then_equality_as_conditional_expr(){
-    let mut p = Parser::new("if 1=1 then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, ref then_expr) => {
-            match **conditional_expr{
-                EqualsExpr(ref e1, ref e2) => {},
-                _ => panic!("Expected an equals expr")
-            }
-        },
-        _ => panic!("Expected an if-then expr")
-    } 
-}
-#[test]
-fn test_if_then_with_ident_as_conditional_expr(){
-    let mut p = Parser::new("if a then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, _) => {
-            match **conditional_expr{
-               IdExpr(ref i) => assert_eq!(*i, String::from("a")),
-                _ => {}
-            }
-        },
-        _ => {}
-    } 
-}
+    #[test]
+    fn test_field_decs_none(){
+        let mut p = Parser::new("f()".to_string());
+        p.start_lexer();
+        let m = p.parse_function_params_list();
+        assert_eq!(m, None);
+    }
 
-#[test]
-fn test_if_then_with_ident_involving_equality_test_conditional_expr(){
-    let mut p = Parser::new("if a=1 then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, _) => {
-            match **conditional_expr{
-               EqualsExpr(ref e1, ref e2) => {},
-                _ => panic!("Expected equality expression")
-            }
-        },
-        _ => panic!("Expected if-then expression")
-    } 
-}
-#[test]
-fn test_if_then_with_add_as_conditional_expr(){
-    let mut p = Parser::new("if 1+1 then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, ref then_expr) => {
-            match **conditional_expr{
-                AddExpr(ref l, ref r) => {
-                    match **l{
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
-    } 
-}
+    #[test]
+    fn test_field_decs_one_dec(){
+        let mut p = Parser::new("f(a: int)".to_string());
+        p.start_lexer();
+        let m = p.parse_function_params_list();
+        assert_eq!(m.is_some(), true);
+        assert_eq!(m.unwrap().len(), 1);
+    }
 
-#[test]
-fn test_if_then_with_string_as_conditional_expr(){
-    let mut p = Parser::new("if \"abhi\" then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, ref then_expr) => {
-            match **conditional_expr{
-                StringExpr(ref s) => assert_eq!(*s, String::from("abhi")),
-                _ => {}
-            }
-        },
-        _ => {}
-    } 
-}
-#[test]
-fn test_if_then_else_expr(){
-    let mut p = Parser::new("if 1 then foo() else foo()".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
-            match **conditional_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => {}
-            }
-            match **else_expr{
-                CallExpr(ref fn_name, _) => assert_eq!(*fn_name, String::from("foo")),
-                _ => panic!("not covered")
-            }
-        },
-        _ => {panic!("bingo!")}
-    } 
+    #[test]
+    fn test_field_decs_two_decs(){
+        let mut p = Parser::new("f(a: int, b:int)".to_string());
+        p.start_lexer();
+        let m = p.parse_function_params_list();
+        assert_eq!(m.is_some(), true);
+        assert_eq!(m.unwrap().len(), 2);
+    }
 
-}
+    #[test]
+    fn test_field_decs_two_decs_int_string(){
+        let mut p = Parser::new("f(a: int, b:string)".to_string());
+        p.start_lexer();
+        let m = p.parse_function_params_list().unwrap();
+        assert_eq!(m.len(), 2);
+        assert_eq!(m[0].1, TInt32);
+        assert_eq!(m[1].1, TString);
+    }
 
-#[test]
-fn test_if_then_else_expr_with_num_expressions(){
-    let mut p = Parser::new("if 1 then 1 else 0".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
-            match **conditional_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => {panic!("Unexpected expression")}
-            }
-            match **else_expr{
-                NumExpr(n) => assert_eq!(n, 0),
-                _ => panic!("not covered")
-            }
-        },
-        _ => {panic!("bingo!")}
-    } 
+    #[test]
+    fn test_field_decs_one_dec_with_alias(){
+        let mut p = Parser::new("f(a: myint)".to_string());
+        p.start_lexer();
+        let m = p.parse_function_params_list().unwrap();
+        assert_eq!(m[0].1, TCustom("myint".to_string()));
+    }
 
-}
-#[test]
-fn test_if_expr_with_string_expr_as_conditional_expr(){
-    let mut p = Parser::new("if \"abhi\" then 1".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenExpr(ref conditional_expr, _) => match **conditional_expr {
+    #[test]
+    #[should_panic(expected="Unexpected eof encountered. Expected a ')' after field-declaration.")]
+    fn test_field_decs_no_closing_paren(){
+        let mut p = Parser::new("f(a: myint".to_string());
+        p.start_lexer();
+        p.parse_function_params_list();
+    }
+
+    #[test]
+    fn test_let_var_decl_returns_block() {
+        let mut p = Parser::new("let var a : int := 1 in 1+1 end".to_string());
+        assert_eq!(p.run().is_some(), true);
+    }
+
+    #[test]
+    fn test_let_var_decl_returns_let_expr() {
+        let mut p = Parser::new("let var a : int := 1 in a end".to_string());
+        let b = p.run().unwrap();
+        match *b.expr.unwrap(){
+            LetExpr(ref v, ref o) => {
+                assert_eq!(v.len(), 1);
+                assert_eq!(o.is_some(), true);
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            NumExpr(n) => assert_eq!(1, n),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn test_let_var_decl_sym_tab_count() {
+        let mut p = Parser::new("let var a : int := 1 in a end".to_string());
+        let b = p.run().unwrap();
+        assert_eq!(b.sym_tab.borrow().len(), 1);
+        assert_eq!(b.sym_tab.borrow().get(&"a".to_string()), Some(&TInt32));
+    }
+
+    #[test]
+    fn test_let_add_expr() {
+        let mut p = Parser::new("let var a : int := 1 + 3 + 1 in a end".to_string());
+        let b = p.run().unwrap();
+        match *b.expr.unwrap(){
+            LetExpr(ref v, ref o) => {
+                assert_eq!(v.len(), 1);
+                assert_eq!(o.is_some(), true);
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            AddExpr(ref e1, ref e2) => {
+                                match **e1{
+                                    NumExpr(n) => assert_eq!(n, 1),
+                                    _ => panic!("num expr expected")
+                                }
+
+                                match **e2{
+                                    AddExpr(ref e1, ref e2) => {
+                                        match **e1{
+                                            NumExpr(n) => assert_eq!(n, 3),
+                                            _ => panic!("num expr expected")
+                                        }
+
+                                        match **e2{
+                                            NumExpr(n) => assert_eq!(n, 1),
+                                            _ => panic!("num expr expected")
+                                        }
+                                    },
+                                    _ => panic!("add expr expected")
+                                }
+                            },
+                            _ => panic!("add expr expected")
+                        }
+                    },
+                    _ => panic!("ver decl expected")
+                }
+            },
+            _ => panic!("let expr expected")
+        }
+    }
+
+    #[test]
+    fn test_parse_2_vars_in_let() {
+        let mut p = Parser::new("let var a : int := 1\nvar b : int:=2\n in b end".to_string());
+        let b = p.run().unwrap();
+        match *b.expr.unwrap(){
+            LetExpr(ref v, ref o) => {
+                assert_eq!(v.len(), 2);
+            },
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn test_1_seq_expr_able_to_parse() {
+        let mut p = Parser::new("(1;)".to_string());
+        p.start_lexer();
+        assert_eq!(p.expr().is_some(), true);
+    }
+
+    #[test]
+    fn test_1_seq_expr_last_type_int() {
+        let mut p = Parser::new("(1;)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            SeqExpr(ref o) => {
+                assert_eq!(o.as_ref().unwrap().len(), 1);
+                match *o.as_ref().unwrap()[0]{
+                    NumExpr(n) => {
+                        assert_eq!(n, 1);
+                    },
+                    _ => {}
+                }
+            },
+            _ => panic!("Invalid expr")
+        }
+    }
+
+    #[test]
+    fn test_1_seq_expr_last_type_void() {
+        let mut p = Parser::new("(a;)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        assert_eq!(ty, TVoid);
+    }
+
+    #[test]
+    fn test_2_seq_exprs_last_type_void() {
+        let mut p = Parser::new("(1;a;)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        assert_eq!(ty, TVoid);
+    }
+
+    #[test]
+    fn test_2_seq_exprs_last_type_int() {
+        let mut p = Parser::new("(a;1;)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        assert_eq!(ty, TInt32);
+    }
+
+    #[test]
+    fn test_1_seq_expr_without_semicolon_type_int() {
+        let mut p = Parser::new("(1)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        assert_eq!(ty, TInt32);
+    }
+
+    #[test]
+    fn test_1_seq_expr_add_expr() {
+        let mut p = Parser::new("(5+16)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            SeqExpr(ref o) => {
+                assert_eq!(o.as_ref().unwrap().len(), 1);
+                match *o.as_ref().unwrap()[0]{
+                    AddExpr(ref e1, ref e2) => {
+                        match **e1 {
+                            NumExpr(n) => assert_eq!(n, 5),
+                            _ => {}
+                        }
+                        match **e2 {
+                            NumExpr(n) => assert_eq!(n, 16),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => panic!("Invalid expr")
+        }
+    }
+
+    #[test]
+    fn test_1_seq_expr_assignexpr_callexpr() {
+        let mut p = Parser::new("(a[1]:=1; print(a[1]);)".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            SeqExpr(ref o) => {
+                assert_eq!(o.as_ref().unwrap().len(), 2);
+                match *o.as_ref().unwrap()[0]{
+                    AssignExpr(ref e1, ref e2) => {
+                        match **e1 {
+                            SubscriptExpr(_, _) => {},
+                            _ => {panic!("Expected a subscript_expr");}
+                        }
+                        match **e2 {
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {panic!("Expected a num expr");}
+                        }
+                    },
+                    _ => {panic!("Expected an assign expr");}
+                }
+                match *o.as_ref().unwrap()[1]{
+                    CallExpr(_, _) => {
+
+                    },
+                    _ => {panic!("Expected a call expr");}
+                }
+            },
+            _ => panic!("Invalid expr")
+        }
+    }
+    #[test]
+    fn test_get_ty(){
+        assert_eq!(Parser::get_ty_from_string("int"), TInt32);
+        assert_eq!(Parser::get_ty_from_string("string"), TString);
+        assert_eq!(Parser::get_ty_from_string("index_type"), TCustom("index_type".to_string()));
+    }
+
+    #[test]
+    fn test_if_then_expr(){
+        let mut p = Parser::new("if 1 then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, ref then_expr) => {
+                match **conditional_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => {}
+                }
+            },
+            _ => {}
+        } 
+    }
+
+    #[test]
+    fn test_if_then_equality_as_conditional_expr(){
+        let mut p = Parser::new("if 1=1 then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, ref then_expr) => {
+                match **conditional_expr{
+                    EqualsExpr(ref e1, ref e2) => {},
+                    _ => panic!("Expected an equals expr")
+                }
+            },
+            _ => panic!("Expected an if-then expr")
+        } 
+    }
+    #[test]
+    fn test_if_then_with_ident_as_conditional_expr(){
+        let mut p = Parser::new("if a then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, _) => {
+                match **conditional_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                    _ => {}
+                }
+            },
+            _ => {}
+        } 
+    }
+
+    #[test]
+    fn test_if_then_with_ident_involving_equality_test_conditional_expr(){
+        let mut p = Parser::new("if a=1 then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, _) => {
+                match **conditional_expr{
+                    EqualsExpr(ref e1, ref e2) => {},
+                    _ => panic!("Expected equality expression")
+                }
+            },
+            _ => panic!("Expected if-then expression")
+        } 
+    }
+    #[test]
+    fn test_if_then_with_add_as_conditional_expr(){
+        let mut p = Parser::new("if 1+1 then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, ref then_expr) => {
+                match **conditional_expr{
+                    AddExpr(ref l, ref r) => {
+                        match **l{
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        } 
+    }
+
+    #[test]
+    fn test_if_then_with_string_as_conditional_expr(){
+        let mut p = Parser::new("if \"abhi\" then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, ref then_expr) => {
+                match **conditional_expr{
+                    StringExpr(ref s) => assert_eq!(*s, String::from("abhi")),
+                    _ => {}
+                }
+            },
+            _ => {}
+        } 
+    }
+    #[test]
+    fn test_if_then_else_expr(){
+        let mut p = Parser::new("if 1 then foo() else foo()".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+                match **conditional_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => {}
+                }
+                match **else_expr{
+                    CallExpr(ref fn_name, _) => assert_eq!(*fn_name, String::from("foo")),
+                    _ => panic!("not covered")
+                }
+            },
+            _ => {panic!("bingo!")}
+        } 
+
+    }
+
+    #[test]
+    fn test_if_then_else_expr_with_num_expressions(){
+        let mut p = Parser::new("if 1 then 1 else 0".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenElseExpr(ref conditional_expr, ref then_expr, ref else_expr) => {
+                match **conditional_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => {panic!("Unexpected expression")}
+                }
+                match **else_expr{
+                    NumExpr(n) => assert_eq!(n, 0),
+                    _ => panic!("not covered")
+                }
+            },
+            _ => {panic!("bingo!")}
+        } 
+
+    }
+    #[test]
+    fn test_if_expr_with_string_expr_as_conditional_expr(){
+        let mut p = Parser::new("if \"abhi\" then 1".to_string());
+        p.start_lexer();
+
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenExpr(ref conditional_expr, _) => match **conditional_expr {
                 StringExpr(ref s) => assert_eq!(*s, "abhi"),
                 _ =>  panic!("This will not exhecute")
-        },
-        _ => panic!("This will not execute")
-    } 
-}
-#[test]
-#[should_panic(expected="Type mismatch between the then and else expressions")]
-fn test_if_then_else_expr_fail_string_return(){
-    let mut p = Parser::new("if 1 then 1 else \"abhi\"".to_string());
-    p.start_lexer();
-    
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        IfThenElseExpr(_, _, ref else_expr) => {
-            match **else_expr{
-                StringExpr(_) => panic!("Type mismatch between the then and else expressions"),
-                _ =>  panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
+    #[test]
+    #[should_panic(expected="Type mismatch between the then and else expressions")]
+    fn test_if_then_else_expr_fail_string_return(){
+        let mut p = Parser::new("if 1 then 1 else \"abhi\"".to_string());
+        p.start_lexer();
 
-#[test]
-fn test_while_expr(){
-    let mut p = Parser::new("while 1 do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => panic!("This will not execute")
-            }
-            match **do_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            IfThenElseExpr(_, _, ref else_expr) => {
+                match **else_expr{
+                    StringExpr(_) => panic!("Type mismatch between the then and else expressions"),
+                    _ =>  panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_while_expr_with_string_as_conditional_expr(){
-    let mut p = Parser::new("while \"abhi\" do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                StringExpr(ref s) => assert_eq!(*s, "abhi"),
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+    #[test]
+    fn test_while_expr(){
+        let mut p = Parser::new("while 1 do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => panic!("This will not execute")
+                }
+                match **do_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_while_expr_with_addexpr_as_conditional_expr(){
-    let mut p = Parser::new("while 1+1 do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                AddExpr(ref l, ref r) => {
-                    match **l{
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+    #[test]
+    fn test_while_expr_with_string_as_conditional_expr(){
+        let mut p = Parser::new("while \"abhi\" do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    StringExpr(ref s) => assert_eq!(*s, "abhi"),
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_while_expr_with_less_than_cmp_as_conditional_expr(){
-    let mut p = Parser::new("while 1<1 do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                LessThanExpr(ref l, ref r) => {
-                    match **l{
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+    #[test]
+    fn test_while_expr_with_addexpr_as_conditional_expr(){
+        let mut p = Parser::new("while 1+1 do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    AddExpr(ref l, ref r) => {
+                        match **l{
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_while_expr_with_greater_than_cmp_as_conditional_expr(){
-    let mut p = Parser::new("while 1>1 do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                GreaterThanExpr(ref l, ref r) => {
-                    match **l{
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
-#[test]
-fn test_while_expr_with_ident_as_conditional_expr(){
-    let mut p = Parser::new("while a do 1".to_string());
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        WhileExpr(ref conditional_expr, ref do_expr) => {
-            match **conditional_expr{
-                IdExpr(ref id) => {
-                    assert_eq!(*id, String::from("a"));
-                },
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
-#[test]
-fn test_for_expr(){
-    let mut p = Parser::new("for id:= 1 to 10 do 1+1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        ForExpr(ref id, ref from_expr, ref to_expr, ref do_expr) => {
-            assert_eq!(*id, String::from("id"));
-            match **from_expr{
-                NumExpr(n) => assert_eq!(n, 1),
-                _ => panic!("This will not execute")
-            }
-            match **to_expr{
-                NumExpr(n) => assert_eq!(n, 10),
-                _ => panic!("This will not execute")
-            }
-            match **do_expr{
-                AddExpr(ref l, ref r) => {
-                    match **l{
-                        NumExpr(n) => assert_eq!(n, 1),
-                        _ => {}
-                    }
-                },
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+    #[test]
+    fn test_while_expr_with_less_than_cmp_as_conditional_expr(){
+        let mut p = Parser::new("while 1<1 do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    LessThanExpr(ref l, ref r) => {
+                        match **l{
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_for_expr_with_ident_as_from_expr(){
-    let mut p = Parser::new("for id:= a to 10 do 1+1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        ForExpr(ref id, ref from_expr, _, _) => {
-            match **from_expr{
-                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
-                _ => panic!("this will not execute")
-            }
-        },
-        _ => panic!("this will not execute")
-    } 
-}
-#[test]
-fn test_for_expr_with_ident_as_to_and_from_expr(){
-    let mut p = Parser::new("for id:= a to b do 1+1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        ForExpr(ref id, ref from_expr, ref to_expr, _) => {
-            match **to_expr{
-                IdExpr(ref i) => assert_eq!(*i, String::from("b")),
-                _ => panic!("This will not execute")
-            }
-            match **from_expr{
-                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-    match *expr{
-        ForExpr(ref id, ref from_expr, ref to_expr, _) => {
-            match **to_expr{
-                IdExpr(ref i) => assert_eq!(*i, String::from("b")),
-                _ => panic!("This will not execute")
-            }
-            match **from_expr{
-                IdExpr(ref i) => assert_eq!(*i, String::from("a")),
-                _ => panic!("This will not execute")
-            }
-        },
-        _ => panic!("This will not execute")
-    } 
-}
+    #[test]
+    fn test_while_expr_with_greater_than_cmp_as_conditional_expr(){
+        let mut p = Parser::new("while 1>1 do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    GreaterThanExpr(ref l, ref r) => {
+                        match **l{
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
+    #[test]
+    fn test_while_expr_with_ident_as_conditional_expr(){
+        let mut p = Parser::new("while a do 1".to_string());
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            WhileExpr(ref conditional_expr, ref do_expr) => {
+                match **conditional_expr{
+                    IdExpr(ref id) => {
+                        assert_eq!(*id, String::from("a"));
+                    },
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
+    #[test]
+    fn test_for_expr(){
+        let mut p = Parser::new("for id:= 1 to 10 do 1+1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            ForExpr(ref id, ref from_expr, ref to_expr, ref do_expr) => {
+                assert_eq!(*id, String::from("id"));
+                match **from_expr{
+                    NumExpr(n) => assert_eq!(n, 1),
+                    _ => panic!("This will not execute")
+                }
+                match **to_expr{
+                    NumExpr(n) => assert_eq!(n, 10),
+                    _ => panic!("This will not execute")
+                }
+                match **do_expr{
+                    AddExpr(ref l, ref r) => {
+                        match **l{
+                            NumExpr(n) => assert_eq!(n, 1),
+                            _ => {}
+                        }
+                    },
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_int_array_with_dim_1_init_1(){
-    let mut p = Parser::new("array of int[1] of 1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
-            match **dim_expr{
-                NumExpr(i) => assert_eq!(i, 1),
-                _ => panic!("Expected a num expression")
-            }
-            match **init_expr{
-                NumExpr(i) => assert_eq!(i, 1),
-                _ => panic!("Expected a num expression")
-            }
-        },
-        _ => panic!("this will not execute")
-    } 
-}
+    #[test]
+    fn test_for_expr_with_ident_as_from_expr(){
+        let mut p = Parser::new("for id:= a to 10 do 1+1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            ForExpr(ref id, ref from_expr, _, _) => {
+                match **from_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                    _ => panic!("this will not execute")
+                }
+            },
+            _ => panic!("this will not execute")
+        } 
+    }
+    #[test]
+    fn test_for_expr_with_ident_as_to_and_from_expr(){
+        let mut p = Parser::new("for id:= a to b do 1+1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            ForExpr(ref id, ref from_expr, ref to_expr, _) => {
+                match **to_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("b")),
+                    _ => panic!("This will not execute")
+                }
+                match **from_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+        match *expr{
+            ForExpr(ref id, ref from_expr, ref to_expr, _) => {
+                match **to_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("b")),
+                    _ => panic!("This will not execute")
+                }
+                match **from_expr{
+                    IdExpr(ref i) => assert_eq!(*i, String::from("a")),
+                    _ => panic!("This will not execute")
+                }
+            },
+            _ => panic!("This will not execute")
+        } 
+    }
 
-#[test]
-fn test_int_array_with_dim_add_expr_init_add_expr(){
-    let mut p = Parser::new("array of int[1+1] of 1+1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
-            match **dim_expr{
-                AddExpr(_, _ ) => {},
-                _ => panic!("Expected a num expression")
-            }
-            match **init_expr{
-                AddExpr(_, _ ) => {},
-                _ => panic!("Expected a num expression")
-            }
-        },
-        _ => panic!("Expected an array expression")
-    } 
-}
+    #[test]
+    fn test_int_array_with_dim_1_init_1(){
+        let mut p = Parser::new("array of int[1] of 1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+                match **dim_expr{
+                    NumExpr(i) => assert_eq!(i, 1),
+                    _ => panic!("Expected a num expression")
+                }
+                match **init_expr{
+                    NumExpr(i) => assert_eq!(i, 1),
+                    _ => panic!("Expected a num expression")
+                }
+            },
+            _ => panic!("this will not execute")
+        } 
+    }
 
-#[test]
-fn test_var_as_int_array_with_dim_add_expr_init_add_expr(){
-    let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a end".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        LetExpr(ref v, ref o) => {
-            match v[0]{
-                VarDec(ref id, ref ty, ref e) => {
-                    assert_eq!(*id, "a".to_string());
-                    match **e{ //**e means deref deref B<T> which results in T
-                        NumExpr(n) => assert_eq!(1, n),
-                        ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
-                            assert_eq!(*ty, TInt32);
-                            match **dim_expr{
-                                AddExpr(ref l, ref r) => { },
-                                _ => panic!("Expected add expr")
-                            }
-                            match **init_expr{
-                                AddExpr(ref l, ref r) => { },
-                                _ => panic!("Expected add expr")
-                            }
-                        },
-                        _ => {panic!("expected an array expr")}
-                    }
-                },
-                _ => {}
-            }
-        },
-        _ => {}
-    } 
-}
+    #[test]
+    fn test_int_array_with_dim_add_expr_init_add_expr(){
+        let mut p = Parser::new("array of int[1+1] of 1+1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+                match **dim_expr{
+                    AddExpr(_, _ ) => {},
+                    _ => panic!("Expected a num expression")
+                }
+                match **init_expr{
+                    AddExpr(_, _ ) => {},
+                    _ => panic!("Expected a num expression")
+                }
+            },
+            _ => panic!("Expected an array expression")
+        } 
+    }
 
-#[test]
-fn test_subscript_expr(){
-    let mut p = Parser::new("a[b[0]]".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        SubscriptExpr(ref name, ref expr) => {
-            assert_eq!(*name, String::from("a")); 
-        },
-        _ => panic!("Expected a subscript expression")
-    } 
-}
+    #[test]
+    fn test_var_as_int_array_with_dim_add_expr_init_add_expr(){
+        let mut p = Parser::new("let var a : array := array of int[1+1] of 1+1 in a end".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            LetExpr(ref v, ref o) => {
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            NumExpr(n) => assert_eq!(1, n),
+                            ArrayExpr(ref ty, ref dim_expr, ref init_expr) => {
+                                assert_eq!(*ty, TInt32);
+                                match **dim_expr{
+                                    AddExpr(ref l, ref r) => { },
+                                    _ => panic!("Expected add expr")
+                                }
+                                match **init_expr{
+                                    AddExpr(ref l, ref r) => { },
+                                    _ => panic!("Expected add expr")
+                                }
+                            },
+                            _ => {panic!("expected an array expr")}
+                        }
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        } 
+    }
 
-#[test]
-fn test_subscript_expr_assign(){
-    let mut p = Parser::new("a[0] := 1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        AssignExpr(ref lhs, ref rhs) => {
-            match **lhs{
-                SubscriptExpr(ref name, _) =>{
-                    assert_eq!(*name, String::from("a"));
-                },
-                _ => {panic!("Expected a SubscriptExpr");}
-            }
+    #[test]
+    fn test_subscript_expr(){
+        let mut p = Parser::new("a[b[0]]".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            SubscriptExpr(ref name, ref expr) => {
+                assert_eq!(*name, String::from("a")); 
+            },
+            _ => panic!("Expected a subscript expression")
+        } 
+    }
 
-            match **rhs{
-                NumExpr(i) => {assert_eq!(i, 1);},
-                _ => {panic!("Expected a NumExpr");}
-            }
-            //assert_eq!(*name, String::from("a")); 
-        },
-        _ => panic!("Expected an assignment expression")
-    } 
-}
+    #[test]
+    fn test_subscript_expr_assign(){
+        let mut p = Parser::new("a[0] := 1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            AssignExpr(ref lhs, ref rhs) => {
+                match **lhs{
+                    SubscriptExpr(ref name, _) =>{
+                        assert_eq!(*name, String::from("a"));
+                    },
+                    _ => {panic!("Expected a SubscriptExpr");}
+                }
 
-#[test]
-fn test_int_var_assign(){
-    let mut p = Parser::new("a := 1".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        AssignExpr(ref lhs, ref rhs) => {
-            match **lhs{
-                IdExpr(ref name) =>{
-                    assert_eq!(*name, String::from("a"));
-                },
-                _ => {panic!("Expected a SubscriptExpr");}
-            }
+                match **rhs{
+                    NumExpr(i) => {assert_eq!(i, 1);},
+                    _ => {panic!("Expected a NumExpr");}
+                }
+                //assert_eq!(*name, String::from("a")); 
+            },
+            _ => panic!("Expected an assignment expression")
+        } 
+    }
 
-            match **rhs{
-                NumExpr(i) => {assert_eq!(i, 1);},
-                _ => {panic!("Expected a NumExpr");}
-            }
-            //assert_eq!(*name, String::from("a")); 
-        },
-        _ => panic!("Expected an assignment expression")
-    } 
-}
+    #[test]
+    fn test_int_var_assign(){
+        let mut p = Parser::new("a := 1".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            AssignExpr(ref lhs, ref rhs) => {
+                match **lhs{
+                    IdExpr(ref name) =>{
+                        assert_eq!(*name, String::from("a"));
+                    },
+                    _ => {panic!("Expected a SubscriptExpr");}
+                }
 
-#[test]
-fn test_record_decl_with_one_int_field(){
-    let mut p = Parser::new("let var a : rec := {f:int} in a end".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        LetExpr(ref v, ref o) => {
-            match v[0]{
-                VarDec(ref id, ref ty, ref e) => {
-                    assert_eq!(*id, "a".to_string());
-                    match **e{ //**e means deref deref B<T> which results in T
-                        RecordExpr(ref field_decls) => {
-                            assert_eq!((field_decls.as_ref().unwrap()).len(), 1);
-                            assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
-                            assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                match **rhs{
+                    NumExpr(i) => {assert_eq!(i, 1);},
+                    _ => {panic!("Expected a NumExpr");}
+                }
+                //assert_eq!(*name, String::from("a")); 
+            },
+            _ => panic!("Expected an assignment expression")
+        } 
+    }
 
-                        },
-                        _ => {panic!("expected a rec expr")}
-                    }
-                },
-                _ => {panic!("expected var decl")}
-            }
-        },
-        _ => {panic!("expected let expr")}
-    } 
-}
+    #[test]
+    fn test_record_decl_with_one_int_field(){
+        let mut p = Parser::new("let var a : rec := {f:int} in a end".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            LetExpr(ref v, ref o) => {
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            RecordExpr(ref field_decls) => {
+                                assert_eq!((field_decls.as_ref().unwrap()).len(), 1);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
 
-#[test]
-fn test_record_decl_with_two_fields(){
-    let mut p = Parser::new("let var a : rec := {f:int, g:string} in a end".to_string()); 
-    p.start_lexer();
-    let (ty, expr) = p.expr().unwrap();
-    match *expr{
-        LetExpr(ref v, ref o) => {
-            match v[0]{
-                VarDec(ref id, ref ty, ref e) => {
-                    assert_eq!(*id, "a".to_string());
-                    match **e{ //**e means deref deref B<T> which results in T
-                        RecordExpr(ref field_decls) => {
-                            assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
-                            assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
-                            assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
-                            assert_eq!((field_decls.as_ref().unwrap())[1].0, String::from("g"));
-                            assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
+                            },
+                            _ => {panic!("expected a rec expr")}
+                        }
+                    },
+                    _ => {panic!("expected var decl")}
+                }
+            },
+            _ => {panic!("expected let expr")}
+        } 
+    }
 
-                        },
-                        _ => {panic!("expected a rec expr")}
-                    }
-                },
-                _ => {panic!("expected var decl")}
-            }
-        },
-        _ => {panic!("expected let expr")}
-    } 
+    #[test]
+    fn test_record_decl_with_two_fields(){
+        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a end".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            LetExpr(ref v, ref o) => {
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            RecordExpr(ref field_decls) => {
+                                assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                                assert_eq!((field_decls.as_ref().unwrap())[1].0, String::from("g"));
+                                assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
+
+                            },
+                            _ => {panic!("expected a rec expr")}
+                        }
+                    },
+                    _ => {panic!("expected var decl")}
+                }
+            },
+            _ => {panic!("expected let expr")}
+        } 
+    }
 }
