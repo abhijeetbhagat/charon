@@ -15,12 +15,6 @@ use std::any::{Any};
 use syntax::ast::{Block, Expr, Decl, TType, OptionalTypeExprTupleList};
 use syntax::ast::Expr::*;
 use syntax::ptr::{B};
-//FIXME is this the appropriate place to call the TC?
-use syntax::visit::{Visitor};
-use syntax::visitor_impl::{TypeChecker};
-//FIXME this import is for integration testing purposes
-use syntax::parse::*;//{Parser};
-use syntax::parse::parser::{Parser};
 use link::link;
 use helpers::*;
 use symbol::*;
@@ -1014,363 +1008,374 @@ fn trans_expr(expr: &Expr, ctxt : &mut Context){
     }
 }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_prnt_call() {
-    let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    // let ctxt = translate();&Expr::CallExpr("print".to_string(),
-    //                               Some(vec![(TType::TString,
-    //                                          B(Expr::StringExpr("abhi".to_string())))])));
-    assert_eq!(ctxt.is_some(), true);
-}
+#[cfg(test)]
+mod tests {
+    use syntax::visit::{Visitor};
+    use syntax::visitor_impl::{TypeChecker};
+    use syntax::parse::*;//{Parser};
+    use syntax::parse::parser::{Parser};
+    use link::link;
+    use helpers::*;
+    use symbol::*;
+    use super::*;
+    #[test]
+    fn test_prsr_bcknd_intgrtion_prnt_call() {
+        let mut p = Parser::new("print(\"Grrrr!\n\")".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        // let ctxt = translate();&Expr::CallExpr("print".to_string(),
+        //                               Some(vec![(TType::TString,
+        //                                          B(Expr::StringExpr("abhi".to_string())))])));
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_translate_add_expr(){
-    let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-}
-#[test]
-fn test_prsr_bcknd_intgrtion_let_blk() {
-    let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_translate_add_expr(){
+        let mut p = Parser::new(String::from("let function foo() : int = 1+3 in foo() end"));
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+    }
+    #[test]
+    fn test_prsr_bcknd_intgrtion_let_blk() {
+        let mut p = Parser::new("let function foo() = print(\"Grrrr!\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr() {
-    let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_if_then_expr() {
+        let mut p = Parser::new("let function foo()  = if 0 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
-    let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_if_then_expr_with_div_expr() {
+        let mut p = Parser::new("let function foo()  = if 1/1 then print(\"rust\n\") else print(\"c++\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
-    let mut p = Parser::new("let function foo()  = if 1*1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_if_then_expr_with_mul_expr() {
+        let mut p = Parser::new("let function foo()  = if 1*1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
-    let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_if_then_expr_with_less_than_expr() {
+        let mut p = Parser::new("let function foo() = if 1<1 then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-#[should_panic(expected="Both types of a relational operator must match and be of type int or string.")]
-fn test_prsr_bcknd_intgrtion_less_than_expr_with_mismatched_types() {
-    let mut p = Parser::new("let function foo() = if 1< \"abhi\" then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
-#[test]
-fn test_prsr_bcknd_intgrtion_var_decl() {
-    let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    #[should_panic(expected="Both types of a relational operator must match and be of type int or string.")]
+    fn test_prsr_bcknd_intgrtion_less_than_expr_with_mismatched_types() {
+        let mut p = Parser::new("let function foo() = if 1< \"abhi\" then print(\"ruby\n\") else print(\"c++\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
+    #[test]
+    fn test_prsr_bcknd_intgrtion_var_decl() {
+        let mut p = Parser::new("let var a : int :=1\n function foo()  = print(\"ruby\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_for_loop() {
-    let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_for_loop() {
+        let mut p = Parser::new("let function foo() = for i:=1 to 5 do print(\"ruby\n\") in foo() end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_num() {
-    let mut p = Parser::new("print(1)".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.is_some(), true);
-}
-#[test]
-#[should_panic(expected="Invalid call to 'foo'. Function not found.")]
-fn test_prsr_bcknd_intgrtion_invalid_call() {
-    let mut p = Parser::new("foo()".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_num() {
+        let mut p = Parser::new("print(1)".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.is_some(), true);
+    }
+    #[test]
+    #[should_panic(expected="Invalid call to 'foo'. Function not found.")]
+    fn test_prsr_bcknd_intgrtion_invalid_call() {
+        let mut p = Parser::new("foo()".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+    }
 
 
-#[test]
-#[should_panic(expected="Invalid reference to variable 'i'")]
-fn test_prsr_bcknd_intgrtion_invalid_reference_to_var() {
-    let mut p = Parser::new("let var a : int :=i in foo()".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-}
+    #[test]
+    #[should_panic(expected="Invalid reference to variable 'i'")]
+    fn test_prsr_bcknd_intgrtion_invalid_reference_to_var() {
+        let mut p = Parser::new("let var a : int :=i in foo()".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
-    let mut p = Parser::new("let var i : int := 1\nvar a : int :=i in print(\"\")".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_var_assignment_to_var() {
+        let mut p = Parser::new("let var i : int := 1\nvar a : int :=i in print(\"\")".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
+    }
 
-#[test]
-#[should_panic(expected="Invalid reference to variable 'foo'. Different binding found.")]
-fn test_prsr_bcknd_intgrtion_invalid_reference_to_var_defined_as_function() {
-    let mut p = Parser::new("let function foo() = print(\"b\")\nvar i : int := foo\n in print(\"\")".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-}
+    #[test]
+    #[should_panic(expected="Invalid reference to variable 'foo'. Different binding found.")]
+    fn test_prsr_bcknd_intgrtion_invalid_reference_to_var_defined_as_function() {
+        let mut p = Parser::new("let function foo() = print(\"b\")\nvar i : int := foo\n in print(\"\")".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+    }
 
-#[test]
-#[should_panic(expected="Invalid reference to function 'foo'. Different binding found.")]
-fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
-    let mut p = Parser::new("let var foo : int := 1\n in foo()".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-}
+    #[test]
+    #[should_panic(expected="Invalid reference to function 'foo'. Different binding found.")]
+    fn test_prsr_bcknd_intgrtion_invalid_reference_to_func_defined_as_var() {
+        let mut p = Parser::new("let var foo : int := 1\n in foo()".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+    }
 
-//#[test]
-fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
-    let mut p = Parser::new("let var a : int := 1\nfunction foo(a:int, b:int) = print(\"abhi\")\n in foo()".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
-}
+    //#[test]
+    fn test_prsr_bcknd_intgrtion_empty_sym_tab_after_function_scope_ends() {
+        let mut p = Parser::new("let var a : int := 1\nfunction foo(a:int, b:int) = print(\"abhi\")\n in foo()".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        assert_eq!(ctxt.unwrap().sym_tab.len(), 2);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
-    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in add(1, 2)".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&*b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_function_with_2_int_params_with_a_call() {
+        let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in add(1, 2)".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&*b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_addition_call_result() {
-    let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(add(1,2))".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_addition_call_result() {
+        let mut p = Parser::new("let function add(a:int, b:int) : int = a+b\n in print(add(1,2))".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_string_return_call_result() {
-    let mut p = Parser::new("let function add() : string = \"abhi\n\"\n in print(add())".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_string_return_call_result() {
+        let mut p = Parser::new("let function add() : string = \"abhi\n\"\n in print(add())".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_not_return_call_result() {
-    let mut p = Parser::new("print(not(0))".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_not_return_call_result() {
+        let mut p = Parser::new("print(not(0))".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_size_return_call_result() {
-    let mut p = Parser::new("print(size(\"abhi\"))".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_size_return_call_result() {
+        let mut p = Parser::new("print(size(\"abhi\"))".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_with_exit_call() {
-    let mut p = Parser::new("exit(1)".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_with_exit_call() {
+        let mut p = Parser::new("exit(1)".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //assert_eq!(ctxt.unwrap().sym_tab.len(), 1);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
-    let mut p = Parser::new("print(ord(\"73\") + 12)".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_print_with_ord_call() {
+        let mut p = Parser::new("print(ord(\"73\") + 12)".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
-    let mut p = Parser::new("let var a : array := array of int[1] of 1+1 in a end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_array_var_succeeds() {
+        let mut p = Parser::new("let var a : array := array of int[1] of 1+1 in a end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_array_access() {
-    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in print(a[2]) end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //link_object_code(ctxt.as_ref().unwrap());
-    //ctxt.unwrap().dump();
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_array_access() {
+        let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in print(a[2]) end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //link_object_code(ctxt.as_ref().unwrap());
+        //ctxt.unwrap().dump();
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_array_element_modification() {
-    let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[2]:=99;print(a[2]);) end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    //link_object_code(ctxt.as_ref().unwrap());
-    //ctxt.unwrap().dump();
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_array_element_modification() {
+        let mut p = Parser::new("let var a : array := array of int[3] of 1+1 in (a[2]:=99;print(a[2]);) end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        //link_object_code(ctxt.as_ref().unwrap());
+        //ctxt.unwrap().dump();
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_int_var_modification() {
-    let mut p = Parser::new("let var a : int := 3 in (a := 8;print(a);) end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    link_object_code(ctxt.as_ref().unwrap());
-    ctxt.unwrap().dump();
-}
+    #[test]
+    fn test_prsr_bcknd_intgrtion_int_var_modification() {
+        let mut p = Parser::new("let var a : int := 3 in (a := 8;print(a);) end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        super::link_object_code(ctxt.as_ref().unwrap());
+        ctxt.unwrap().dump();
+    }
 
-#[test]
-fn test_prsr_bcknd_intgrtion_record_decl() {
-    let mut p = Parser::new("let var a : rec := {b:int} in a end".to_string());
-    p.start_lexer();
-    let mut tup = p.expr();
-    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-    let mut v = TypeChecker::new();
-    v.visit_expr(&mut *b_expr);
-    let ctxt = translate(&mut *b_expr);
-    link_object_code(ctxt.as_ref().unwrap());
-    ctxt.unwrap().dump();
+    #[test]
+    fn test_prsr_bcknd_intgrtion_record_decl() {
+        let mut p = Parser::new("let var a : rec := {b:int} in a end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        super::link_object_code(ctxt.as_ref().unwrap());
+        ctxt.unwrap().dump();
+    }
+    //#[test]
+    //fn test_prsr_bcknd_intgrtion_print_with_chr_call() {
+    //    let mut p = Parser::new("print(chr(7))".to_string());
+    //    p.start_lexer();
+    //    let mut tup = p.expr();
+    //    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+    //    let mut v = TypeChecker::new();
+    //    v.visit_expr(&mut *b_expr);
+    //    let ctxt = translate(&mut *b_expr);
+    //    link_object_code(ctxt.as_ref().unwrap());
+    //}
 }
-//#[test]
-//fn test_prsr_bcknd_intgrtion_print_with_chr_call() {
-//    let mut p = Parser::new("print(chr(7))".to_string());
-//    p.start_lexer();
-//    let mut tup = p.expr();
-//    let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
-//    let mut v = TypeChecker::new();
-//    v.visit_expr(&mut *b_expr);
-//    let ctxt = translate(&mut *b_expr);
-//    link_object_code(ctxt.as_ref().unwrap());
-//}
