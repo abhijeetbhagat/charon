@@ -1001,11 +1001,7 @@ fn link_object_code(ctxt : &Context){
 }
 
 fn trans_expr(expr: &Expr, ctxt : &mut Context){
-    let result = expr.codegen(ctxt); //ctxt is already &mut
-    match result {
-        Ok(_) => {},
-        Err(msg) => panic!(msg)
-    }
+    expr.codegen(ctxt).unwrap();
 }
 
 #[cfg(test)]
