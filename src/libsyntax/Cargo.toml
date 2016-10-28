@@ -10,4 +10,4 @@ test = true
 
 [dependencies]
 itertools = "*"
-clippy = "*"
+#clippy = "*"
