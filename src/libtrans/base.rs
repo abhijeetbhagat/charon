@@ -342,19 +342,10 @@ impl IRBuilder for Expr{
                     build_relational_instrs!(LLVMBuildICmp, llvm::LLVMIntPredicate::LLVMIntNE, e1, e2, "necmp_tmp")
                 },
                 &Expr::IdExpr(ref id) => {
-                    //FIXME this logic to check whether a symbol exists in the sym-tab
-                    //is repetitive. Needs refactoring.
                     let mut sym = &None;
-                    let mut found = false;
-                    for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-                        if *_id == *id  {
-                            sym = info;
-                            found = true;
-                            break;
-                        }
-                    }
+                    get_symbol(&mut sym, id, &ctxt.sym_tab);
 
-                    if !found{
+                    if sym.is_none(){
                         panic!(format!("Invalid reference to variable '{0}'", *id));
                     }
 
@@ -376,16 +367,9 @@ impl IRBuilder for Expr{
                         &Expr::IdExpr(ref id) => {
                             //let load = try!(lhs.codegen(ctxt));
                             let mut sym = &None;
-                            let mut found = false;
-                            for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-                                if *_id == *id  {
-                                    sym = info;
-                                    found = true;
-                                    break;
-                                }
-                            }
+                            get_symbol(&mut sym, id, &ctxt.sym_tab);
 
-                            if !found{
+                            if sym.is_none(){
                                 panic!(format!("Invalid reference to variable '{0}'", *id));
                             }
 
@@ -496,16 +480,9 @@ impl IRBuilder for Expr{
                             }
                             
                             let mut sym = &None;
-                            let mut found = false;
-                            for &(ref id, ref info) in ctxt.sym_tab.iter().rev(){
-                                if *id == *fn_name{
-                                    sym = info;
-                                    found = true;
-                                    break;
-                                }
-                            }
+                            get_symbol(&mut sym, fn_name, &ctxt.sym_tab);
 
-                            if !found{
+                            if sym.is_none(){
                                 panic!(format!("Call to '{0}' not found", fn_name));
                             }
 
@@ -715,6 +692,16 @@ impl IRBuilder for Expr{
         }
     }
 
+        
+}
+
+fn get_symbol<'a>(sym : &mut &'a OptionalSymbolInfo, id : &String, sym_tab : &'a Vec<(Cow<'a, str>, OptionalSymbolInfo)>){
+    for &(ref _id, ref info) in sym_tab.iter().rev(){
+        if *_id == *id  {
+            *sym = info;
+            break;
+        }
+    }
 }
 
 //returns the pointer to an element in the array
@@ -725,16 +712,9 @@ fn get_gep(id : &String, subscript_expr : &Expr, ctxt : &mut Context) -> IRBuild
         //mutable. see how this can be put inside if _optional.is_some(){...}
         let i = try!(subscript_expr.codegen(ctxt));
         let mut sym = &None;
-        let mut found = false;
-        for &(ref _id, ref info) in ctxt.sym_tab.iter().rev(){
-            if *_id == *id  {
-                sym = info;
-                found = true;
-                break;
-            }
-        }
+        get_symbol(&mut sym, id, &ctxt.sym_tab);
 
-        if !found{
+        if sym.is_none(){
             panic!(format!("Invalid reference to array '{0}'", *id));
         }
 
