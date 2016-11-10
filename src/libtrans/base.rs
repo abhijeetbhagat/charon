@@ -612,14 +612,10 @@ impl IRBuilder for Expr{
                                                                                LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0)].as_mut_ptr(),
                                                                                2,
                                                                                c_str_ptr!("array_gep"));
-                                                        //FIXME replace i with codegenerated
-                                                        //_init_expr
                                                         LLVMBuildStore(ctxt.builder,
                                                                        init_val,
-                                                                       //LLVMConstInt(LLVMIntTypeInContext(ctxt.context, 32), i as u64, 0),
                                                                        val);
 
-                                                        //store
                                                     }
                                                     //let _load = LLVMBuildLoad(ctxt.builder, dim, c_str_ptr!("arr_load"));
                                                     /*let _alloca = LLVMBuildArrayAlloca(ctxt.builder, 

@@ -141,9 +141,11 @@ impl<'a> Visitor<'a> for TypeChecker{
                 let mut found = false;
                 if self.std_functions.contains_key(id){
                     found = true;
-                    self.ty = match *self.std_functions.get(id).unwrap(){
-                        FuncBinding(ref ty) => ty.clone(),
-                        _ => {TNil}
+                    self.ty = if let Some(&FuncBinding(ref ty)) = self.std_functions.get(id){
+                        ty.clone()
+                    }
+                    else{
+                        TNil
                     }
                 }
                 else{
@@ -183,16 +185,7 @@ impl<'a> Visitor<'a> for TypeChecker{
                                 }
                                 //FIXME do we panic if function not found?
                             }, 
-                            SubscriptExpr(ref id, ref sub_expr) => {
-                                for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
-                                    if *id == *_id{
-                                        if let VarBinding(ref _ty) = **binding.as_ref().unwrap(){
-                                            *ty = _ty.clone();
-                                            break; 
-                                        } 
-                                    }
-                                }
-                            },
+                            SubscriptExpr(ref id, _) |
                             IdExpr(ref id) => {
                                 for &(ref _id, ref binding) in self.sym_tab.iter().rev(){
                                     if *id == *_id{
