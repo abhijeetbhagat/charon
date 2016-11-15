@@ -624,4 +624,28 @@ mod tests {
         assert_eq!(l.get_token(), Token::Int);
         assert_eq!(l.get_token(), Token::RightCurly);
     }
+    
+    #[test]
+    fn test_record_access(){
+        let mut l = Lexer::new("a.x".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Dot);
+        assert_eq!(l.get_token(), Token::Ident);
+
+    }
+
+    #[test]
+    fn test_multi_record_access(){
+        let mut l = Lexer::new("a.x.b.c".to_string());
+        l.get_char();
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Dot);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Dot);
+        assert_eq!(l.get_token(), Token::Ident);
+        assert_eq!(l.get_token(), Token::Dot);
+        assert_eq!(l.get_token(), Token::Ident);
+
+    }
 }
