@@ -422,7 +422,22 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                     }
                 }
             }, //subscript
-            Token::Dot => {}, //fieldexp
+            Token::Dot => {
+                println!("parsing field access");
+                return Some((TNil, B(FieldExpr(op1, 
+                                              match self.lexer.get_token(){
+                                                  Token::Ident => {
+                                                      self.parse_ident_expr().unwrap().1
+                                                  },
+
+                                                  Token::End => {
+                                                    B(NoOpExpr)    
+                                                  },
+                                                  _ => panic!("Expected an identifier during field access")
+                                              }
+                                             ))))
+
+            }, //fieldexp
             Token::LeftParen => { //callexpr
                 println!("parsing call");
                 let args_list = self.parse_call_args();
@@ -1909,5 +1924,115 @@ mod tests {
             },
             _ => {panic!("expected let expr")}
         } 
+    }
+
+    #[test]
+    fn test_record_access_one_level(){ 
+        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a.f end".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            LetExpr(ref v, ref o) => {
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            RecordExpr(ref field_decls) => {
+                                assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                                assert_eq!((field_decls.as_ref().unwrap())[1].0, String::from("g"));
+                                assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
+
+                            },
+                            _ => {panic!("expected a rec expr")}
+                        }
+                    },
+                    _ => {panic!("expected var decl")}
+                }
+
+                match **o.as_ref().unwrap(){
+                    FieldExpr(ref head, ref tail) =>{
+                        match **head{
+                            IdExpr(ref id) => assert_eq!(*id, "a"),
+                            _ => panic!("Expected id expression")
+                        }
+
+                        match **tail{
+                            IdExpr(ref id) =>{
+                                assert_eq!(*id, "f");
+
+                            }
+                            _ => {panic!("Expected field expression")}
+                        }
+
+                    
+                    },
+                    _ => {panic!("Expected a field expression")}
+                }
+            },
+            _ => {panic!("expected let expr")}
+        }
+    }
+
+    #[test]
+    fn test_record_access_two_level(){ 
+        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a.f.e end".to_string()); 
+        p.start_lexer();
+        let (ty, expr) = p.expr().unwrap();
+        match *expr{
+            LetExpr(ref v, ref o) => {
+                match v[0]{
+                    VarDec(ref id, ref ty, ref e) => {
+                        assert_eq!(*id, "a".to_string());
+                        match **e{ //**e means deref deref B<T> which results in T
+                            RecordExpr(ref field_decls) => {
+                                assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                                assert_eq!((field_decls.as_ref().unwrap())[1].0, String::from("g"));
+                                assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
+
+                            },
+                            _ => {panic!("expected a rec expr")}
+                        }
+                    },
+                    _ => {panic!("expected var decl")}
+                }
+
+                match **o.as_ref().unwrap(){
+                    FieldExpr(ref head, ref tail) =>{
+                        match **head{
+                            IdExpr(ref id) => assert_eq!(*id, "a"),
+                            _ => panic!("Expected id expression")
+                        }
+
+                        match **tail{
+                            FieldExpr(ref head, ref tail)=>
+                            {
+                                match **head{
+                                    IdExpr(ref id) =>{
+                                        assert_eq!(*id, "f");
+                                    },
+                                    _ => {panic!("Expected id expression")}
+                                }
+
+                                match **tail{
+                                    IdExpr(ref id) =>{
+                                        assert_eq!(*id, "e");
+                                    },
+                                    _ => panic!("Expected id expression")
+                                }
+                            }
+                            _ => {panic!("Expected field expression")}
+                        }
+
+                    
+                    },
+                    _ => {panic!("Expected a field expression")}
+                }
+            },
+            _ => {panic!("expected let expr")}
+        }
     }
 }

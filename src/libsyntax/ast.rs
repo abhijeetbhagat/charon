@@ -133,6 +133,7 @@ pub enum Expr{
    //array of int[3] of 0
    ArrayExpr(TType, B<Expr>, B<Expr>),
    RecordExpr(OptionalIdTypePairs),
+   FieldExpr(B<Expr>, B<Expr>),
    SubscriptExpr(String, B<Expr>),
    SubscriptSetExpr(String, B<Expr>, B<Expr>),
    AddExpr(B<Expr>, B<Expr>),
@@ -153,7 +154,8 @@ pub enum Expr{
    ForExpr(String, B<Expr>, B<Expr>, B<Expr>),
    AssignExpr(B<Expr>, B<Expr>),
    LabelExpr(String),
-   GotoExpr(String)
+   GotoExpr(String),
+   NoOpExpr
 }
 
 pub struct FieldDec{
