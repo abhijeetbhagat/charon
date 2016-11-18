@@ -743,7 +743,8 @@ impl StdFunctionCodeBuilder for Expr{
             //FIXME call std_fn_codegen() for index, dim and init exprs
             Expr::SubscriptExpr(_, _) |
             Expr::RecordExpr(_) |
-            Expr::ArrayExpr(_, _, _) => return,
+            Expr::ArrayExpr(_, _, _) |
+            Expr::FieldExpr(_, _) => return,
             Expr::AddExpr(ref e1, ref e2) |
             Expr::SubExpr(ref e1, ref e2) |
             Expr::MulExpr(ref e1, ref e2) |
@@ -1330,6 +1331,19 @@ mod tests {
     #[test]
     fn test_prsr_bcknd_intgrtion_record_decl() {
         let mut p = Parser::new("let var a : rec := {b:int} in a end".to_string());
+        p.start_lexer();
+        let mut tup = p.expr();
+        let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();
+        let mut v = TypeChecker::new();
+        v.visit_expr(&mut *b_expr);
+        let ctxt = translate(&mut *b_expr);
+        super::link_object_code(ctxt.as_ref().unwrap());
+        ctxt.unwrap().dump();
+    }
+
+    #[test]
+    fn test_prsr_bcknd_intgrtion_record_access() {
+        let mut p = Parser::new("let var a : rec := {b:int} in print(a.b) end".to_string());
         p.start_lexer();
         let mut tup = p.expr();
         let &mut (ref mut ty, ref mut b_expr) = tup.as_mut().unwrap();

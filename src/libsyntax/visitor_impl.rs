@@ -654,3 +654,33 @@ fn test_record_contains_cyclic_ref_3() {
     v.visit_decl(&mut VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("a"), TCustom(String::from("int"))),
                                                                               (String::from("f"), TCustom(String::from("b")))])))));
 }
+
+#[test]
+fn test_record_field_access_type_fix(){
+    let mut v = TypeChecker::new();
+    //let var a = rec{b:int} in print(a.b) end
+    let e = &mut LetExpr(vec![VarDec("a".to_string(), TRecord, B(RecordExpr(Some(vec![(String::from("f"), TInt32), (String::from("g"), TInt32), (String::from("h"), TString)]))))],
+                               Some(B(CallExpr(String::from("foo"),
+                                                 Some(vec![(TNil, B(FieldExpr(String::from("a"),
+                                                                              String::from("f")
+                                                                             )
+                                                                   )
+                                                           )]
+                                                     )
+                                                )
+                                     )
+                                   )
+                               );
+
+    v.visit_expr(e);
+    match *e{
+        LetExpr(_, ref e) => {
+            match **e.as_ref().unwrap(){
+                CallExpr(_, ref l) => {
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
