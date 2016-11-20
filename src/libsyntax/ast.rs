@@ -17,7 +17,7 @@ pub enum TType{
     TInt32,
     TString,
     TArray(B<TType>), //TType can be anything
-    TRecord,
+    TRecord(OptionalIdTypePairs),
     TCustom(String),
     TNil,
     TVoid
@@ -29,7 +29,7 @@ impl fmt::Display for TType{
             TType::TInt32 => f.write_str("Number"),
             TType::TString => f.write_str("String"),
             TType::TArray(ref T) => f.write_str("Array of some type"),
-            TType::TRecord => f.write_str("Record"),
+            TType::TRecord(_) => f.write_str("Record"),
             TType::TCustom(ref name) => f.write_str("Custom"),
             TType::TNil => f.write_str("Nil"),
             TType::TVoid => f.write_str("Void")
