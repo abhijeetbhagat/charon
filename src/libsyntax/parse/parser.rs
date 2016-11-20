@@ -259,7 +259,49 @@ impl Parser{
                                 }
                             },
                             Token::LeftCurly => { //rectype
-
+                                //TODO refactor this code in a separate function
+                                let mut field_decs : Vec<(String, TType)> = Vec::new();
+                                loop{
+                                    match self.lexer.get_token() {
+                                        Token::Comma => continue,
+                                        Token::RightCurly => { 
+                                            break;
+                                        },
+                                        Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
+                                        Token::Ident => {
+                                            let id = self.lexer.curr_string.clone();
+                                            //FIXME should we verify duplicate params here?
+                                            //HashMap and BTreeMap do not respect the order of insertions
+                                            //which is required to set up args during call.
+                                            //Vec will respect the order but cost O(n) for the verification
+                                            //Need multi_index kind of a structure from C++ Boost
+                                            if field_decs.iter().any(|ref tup| tup.0 == id){
+                                                panic!(format!("parameter '{}' found more than once", id));
+                                            }
+                                            match  self.lexer.get_token() {
+                                                Token::Colon => {
+                                                    match self.lexer.get_token() {
+                                                        Token::Int |
+                                                            Token::TokString |
+                                                            Token::Ident => {
+                                                                let ty = Self::get_ty_from_string(self.lexer.curr_string.as_str());
+                                                                field_decs.push((id, ty));
+                                                            },
+                                                            _ => panic!("Expected type-id after ':'")
+                                                    }
+                                                },
+                                                _ => panic!("Expected ':' after id")
+                                            }
+                                        },
+                                        _ => panic!("Expected a ')' or parameter id")
+                                    }
+                                }
+                                decls.push(TypeDec(id, TRecord(if field_decs.is_empty() {
+                                                                    None
+                                                                }
+                                                                else {
+                                                                    Some(field_decs)
+                                                                }))); 
                             },
                             _ => panic!("Expected either int, string, type-id, array of, '{' after '='")
                         }
@@ -271,7 +313,7 @@ impl Parser{
         }
     }
 
-fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
+    fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
         match self.lexer.get_token(){
             Token::ColonEquals => {
                 self.parse_record_fields()
@@ -377,8 +419,8 @@ fn parse_record_decl(&mut self) -> OptionalIdTypePairs{
                                 }
                             },
                             Token::Rec => {
-                                let field_decls = self.parse_record_decl();
-                                decls.push(VarDec(id.clone(), TRecord, B(RecordExpr(field_decls))));
+                                //let field_decls = self.parse_record_decl();
+                                //decls.push(VarDec(id.clone(), TRecord, B(RecordExpr(field_decls))));
                             },
                             _ => panic!("expr : pattern not covered")
                         }
@@ -1872,25 +1914,25 @@ mod tests {
 
     #[test]
     fn test_record_decl_with_one_int_field(){
-        let mut p = Parser::new("let var a : rec := {f:int} in a end".to_string()); 
+        let mut p = Parser::new("let type r = {f:int} in 0 end".to_string()); 
         p.start_lexer();
         let (ty, expr) = p.expr().unwrap();
         match *expr{
             LetExpr(ref v, ref o) => {
                 match v[0]{
-                    VarDec(ref id, ref ty, ref e) => {
-                        assert_eq!(*id, "a".to_string());
-                        match **e{ //**e means deref deref B<T> which results in T
-                            RecordExpr(ref field_decls) => {
+                    TypeDec(ref id, ref ty) => {
+                        assert_eq!(*id, "r".to_string());
+                        match ty{ //**e means deref deref B<T> which results in T
+                            &TRecord(ref field_decls) => {
                                 assert_eq!((field_decls.as_ref().unwrap()).len(), 1);
                                 assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
                                 assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
 
                             },
-                            _ => {panic!("expected a rec expr")}
+                            _ => {panic!("expected a rec type")}
                         }
                     },
-                    _ => {panic!("expected var decl")}
+                    _ => {panic!("expected rec decl")}
                 }
             },
             _ => {panic!("expected let expr")}
@@ -1899,16 +1941,16 @@ mod tests {
 
     #[test]
     fn test_record_decl_with_two_fields(){
-        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a end".to_string()); 
+        let mut p = Parser::new("let type r = {f:int, g:string} in 0 end".to_string()); 
         p.start_lexer();
         let (ty, expr) = p.expr().unwrap();
         match *expr{
             LetExpr(ref v, ref o) => {
                 match v[0]{
-                    VarDec(ref id, ref ty, ref e) => {
-                        assert_eq!(*id, "a".to_string());
-                        match **e{ //**e means deref deref B<T> which results in T
-                            RecordExpr(ref field_decls) => {
+                    TypeDec(ref id, ref ty) => {
+                        assert_eq!(*id, "r".to_string());
+                        match ty{ //**e means deref deref B<T> which results in T
+                            &TRecord(ref field_decls) => {
                                 assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
                                 assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
                                 assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
@@ -1916,7 +1958,7 @@ mod tests {
                                 assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
 
                             },
-                            _ => {panic!("expected a rec expr")}
+                            _ => {panic!("expected a rec type")}
                         }
                     },
                     _ => {panic!("expected var decl")}
