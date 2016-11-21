@@ -605,6 +605,42 @@ impl Parser{
                 let (_, op2) = self.get_nxt_and_parse();
                 return Some((TVoid, B(EqualsExpr(op1, op2))))
             },
+            Token::LeftCurly =>{
+                //TODO duplicate code; refactor it!
+                //Record init expr. var a := r{f=5,g="abhi"}
+                let mut rec_init_expr : Vec<(String, (TType, B<Expr>))> = Vec::new();
+                loop{
+                    match self.lexer.get_token() {
+                        Token::Comma => continue,
+                        Token::RightCurly => { 
+                            break;
+                        },
+                        Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
+                        Token::Ident => {
+                            let field_id = self.lexer.curr_string.clone();
+                            //FIXME should we verify duplicate params here?
+                            //HashMap and BTreeMap do not respect the order of insertions
+                            //which is required to set up args during call.
+                            //Vec will respect the order but cost O(n) for the verification
+                            //Need multi_index kind of a structure from C++ Boost
+                            if rec_init_expr.iter().any(|ref tup| tup.0 == field_id){
+                                panic!(format!("parameter '{}' found more than once", field_id));
+                            }
+                            match  self.lexer.get_token() {
+                                Token::Equals => {
+                                    rec_init_expr.push((field_id, self.get_nxt_and_parse()));
+                                },
+                                _ => panic!("Expected '=' after field")
+                            }
+                        },
+                        _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token)
+                    }
+                } 
+                //although we know tht the type is TRecord, we use TCustom because we dont
+                //want to find out TRecord details. Let TC do it.
+                decls.push(VarDec(id.clone(), TCustom(type_name.clone()), B(RecordInitExpr(type_name, Some(rec_init_expr)))));
+
+            },
             _ => {
                 //TVoid because we dont know the type of the identifier yet.
                 return Some((TVoid, op1))
@@ -2096,7 +2132,7 @@ mod tests {
                                 assert_eq!(*t, TString);
                                 match **expr{
                                     StringExpr(ref s) => assert_eq!(*s, "abhi"),
-                                    _ => panic!("Expected num expression")
+                                    _ => panic!("Expected string expression")
                                 }
 
 
@@ -2133,22 +2169,35 @@ mod tests {
 
     #[test]
     fn test_record_access_two_level(){ 
-        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a.f.e end".to_string()); 
+        let mut p = Parser::new("let type p = {h:int} type r = {f:p, g:string} var a := r{f = p{h=5}, g=\"abhi\"} in a.f.h end".to_string()); 
         p.start_lexer();
         let (ty, expr) = p.expr().unwrap();
         match *expr{
             LetExpr(ref v, ref o) => {
                 match v[0]{
-                    VarDec(ref id, ref ty, ref e) => {
-                        assert_eq!(*id, "a".to_string());
-                        match **e{ //**e means deref deref B<T> which results in T
-                            RecordExpr(ref field_decls) => {
+                    TypeDec(ref id, ref ty) => {
+                        assert_eq!(*id, "p".to_string());
+                        match ty{ //**e means deref deref B<T> which results in T
+                            &TRecord(ref field_decls) => {
+                                assert_eq!((field_decls.as_ref().unwrap()).len(), 1);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("h"));
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                            },
+                            _ => {panic!("expected a rec expr")}
+                        }
+                    },
+                    _ => {panic!("expected var decl")}
+                }
+                match v[1]{
+                    TypeDec(ref id, ref ty) => {
+                        assert_eq!(*id, "r".to_string());
+                        match ty{ //**e means deref deref B<T> which results in T
+                            &TRecord(ref field_decls) => {
                                 assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
                                 assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
-                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
+                                assert_eq!((field_decls.as_ref().unwrap())[0].1, TCustom("p".to_string()));
                                 assert_eq!((field_decls.as_ref().unwrap())[1].0, String::from("g"));
                                 assert_eq!((field_decls.as_ref().unwrap())[1].1, TString);
-
                             },
                             _ => {panic!("expected a rec expr")}
                         }
@@ -2156,7 +2205,48 @@ mod tests {
                     _ => {panic!("expected var decl")}
                 }
 
-                match **o.as_ref().unwrap(){
+                match v[2]{
+                    VarDec(ref id, ref ty, ref e) =>{
+                        assert_eq!(*id, "a");
+                        match ty{
+                            &TCustom(ref t) => assert_eq!(*t, "r"),
+                            _ => panic!("Expected 'r'")
+                        }
+
+                        match **e{
+                            RecordInitExpr(ref t, ref field_exprs) => {
+                                assert_eq!(*t, "r");
+                                let unwrapped_field_exprs = field_exprs.as_ref().unwrap();
+                                assert_eq!(unwrapped_field_exprs.len(), 2);
+                                let (ref field, (ref t, ref expr)) = unwrapped_field_exprs[0];
+                                assert_eq!(*field, "f");
+                                assert_eq!(*t, TCustom("p".to_string()));
+                                match **expr{
+                                    RecordInitExpr(ref t, ref field_exprs) => {
+                                        assert_eq!(*t, "p");
+                                        let unwrapped_field_exprs = field_exprs.as_ref().unwrap();
+                                        assert_eq!(unwrapped_field_exprs.len(), 1); 
+                                    },
+                                    _ => panic!("Expected record init expression")
+                                }
+
+                                let (ref field, (ref t, ref expr)) = unwrapped_field_exprs[1];
+                                assert_eq!(*field, "g");
+                                assert_eq!(*t, TString);
+                                match **expr{
+                                    StringExpr(ref s) => assert_eq!(*s, "abhi"),
+                                    _ => panic!("Expected string expression")
+                                }
+
+
+                            },
+                            _ => panic!("Expected a record initialization expr")
+                        }
+                    }
+                    _ => panic!("Expected var dec")
+                }
+
+                /*match **o.as_ref().unwrap(){
                     FieldExpr(ref head, ref tail) =>{
                         match **head{
                             IdExpr(ref id) => assert_eq!(*id, "a"),
@@ -2164,21 +2254,9 @@ mod tests {
                         }
 
                         match **tail{
-                            FieldExpr(ref head, ref tail)=>
-                            {
-                                match **head{
-                                    IdExpr(ref id) =>{
-                                        assert_eq!(*id, "f");
-                                    },
-                                    _ => {panic!("Expected id expression")}
-                                }
+                            IdExpr(ref id) =>{
+                                assert_eq!(*id, "f");
 
-                                match **tail{
-                                    IdExpr(ref id) =>{
-                                        assert_eq!(*id, "e");
-                                    },
-                                    _ => panic!("Expected id expression")
-                                }
                             }
                             _ => {panic!("Expected field expression")}
                         }
@@ -2186,7 +2264,7 @@ mod tests {
                     
                     },
                     _ => {panic!("Expected a field expression")}
-                }
+                }*/
             },
             _ => {panic!("expected let expr")}
         }
