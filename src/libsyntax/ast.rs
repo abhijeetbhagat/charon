@@ -12,6 +12,8 @@ pub type OptionalExpr = Option<B<Expr>>;
 pub type OptionalTypeExprTupleList = Option<Vec<(TType, B<Expr>)>>;
 pub type OptionalParamInfoList = Option<Vec<(String, TType)>>;
 pub type OptionalIdTypePairs = Option<Vec<(String, TType)>>;
+pub type OptionalIdExprPairs = Option<Vec<(String, (TType, B<Expr>))>>;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TType{
     TInt32,
@@ -133,6 +135,8 @@ pub enum Expr{
    //array of int[3] of 0
    ArrayExpr(TType, B<Expr>, B<Expr>),
    RecordExpr(OptionalIdTypePairs),
+   //var a := r{f=4, g="foo"}
+   RecordInitExpr(String, OptionalIdExprPairs),
    FieldExpr(B<Expr>, B<Expr>),
    SubscriptExpr(String, B<Expr>),
    SubscriptSetExpr(String, B<Expr>, B<Expr>),

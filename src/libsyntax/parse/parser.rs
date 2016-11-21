@@ -418,11 +418,88 @@ impl Parser{
                                     _ => panic!("Expected ':='")
                                 }
                             },
+                            //TODO remove this arm
                             Token::Rec => {
                                 //let field_decls = self.parse_record_decl();
                                 //decls.push(VarDec(id.clone(), TRecord, B(RecordExpr(field_decls))));
                             },
-                            _ => panic!("expr : pattern not covered")
+                            //TODO remove this arm
+                            Token::LeftCurly=> {
+                                let mut rec_init_expr : Vec<(String, (TType, B<Expr>))> = Vec::new();
+                                loop{
+                                    match self.lexer.get_token() {
+                                        Token::Comma => continue,
+                                        Token::RightCurly => { 
+                                            break;
+                                        },
+                                        Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
+                                        Token::Ident => {
+                                            let id = self.lexer.curr_string.clone();
+                                            //FIXME should we verify duplicate params here?
+                                            //HashMap and BTreeMap do not respect the order of insertions
+                                            //which is required to set up args during call.
+                                            //Vec will respect the order but cost O(n) for the verification
+                                            //Need multi_index kind of a structure from C++ Boost
+                                            if rec_init_expr.iter().any(|ref tup| tup.0 == id){
+                                                panic!(format!("parameter '{}' found more than once", id));
+                                            }
+                                            match  self.lexer.get_token() {
+                                                Token::Colon => {
+                                                    rec_init_expr.push((id, self.get_nxt_and_parse()));
+                                                },
+                                                _ => panic!("Expected ':' after id")
+                                            }
+                                        },
+                                        _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token)
+                                    }
+                                }
+                            },
+                            _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token) 
+                        } 
+                    },
+                    Token::ColonEquals => { 
+                        match self.lexer.get_token(){
+                            Token::Ident =>{
+                                let type_name = self.lexer.curr_string.clone();
+                                match self.lexer.get_token(){
+                                    Token::LeftCurly =>{ //Record init expr. var a := r{f=5,g="abhi"}
+                                        let mut rec_init_expr : Vec<(String, (TType, B<Expr>))> = Vec::new();
+                                        loop{
+                                            match self.lexer.get_token() {
+                                                Token::Comma => continue,
+                                                Token::RightCurly => { 
+                                                    break;
+                                                },
+                                                Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
+                                                Token::Ident => {
+                                                    let field_id = self.lexer.curr_string.clone();
+                                                    //FIXME should we verify duplicate params here?
+                                                    //HashMap and BTreeMap do not respect the order of insertions
+                                                    //which is required to set up args during call.
+                                                    //Vec will respect the order but cost O(n) for the verification
+                                                    //Need multi_index kind of a structure from C++ Boost
+                                                    if rec_init_expr.iter().any(|ref tup| tup.0 == field_id){
+                                                        panic!(format!("parameter '{}' found more than once", field_id));
+                                                    }
+                                                    match  self.lexer.get_token() {
+                                                        Token::Equals => {
+                                                            rec_init_expr.push((field_id, self.get_nxt_and_parse()));
+                                                        },
+                                                        _ => panic!("Expected '=' after field")
+                                                    }
+                                                },
+                                                _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token)
+                                            }
+                                        } 
+                                        //although we know tht the type is TRecord, we use TCustom because we dont
+                                        //want to find out TRecord details. Let TC do it.
+                                        decls.push(VarDec(id.clone(), TCustom(type_name.clone()), B(RecordInitExpr(type_name, Some(rec_init_expr)))));
+                                    },
+                                    _ => {panic!("Expected '{{'. Found '{:?}'", self.lexer.curr_token)}
+                                }
+
+                            },
+                            _ => {panic!("Expected type. Found '{:?}'", self.lexer.curr_token)}
                         }
                     },
                     _ => panic!("Expected ':' after identifier")
@@ -1970,16 +2047,16 @@ mod tests {
 
     #[test]
     fn test_record_access_one_level(){ 
-        let mut p = Parser::new("let var a : rec := {f:int, g:string} in a.f end".to_string()); 
+        let mut p = Parser::new("let type r = {f:int, g:string} var a := r{f = 4, g=\"abhi\"} in a.f end".to_string()); 
         p.start_lexer();
         let (ty, expr) = p.expr().unwrap();
         match *expr{
             LetExpr(ref v, ref o) => {
                 match v[0]{
-                    VarDec(ref id, ref ty, ref e) => {
-                        assert_eq!(*id, "a".to_string());
-                        match **e{ //**e means deref deref B<T> which results in T
-                            RecordExpr(ref field_decls) => {
+                    TypeDec(ref id, ref ty) => {
+                        assert_eq!(*id, "r".to_string());
+                        match ty{ //**e means deref deref B<T> which results in T
+                            &TRecord(ref field_decls) => {
                                 assert_eq!((field_decls.as_ref().unwrap()).len(), 2);
                                 assert_eq!((field_decls.as_ref().unwrap())[0].0, String::from("f"));
                                 assert_eq!((field_decls.as_ref().unwrap())[0].1, TInt32);
@@ -1991,6 +2068,34 @@ mod tests {
                         }
                     },
                     _ => {panic!("expected var decl")}
+                }
+
+                match v[1]{
+                    VarDec(ref id, ref ty, ref e) =>{
+                        assert_eq!(*id, "a");
+                        match ty{
+                            &TCustom(ref t) => assert_eq!(*t, "r"),
+                            _ => panic!("Expected 'r'")
+                        }
+
+                        match **e{
+                            RecordInitExpr(ref t, ref field_exprs) => {
+                                assert_eq!(*t, "r");
+                                let unwrapped_field_exprs = field_exprs.as_ref().unwrap();
+                                assert_eq!(unwrapped_field_exprs.len(), 2);
+                                let (ref field, (ref t, ref expr)) = unwrapped_field_exprs[0];
+                                assert_eq!(*field, "f");
+                                assert_eq!(*t, TInt32);
+                                match **expr{
+                                    NumExpr(n) => assert_eq!(n, 4),
+                                    _ => panic!("Expected num expression")
+                                }
+
+                            },
+                            _ => panic!("Expected a record initialization expr")
+                        }
+                    }
+                    _ => panic!("Expected var dec")
                 }
 
                 match **o.as_ref().unwrap(){
