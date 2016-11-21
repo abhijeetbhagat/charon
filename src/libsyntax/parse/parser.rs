@@ -2091,6 +2091,15 @@ mod tests {
                                     _ => panic!("Expected num expression")
                                 }
 
+                                let (ref field, (ref t, ref expr)) = unwrapped_field_exprs[1];
+                                assert_eq!(*field, "g");
+                                assert_eq!(*t, TString);
+                                match **expr{
+                                    StringExpr(ref s) => assert_eq!(*s, "abhi"),
+                                    _ => panic!("Expected num expression")
+                                }
+
+
                             },
                             _ => panic!("Expected a record initialization expr")
                         }
