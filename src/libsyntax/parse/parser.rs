@@ -2219,7 +2219,7 @@ mod tests {
                     _ => panic!("Expected var dec")
                 }
 
-                /*match **o.as_ref().unwrap(){
+                match **o.as_ref().unwrap(){
                     FieldExpr(ref head, ref tail) =>{
                         match **head{
                             IdExpr(ref id) => assert_eq!(*id, "a"),
@@ -2227,9 +2227,15 @@ mod tests {
                         }
 
                         match **tail{
-                            IdExpr(ref id) =>{
-                                assert_eq!(*id, "f");
-
+                            FieldExpr(ref head, ref tail) =>{
+                                match **head{
+                                    IdExpr(ref id) => assert_eq!(*id, "f"),
+                                    _ => panic!("Expected id expression")
+                                } 
+                                match **tail{
+                                    IdExpr(ref id) => assert_eq!(*id, "h"),
+                                    _ => panic!("Expected id expression")
+                                } 
                             }
                             _ => {panic!("Expected field expression")}
                         }
@@ -2237,7 +2243,7 @@ mod tests {
                     
                     },
                     _ => {panic!("Expected a field expression")}
-                }*/
+                }
             },
             _ => {panic!("expected let expr")}
         }
