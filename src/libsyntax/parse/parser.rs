@@ -423,37 +423,6 @@ impl Parser{
                                 //let field_decls = self.parse_record_decl();
                                 //decls.push(VarDec(id.clone(), TRecord, B(RecordExpr(field_decls))));
                             },
-                            //TODO remove this arm
-                            Token::LeftCurly=> {
-                                let mut rec_init_expr : Vec<(String, (TType, B<Expr>))> = Vec::new();
-                                loop{
-                                    match self.lexer.get_token() {
-                                        Token::Comma => continue,
-                                        Token::RightCurly => { 
-                                            break;
-                                        },
-                                        Token::Eof => panic!("Unexpected eof encountered. Expected a ')' after field-declaration."),
-                                        Token::Ident => {
-                                            let id = self.lexer.curr_string.clone();
-                                            //FIXME should we verify duplicate params here?
-                                            //HashMap and BTreeMap do not respect the order of insertions
-                                            //which is required to set up args during call.
-                                            //Vec will respect the order but cost O(n) for the verification
-                                            //Need multi_index kind of a structure from C++ Boost
-                                            if rec_init_expr.iter().any(|ref tup| tup.0 == id){
-                                                panic!(format!("parameter '{}' found more than once", id));
-                                            }
-                                            match  self.lexer.get_token() {
-                                                Token::Colon => {
-                                                    rec_init_expr.push((id, self.get_nxt_and_parse()));
-                                                },
-                                                _ => panic!("Expected ':' after id")
-                                            }
-                                        },
-                                        _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token)
-                                    }
-                                }
-                            },
                             _ => panic!("Unexpected token '{:?}'", self.lexer.curr_token) 
                         } 
                     },
@@ -512,6 +481,7 @@ impl Parser{
     fn parse_ident_expr(&mut self) -> Option<(TType, B<Expr>)>{
         //check if symbol defined in the sym tab
         //if self.block_stack.last().unwrap().contains(self.lexer.curr_string)
+        let _id = self.lexer.curr_string.clone();
         let op1 = B(IdExpr(self.lexer.curr_string.clone()));
         let fn_name = self.lexer.curr_string.clone();
         match self.lexer.get_token(){
@@ -629,6 +599,9 @@ impl Parser{
                             match  self.lexer.get_token() {
                                 Token::Equals => {
                                     rec_init_expr.push((field_id, self.get_nxt_and_parse()));
+                                    if self.lexer.curr_token == Token::RightCurly{
+                                        break;
+                                    }
                                 },
                                 _ => panic!("Expected '=' after field")
                             }
@@ -638,7 +611,7 @@ impl Parser{
                 } 
                 //although we know tht the type is TRecord, we use TCustom because we dont
                 //want to find out TRecord details. Let TC do it.
-                decls.push(VarDec(id.clone(), TCustom(type_name.clone()), B(RecordInitExpr(type_name, Some(rec_init_expr)))));
+                return Some((TCustom(_id.clone()), B(RecordInitExpr(_id, Some(rec_init_expr)))))
 
             },
             _ => {
